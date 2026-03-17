@@ -25,7 +25,8 @@
  * v1.4.9  - 手形矩阵支持选点功能：点击格子可选中/取消，选中点参与ADC Sum计算；弯折区与指尖红色框精确中心对齐
  * v1.5.0  - 修复HandMatrix选点与采集逻辑联动：SerialMonitor和ConsistencyPage的handleStart现在正确识别handSelectedIndices，支持手形矩阵模式下的数据采集和CSV导出
  * v1.5.1  - 修复CSV上传解析：自动识别两种CSV格式（SerialMonitor导出的多列传感器格式 + ConsistencyPage导出的分号分隔格式）；传感器数据横向求和生成ADC Sum；综合曲线图横轴N纵轴ADC Sum
+ * v1.5.2  - 多CSV文件上传管理：支持最多20个文件，每个文件用不同颜色曲线绘制，checkbox控制显示/隐藏，支持单独移除或清除全部；DataChart改为ScatterChart多系列模式
  */
-export const APP_VERSION = 'v1.5.1';
+export const APP_VERSION = 'v1.5.2';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

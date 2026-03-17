@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
-import DataChart from '@/components/DataChart';
+import DataChart, { DataSeries, SERIES_COLORS } from '@/components/DataChart';
 import TestResultCard from '@/components/TestResultCard';
 import ParameterPanel from '@/components/ParameterPanel';
 import SerialMonitor from '@/components/SerialMonitor';
@@ -275,145 +275,158 @@ export default function ConsistencyPage() {
     }
   }, [records]);
 
-  // CSV 上传数据（用于回放展示）
-  const [uploadedRecords, setUploadedRecords] = useState<DataRecord[]>([]);
-  const [uploadFileName, setUploadFileName] = useState<string>('');
+  // CSV 多文件上传管理（最多20个）
+  const [uploadedSeries, setUploadedSeries] = useState<DataSeries[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** 解析 CSV 文本为 DataRecord[] */
+  const parseCSVText = useCallback((text: string): DataRecord[] => {
+    const clean = text.replace(/^\uFEFF/, '');
+    const lines = clean.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+
+    const headerLine = lines[0];
+    const parsed: DataRecord[] = [];
+    const isFormatA = headerLine.includes('传感器#') || headerLine.includes('压力(N)');
+    const isFormatB = headerLine.includes('ADC Value') || headerLine.includes('ADC Sum');
+
+    if (isFormatA) {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 2) continue;
+        const time = cols[0] || '';
+        const pressure = parseFloat(cols[1]);
+        if (isNaN(pressure) && cols[1]?.trim() === '') continue;
+        const adcValues: number[] = [];
+        for (let j = 2; j < cols.length; j++) {
+          const val = parseInt(cols[j], 10);
+          adcValues.push(isNaN(val) ? 0 : val);
+        }
+        const adcSum = adcValues.reduce((a, b) => a + b, 0);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time,
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum,
+          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+          testMode: 'consistency',
+          sampleIndex: i - 1,
+        });
+      }
+    } else if (isFormatB) {
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
+        if (!match) continue;
+        const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
+        const pressure = parseFloat(pressureStr);
+        const adcValues = adcValuesStr.split(';').map(Number);
+        const adcSum = parseInt(adcSumStr, 10);
+        const sampleIndex = parseInt(sampleIndexStr, 10);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time: time || '',
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum: isNaN(adcSum) ? adcValues.reduce((a, b) => a + b, 0) : adcSum,
+          adcSumHex: adcSumHex || '',
+          testMode: (testMode as DataRecord['testMode']) || 'consistency',
+          sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
+          productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
+        });
+      }
+    } else {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 2) continue;
+        const time = cols[0] || '';
+        const pressure = parseFloat(cols[1]);
+        const adcValues: number[] = [];
+        for (let j = 2; j < cols.length; j++) {
+          const val = parseInt(cols[j], 10);
+          if (!isNaN(val)) adcValues.push(val);
+        }
+        const adcSum = adcValues.reduce((a, b) => a + b, 0);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time,
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum,
+          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+          testMode: 'consistency',
+          sampleIndex: i - 1,
+        });
+      }
+    }
+    return parsed;
+  }, []);
 
   const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const text = ev.target?.result as string;
-        // 移除 BOM
-        const clean = text.replace(/^\uFEFF/, '');
-        const lines = clean.split('\n').filter(l => l.trim());
-        if (lines.length < 2) {
-          toast.error('CSV 文件为空或格式不正确');
-          return;
-        }
-
-        const headerLine = lines[0];
-        const parsed: DataRecord[] = [];
-
-        // 判断 CSV 格式：
-        // 格式A (SerialMonitor/TestPage 导出): 时间,压力(N),传感器#1,传感器#2,...
-        // 格式B (ConsistencyPage 导出): Time,Pressure(N),"ADC1;ADC2;...",ADC Sum,...
-        const isFormatA = headerLine.includes('传感器#') || headerLine.includes('压力(N)');
-        const isFormatB = headerLine.includes('ADC Value') || headerLine.includes('ADC Sum');
-
-        if (isFormatA) {
-          // 格式A：时间,压力(N),传感器#N,传感器#M,...
-          // 表头列数确定传感器数量
-          const headerCols = headerLine.split(',');
-          const sensorCount = headerCols.length - 2; // 前2列是时间和压力
-
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',');
-            if (cols.length < 2) continue;
-
-            const time = cols[0] || '';
-            const pressure = parseFloat(cols[1]);
-            if (isNaN(pressure) && cols[1]?.trim() === '') continue; // 跳过空行
-
-            // 传感器 ADC 值：从第3列开始
-            const adcValues: number[] = [];
-            for (let j = 2; j < cols.length; j++) {
-              const val = parseInt(cols[j], 10);
-              adcValues.push(isNaN(val) ? 0 : val);
-            }
-            // 横向求和
-            const adcSum = adcValues.reduce((a, b) => a + b, 0);
-
-            parsed.push({
-              id: `upload_${i}`,
-              timestamp: Date.now() + i,
-              time,
-              pressure: isNaN(pressure) ? 0 : pressure,
-              adcValues,
-              adcSum,
-              adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
-              testMode: 'consistency',
-              sampleIndex: i - 1,
-            });
-          }
-        } else if (isFormatB) {
-          // 格式B：Time,Pressure(N),"ADC1;ADC2;...",ADC Sum,ADC Sum(Hex),Test Mode,Sample Index,Product Index
-          for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
-            if (!match) continue;
-            const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
-            const pressure = parseFloat(pressureStr);
-            const adcValues = adcValuesStr.split(';').map(Number);
-            const adcSum = parseInt(adcSumStr, 10);
-            const sampleIndex = parseInt(sampleIndexStr, 10);
-            parsed.push({
-              id: `upload_${i}`,
-              timestamp: Date.now() + i,
-              time: time || '',
-              pressure: isNaN(pressure) ? 0 : pressure,
-              adcValues,
-              adcSum: isNaN(adcSum) ? adcValues.reduce((a, b) => a + b, 0) : adcSum,
-              adcSumHex: adcSumHex || '',
-              testMode: (testMode as DataRecord['testMode']) || 'consistency',
-              sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
-              productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
-            });
-          }
-        } else {
-          // 通用回退：尝试按逗号分割，第1列时间，第2列压力，其余列为传感器数据
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',');
-            if (cols.length < 2) continue;
-            const time = cols[0] || '';
-            const pressure = parseFloat(cols[1]);
-            const adcValues: number[] = [];
-            for (let j = 2; j < cols.length; j++) {
-              const val = parseInt(cols[j], 10);
-              if (!isNaN(val)) adcValues.push(val);
-            }
-            const adcSum = adcValues.reduce((a, b) => a + b, 0);
-            parsed.push({
-              id: `upload_${i}`,
-              timestamp: Date.now() + i,
-              time,
-              pressure: isNaN(pressure) ? 0 : pressure,
-              adcValues,
-              adcSum,
-              adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
-              testMode: 'consistency',
-              sampleIndex: i - 1,
-            });
-          }
-        }
-
-        if (parsed.length === 0) {
-          toast.error('未解析到有效数据');
-          return;
-        }
-        setUploadedRecords(parsed);
-        toast.success(`已导入 ${parsed.length} 条数据（横向求和 ADC Sum）`);
-      } catch (err) {
-        toast.error('解析 CSV 失败');
-        console.error(err);
+    setUploadedSeries(prev => {
+      if (prev.length >= 20) {
+        toast.error('最多支持 20 个文件，请先清除部分文件');
+        return prev;
       }
-    };
-    reader.readAsText(file);
-    // 重置 input 以便重复上传同一文件
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const text = ev.target?.result as string;
+          const parsed = parseCSVText(text);
+          if (parsed.length === 0) {
+            toast.error('未解析到有效数据');
+            return;
+          }
+          const colorIdx = prev.length % SERIES_COLORS.length;
+          const newSeries: DataSeries = {
+            id: `file_${Date.now()}`,
+            name: file.name.replace(/\.csv$/i, ''),
+            records: parsed,
+            color: SERIES_COLORS[colorIdx],
+            visible: true,
+          };
+          setUploadedSeries(p => [...p, newSeries]);
+          toast.success(`已导入 "${file.name}"（${parsed.length} 条数据）`);
+        } catch (err) {
+          toast.error('解析 CSV 失败');
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+      return prev;
+    });
     e.target.value = '';
+  }, [parseCSVText]);
+
+  const handleToggleSeriesVisible = useCallback((id: string) => {
+    setUploadedSeries(prev => prev.map(s => s.id === id ? { ...s, visible: !s.visible } : s));
   }, []);
 
-  const handleClearUpload = useCallback(() => {
-    setUploadedRecords([]);
-    setUploadFileName('');
+  const handleRemoveSeries = useCallback((id: string) => {
+    setUploadedSeries(prev => prev.filter(s => s.id !== id));
   }, []);
 
-  // 综合曲线显示的数据：优先显示上传数据，否则显示实时采集数据
-  const chartRecords = uploadedRecords.length > 0 ? uploadedRecords : records;
+  const handleClearAllSeries = useCallback(() => {
+    setUploadedSeries([]);
+  }, []);
+
+  // 构建图表系列：实时采集 + 上传文件
+  const chartSeries: DataSeries[] = [
+    ...(records.length > 0 ? [{
+      id: 'realtime',
+      name: '实时采集',
+      records,
+      color: SERIES_COLORS[0],
+      visible: true,
+    }] : []),
+    ...uploadedSeries,
+  ];
 
   return (
     <div className="flex gap-3 p-3" style={{ minHeight: '100%' }}>
@@ -546,7 +559,7 @@ export default function ConsistencyPage() {
               <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
                 压力 & ADC Sum 综合曲线
               </span>
-              {uploadedRecords.length > 0 && (
+              {uploadedSeries.length > 0 && (
                 <span className="px-2 py-0.5 rounded text-xs font-mono"
                   style={{
                     background: 'oklch(0.72 0.20 145 / 0.15)',
@@ -555,13 +568,13 @@ export default function ConsistencyPage() {
                     fontSize: '9px',
                   }}
                 >
-                  已导入: {uploadFileName} ({uploadedRecords.length}条)
+                  {uploadedSeries.length} 个文件已导入
                 </span>
               )}
               <div className="ml-auto flex items-center gap-2">
-                {uploadedRecords.length > 0 && (
+                {uploadedSeries.length > 0 && (
                   <button
-                    onClick={handleClearUpload}
+                    onClick={handleClearAllSeries}
                     className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
                     style={{
                       background: 'oklch(0.65 0.22 25 / 0.12)',
@@ -569,7 +582,7 @@ export default function ConsistencyPage() {
                       color: 'oklch(0.65 0.22 25)',
                     }}
                   >
-                    清除导入
+                    清除全部
                   </button>
                 )}
                 <input
@@ -581,23 +594,76 @@ export default function ConsistencyPage() {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
+                  disabled={uploadedSeries.length >= 20}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all disabled:opacity-40"
                   style={{
                     background: 'oklch(0.58 0.22 265 / 0.15)',
                     border: '1px solid oklch(0.58 0.22 265 / 0.3)',
                     color: 'oklch(0.70 0.18 200)',
                   }}
-                  title="上传之前导出的 CSV 文件回放数据"
+                  title={uploadedSeries.length >= 20 ? '已达最大文件数量' : '上传 CSV 文件（最多20个）'}
                 >
                   <Upload size={11} />
-                  上传CSV
+                  上传CSV ({uploadedSeries.length}/20)
                 </button>
               </div>
             </div>
+
+            {/* 文件列表 - checkbox 控制显示/隐藏 */}
+            {uploadedSeries.length > 0 && (
+              <div
+                className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 mb-1 rounded"
+                style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+              >
+                {uploadedSeries.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-1.5 cursor-pointer group"
+                    style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={s.visible}
+                      onChange={() => handleToggleSeriesVisible(s.id)}
+                      className="w-3 h-3 rounded cursor-pointer"
+                      style={{ accentColor: s.color }}
+                    />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span
+                      style={{
+                        color: s.visible ? s.color : 'oklch(0.40 0.02 240)',
+                        textDecoration: s.visible ? 'none' : 'line-through',
+                        maxWidth: '120px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={`${s.name} (${s.records.length}条)`}
+                    >
+                      {s.name}
+                    </span>
+                    <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+                      ({s.records.length})
+                    </span>
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleRemoveSeries(s.id); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                      style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px', lineHeight: 1 }}
+                      title="移除此文件"
+                    >
+                      ×
+                    </button>
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div className="flex-1 min-h-0">
               <DataChart
-                records={chartRecords}
-                showBrush={chartRecords.length > 50}
+                series={chartSeries}
                 referenceLines={[
                   { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
                   { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },

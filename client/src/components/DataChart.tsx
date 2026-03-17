@@ -1,12 +1,13 @@
 /**
  * DataChart - 力学数据与ADC数据图表
+ * 支持多系列数据（多CSV文件），每个系列用不同颜色绘制
  * 显示形式：
  *   横坐标：串口数据上报的力学数据，以N为单位
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
  */
 import {
-  ComposedChart,
-  Line,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,13 +15,24 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  Brush,
-  Area,
+  ZAxis,
 } from 'recharts';
 import { DataRecord, toHex } from '@/lib/sensorData';
 
-interface DataChartProps {
+/** 单个上传文件的数据系列 */
+export interface DataSeries {
+  id: string;
+  name: string;        // 文件名
   records: DataRecord[];
+  color: string;       // 曲线颜色
+  visible: boolean;    // 是否显示
+}
+
+interface DataChartProps {
+  /** 单系列模式（向后兼容） */
+  records?: DataRecord[];
+  /** 多系列模式 */
+  series?: DataSeries[];
   title?: string;
   showBrush?: boolean;
   referenceLines?: { value: number; axis: 'left' | 'right'; label: string }[];
@@ -32,9 +44,35 @@ interface ChartDataPoint {
   adcSumHex: string;
   time: string;
   index: number;
+  seriesName?: string;
+  seriesColor?: string;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+// 20 种区分度高的颜色
+export const SERIES_COLORS = [
+  'oklch(0.70 0.18 200)',  // 蓝
+  'oklch(0.72 0.20 145)',  // 绿
+  'oklch(0.65 0.22 25)',   // 橙红
+  'oklch(0.68 0.20 300)',  // 紫
+  'oklch(0.75 0.18 80)',   // 黄
+  'oklch(0.65 0.20 350)',  // 粉红
+  'oklch(0.70 0.15 170)',  // 青
+  'oklch(0.60 0.22 50)',   // 深橙
+  'oklch(0.72 0.15 260)',  // 淡蓝紫
+  'oklch(0.68 0.20 120)',  // 黄绿
+  'oklch(0.60 0.18 330)',  // 玫红
+  'oklch(0.75 0.12 220)',  // 天蓝
+  'oklch(0.65 0.20 70)',   // 琥珀
+  'oklch(0.58 0.22 280)',  // 靛蓝
+  'oklch(0.72 0.18 160)',  // 翠绿
+  'oklch(0.62 0.20 10)',   // 红
+  'oklch(0.70 0.15 240)',  // 钢蓝
+  'oklch(0.68 0.18 100)',  // 柠檬绿
+  'oklch(0.60 0.20 310)',  // 紫罗兰
+  'oklch(0.75 0.15 190)',  // 浅青
+];
+
+const MultiSeriesTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0]?.payload as ChartDataPoint;
     return (
@@ -48,17 +86,22 @@ const CustomTooltip = ({ active, payload }: any) => {
           boxShadow: '0 4px 12px oklch(0 0 0 / 0.4)',
         }}
       >
+        {data?.seriesName && (
+          <div style={{ color: data.seriesColor || 'oklch(0.55 0.02 240)', marginBottom: '4px', fontSize: '10px', fontWeight: 600 }}>
+            {data.seriesName}
+          </div>
+        )}
         <div style={{ color: 'oklch(0.55 0.02 240)', marginBottom: '4px', fontSize: '10px' }}>
           样本 #{data?.index} · {data?.time}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
             <span style={{ color: 'oklch(0.72 0.20 145)' }}>压力:</span>
-            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{data?.pressure} N</span>
+            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{data?.pressure?.toFixed(2)} N</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: 'oklch(0.70 0.18 200)' }}>ADC Sum:</span>
-            <span style={{ color: 'oklch(0.70 0.18 200)', fontWeight: 600 }}>{data?.adcSum}</span>
+            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)' }}>ADC Sum:</span>
+            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)', fontWeight: 600 }}>{data?.adcSum}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
             <span style={{ color: 'oklch(0.55 0.15 200)' }}>Hex Sum:</span>
@@ -71,22 +114,46 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-// 自定义Y轴刻度格式化：同时显示十进制和十六进制
+// 自定义Y轴刻度格式化
 const formatAdcTick = (value: number) => {
   if (value >= 10000) return `${(value / 1000).toFixed(0)}k`;
   return `${value}`;
 };
 
-export default function DataChart({ records, title, showBrush = false, referenceLines = [] }: DataChartProps) {
-  const chartData: ChartDataPoint[] = records.map((r, i) => ({
-    pressure: r.pressure,
-    adcSum: r.adcSum,
-    adcSumHex: r.adcSumHex || toHex(r.adcSum),
-    time: r.time,
-    index: i + 1,
-  }));
+export default function DataChart({ records, series, title, showBrush = false, referenceLines = [] }: DataChartProps) {
+  // 构建多系列数据
+  const allSeries: { name: string; color: string; data: ChartDataPoint[] }[] = [];
 
-  const hasData = chartData.length > 0;
+  if (series && series.length > 0) {
+    // 多系列模式
+    series.forEach(s => {
+      if (!s.visible) return;
+      const data = s.records.map((r, i) => ({
+        pressure: r.pressure,
+        adcSum: r.adcSum,
+        adcSumHex: r.adcSumHex || toHex(r.adcSum),
+        time: r.time,
+        index: i + 1,
+        seriesName: s.name,
+        seriesColor: s.color,
+      }));
+      allSeries.push({ name: s.name, color: s.color, data });
+    });
+  } else if (records && records.length > 0) {
+    // 单系列向后兼容
+    const data = records.map((r, i) => ({
+      pressure: r.pressure,
+      adcSum: r.adcSum,
+      adcSumHex: r.adcSumHex || toHex(r.adcSum),
+      time: r.time,
+      index: i + 1,
+      seriesName: '实时采集',
+      seriesColor: SERIES_COLORS[0],
+    }));
+    allSeries.push({ name: '实时采集', color: SERIES_COLORS[0], data });
+  }
+
+  const hasData = allSeries.some(s => s.data.length > 0);
 
   return (
     <div className="chart-container p-3 h-full flex flex-col">
@@ -96,7 +163,7 @@ export default function DataChart({ records, title, showBrush = false, reference
             {title}
           </span>
           <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-            {records.length} 个数据点
+            {allSeries.length} 个系列 · {allSeries.reduce((sum, s) => sum + s.data.length, 0)} 个数据点
           </span>
         </div>
       )}
@@ -108,20 +175,14 @@ export default function DataChart({ records, title, showBrush = false, reference
               暂无数据
             </div>
             <div className="text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
-              请选择传感器并开始检测
+              请选择传感器并开始检测，或上传 CSV 文件
             </div>
           </div>
         </div>
       ) : (
         <div className="flex-1" style={{ minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 5, right: 15, left: 5, bottom: showBrush ? 30 : 5 }}>
-              <defs>
-                <linearGradient id="adcSumGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="oklch(0.70 0.18 200)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="oklch(0.70 0.18 200)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
+            <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="oklch(0.25 0.03 265)"
@@ -131,13 +192,14 @@ export default function DataChart({ records, title, showBrush = false, reference
               <XAxis
                 dataKey="pressure"
                 type="number"
+                name="压力"
                 tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                 axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 label={{
                   value: '压力 (N)',
                   position: 'insideBottom',
-                  offset: showBrush ? -25 : -5,
+                  offset: -5,
                   fill: 'oklch(0.72 0.20 145)',
                   fontSize: 10,
                   fontFamily: "'IBM Plex Mono', monospace",
@@ -146,13 +208,15 @@ export default function DataChart({ records, title, showBrush = false, reference
               />
               {/* 纵坐标：ADC求和 */}
               <YAxis
-                yAxisId="left"
+                dataKey="adcSum"
+                type="number"
+                name="ADC Sum"
                 tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                 axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 tickFormatter={formatAdcTick}
                 label={{
-                  value: 'ADC Sum (选定区域)',
+                  value: 'ADC Sum',
                   angle: -90,
                   position: 'insideLeft',
                   fill: 'oklch(0.70 0.18 200)',
@@ -160,10 +224,11 @@ export default function DataChart({ records, title, showBrush = false, reference
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <ZAxis range={[20, 20]} />
+              <Tooltip content={<MultiSeriesTooltip />} />
               <Legend
                 wrapperStyle={{
-                  fontSize: '11px',
+                  fontSize: '10px',
                   fontFamily: "'IBM Plex Mono', monospace",
                   color: 'oklch(0.60 0.02 240)',
                 }}
@@ -171,7 +236,6 @@ export default function DataChart({ records, title, showBrush = false, reference
               {referenceLines.map((rl, i) => (
                 <ReferenceLine
                   key={i}
-                  yAxisId="left"
                   y={rl.value}
                   stroke="oklch(0.65 0.22 25)"
                   strokeDasharray="4 4"
@@ -183,37 +247,19 @@ export default function DataChart({ records, title, showBrush = false, reference
                   }}
                 />
               ))}
-              {/* ADC Sum 面积 + 折线 */}
-              <Area
-                yAxisId="left"
-                type="monotone"
-                dataKey="adcSum"
-                name="ADC Sum"
-                stroke="oklch(0.70 0.18 200)"
-                fill="url(#adcSumGradient)"
-                strokeWidth={2}
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="adcSum"
-                name="ADC Sum"
-                stroke="oklch(0.70 0.18 200)"
-                strokeWidth={2}
-                dot={{ r: 2, fill: 'oklch(0.70 0.18 200)' }}
-                activeDot={{ r: 5, fill: 'oklch(0.70 0.18 200)', stroke: 'oklch(0.85 0.10 200)', strokeWidth: 2 }}
-                legendType="none"
-              />
-              {showBrush && (
-                <Brush
-                  dataKey="pressure"
-                  height={20}
-                  stroke="oklch(0.30 0.03 265)"
-                  fill="oklch(0.17 0.025 265)"
-                  travellerWidth={6}
+              {/* 多系列散点 */}
+              {allSeries.map((s, idx) => (
+                <Scatter
+                  key={s.name + idx}
+                  name={s.name}
+                  data={s.data}
+                  fill={s.color}
+                  line={{ stroke: s.color, strokeWidth: 1.5 }}
+                  lineType="joint"
+                  shape="circle"
                 />
-              )}
-            </ComposedChart>
+              ))}
+            </ScatterChart>
           </ResponsiveContainer>
         </div>
       )}
