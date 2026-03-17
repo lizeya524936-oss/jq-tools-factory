@@ -81,15 +81,12 @@ export default function PressureChart({ showControls = true }: PressureChartProp
   // ===== 性能优化核心：数据缓冲区 =====
   // 串口回调只写入这些 Ref（零 React 开销），不触发任何 setState
   const pendingPointsRef = useRef<ChartDataPoint[]>([]);
-  const dataPointCountRef = useRef<number>(0);
-  const collectionStartTimeRef = useRef<number | null>(null);
 
   // 初始化全局SerialDriver的回调
   useEffect(() => {
     // 设置数据回调 - 只写入 Ref，不调用任何 setState
     serialDriver.setDataCallback((data: PressureData) => {
-      dataPointCountRef.current += 1;
-      
+      // globalDataPointCount 和 globalCollectionStartTime 已在 SerialDriver.onData 中自动更新
       // 同时写入 RealtimeDataPipeline 全局单例（供采集逻辑读取）
       getRealtimeDataPipeline().updateForceData(data.value);
       
@@ -113,8 +110,22 @@ export default function PressureChart({ showControls = true }: PressureChartProp
       setStatusMsg(status);
     });
 
-    // 更新连接状态
-    setIsConnected(serialDriver.getIsConnected());
+    // 更新连接状态（组件挂载时从全局单例恢复）
+    const connected = serialDriver.getIsConnected();
+    setIsConnected(connected);
+    
+    // 如果已连接，从全局单例恢复统计数据（解决切换页面后数据丢失的 bug）
+    if (connected) {
+      const globalCount = serialDriver.getGlobalDataPointCount();
+      const globalStartTime = serialDriver.getGlobalCollectionStartTime();
+      setTotalDataPoints(globalCount);
+      setCollectionStartTime(globalStartTime);
+      if (globalStartTime && globalCount > 0) {
+        const elapsed = (Date.now() - globalStartTime) / 1000;
+        setCollectionRate(Math.round((globalCount / elapsed) * 10) / 10);
+        setElapsedTime(Math.floor(elapsed));
+      }
+    }
   }, [serialDriver]);
 
   // ===== UI 批量刷新定时器：每 200ms 将缓冲区数据刷入 React State =====
@@ -136,19 +147,23 @@ export default function PressureChart({ showControls = true }: PressureChartProp
         });
       }
       
-      // 2. 刷新统计信息
-      setTotalDataPoints(dataPointCountRef.current);
+      // 2. 从全局单例读取统计信息（不依赖局部 Ref，切换页面后仍能正确显示）
+      const globalCount = serialDriver.getGlobalDataPointCount();
+      const globalStartTime = serialDriver.getGlobalCollectionStartTime();
       
-      const startTime = collectionStartTimeRef.current;
-      if (startTime && dataPointCountRef.current > 0) {
-        const elapsed = (Date.now() - startTime) / 1000;
-        setCollectionRate(Math.round((dataPointCountRef.current / elapsed) * 10) / 10);
+      if (globalCount > 0) {
+        setTotalDataPoints(globalCount);
+      }
+      
+      if (globalStartTime && globalCount > 0) {
+        const elapsed = (Date.now() - globalStartTime) / 1000;
+        setCollectionRate(Math.round((globalCount / elapsed) * 10) / 10);
         setElapsedTime(Math.floor(elapsed));
       }
     }, 200); // 200ms = 5fps UI 刷新，足够流畅且不阻塞主线程
     
     return () => clearInterval(timer);
-  }, []);
+  }, [serialDriver]);
 
   const handleConnect = useCallback(async () => {
     setIsConnecting(true);
@@ -160,9 +175,8 @@ export default function PressureChart({ showControls = true }: PressureChartProp
       setIsConnected(true);
       setPressureData([]);
       pendingPointsRef.current = [];
-      dataPointCountRef.current = 0;
-      collectionStartTimeRef.current = Date.now();
-      setCollectionStartTime(Date.now());
+      // 全局统计数据已在 serialDriver.connect() 内部重置，无需在此重置
+      setCollectionStartTime(serialDriver.getGlobalCollectionStartTime());
       setTotalDataPoints(0);
       setCollectionRate(0);
       setElapsedTime(0);
@@ -176,16 +190,16 @@ export default function PressureChart({ showControls = true }: PressureChartProp
     setIsConnected(false);
     setStatusMsg('');
     setCollectionStartTime(null);
-    collectionStartTimeRef.current = null;
   }, [serialDriver]);
 
   const handleReset = useCallback(async () => {
     await serialDriver.reset();
+    // 重置全局统计数据（包括全局单例中的计数）
+    serialDriver.resetGlobalStats();
     setPressureData([]);
     pendingPointsRef.current = [];
-    dataPointCountRef.current = 0;
-    collectionStartTimeRef.current = Date.now();
-    setCollectionStartTime(Date.now());
+    const newStartTime = serialDriver.getGlobalCollectionStartTime();
+    setCollectionStartTime(newStartTime);
     setTotalDataPoints(0);
     setCollectionRate(0);
     setElapsedTime(0);

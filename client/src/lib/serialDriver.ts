@@ -43,6 +43,10 @@ export class SerialDriver {
   private readingThread: Promise<void> | null = null;
   private shouldStop = false;
   private latestPressureValue: number | null = null;
+  
+  // 全局统计数据（组件卸载后仍持久保存）
+  private globalDataPointCount: number = 0;
+  private globalCollectionStartTime: number | null = null;
 
   // CL2 协议命令
   private readonly CMD_CONNECT = new Uint8Array([0x23, 0x50, 0x00, 0x0A]);
@@ -81,6 +85,9 @@ export class SerialDriver {
 
       this.isConnected = true;
       this.shouldStop = false;
+      // 重置全局统计数据（新连接时从零开始计数）
+      this.globalDataPointCount = 0;
+      this.globalCollectionStartTime = null;
       this.onStatus(`串口已连接 (波特率: ${options.baudRate})`);
 
       // 获取读写器
@@ -291,6 +298,11 @@ export class SerialDriver {
   onData(data: PressureData): void {
     // 保存最新的压力值
     this.latestPressureValue = data.value;
+    // 同步更新全局统计（组件卸载后仍持久保存）
+    this.globalDataPointCount += 1;
+    if (this.globalCollectionStartTime === null) {
+      this.globalCollectionStartTime = Date.now();
+    }
     if (this.onDataCallback) {
       this.onDataCallback(data);
     }
@@ -349,6 +361,28 @@ export class SerialDriver {
    */
   getIsConnected(): boolean {
     return this.isConnected;
+  }
+
+  /**
+   * 获取全局数据点计数（组件卸载后仍持久）
+   */
+  getGlobalDataPointCount(): number {
+    return this.globalDataPointCount;
+  }
+
+  /**
+   * 获取全局采集开始时间（组件卸载后仍持久）
+   */
+  getGlobalCollectionStartTime(): number | null {
+    return this.globalCollectionStartTime;
+  }
+
+  /**
+   * 重置全局统计数据
+   */
+  resetGlobalStats(): void {
+    this.globalDataPointCount = 0;
+    this.globalCollectionStartTime = Date.now();
   }
 }
 
