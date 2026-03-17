@@ -130,7 +130,7 @@ const formatAdcTick = (value: number) => {
   return `${value}`;
 };
 
-const DEFAULT_ZOOM: ZoomState = { xMin: 'auto', xMax: 'auto', yMin: 'auto', yMax: 'auto' };
+const DEFAULT_ZOOM: ZoomState = { xMin: 0, xMax: 100, yMin: 'auto', yMax: 'auto' };
 
 export default function DataChart({ records, series, title, showBrush = false, referenceLines = [] }: DataChartProps) {
   // 缩放状态
@@ -138,7 +138,7 @@ export default function DataChart({ records, series, title, showBrush = false, r
   const [selecting, setSelecting] = useState(false);
   const [selStart, setSelStart] = useState<{ x: number; y: number } | null>(null);
   const [selEnd, setSelEnd] = useState<{ x: number; y: number } | null>(null);
-  const isZoomed = zoom.xMin !== 'auto' || zoom.xMax !== 'auto' || zoom.yMin !== 'auto' || zoom.yMax !== 'auto';
+  const isZoomed = zoom.xMin !== DEFAULT_ZOOM.xMin || zoom.xMax !== DEFAULT_ZOOM.xMax || zoom.yMin !== DEFAULT_ZOOM.yMin || zoom.yMax !== DEFAULT_ZOOM.yMax;
 
   // 构建多系列数据
   const allSeries = useMemo(() => {
