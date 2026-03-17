@@ -4,12 +4,12 @@
  *
  * 布局分三个区域（从上到下）：
  * 1. 指尖区域：5根手指各12个压力点，用红色区域框包裹
- * 2. 弯折区域：5个弯折传感器，彩色方块
- * 3. 手掌区域：手掌压力点，暗色背景
+ * 2. 弯折区域：5个弯折传感器，彩色方块（与指尖红色框精确中心对齐）
+ * 3. 手掌区域：手掌压力点，暗色背景（沿中指中心对齐）
  *
- * v1.4.6 重新设计：紧凑布局，不显示ADC数值，分区清晰
+ * v1.4.9 新增选点功能：点击格子可选中/取消，选中的点参与ADC Sum计算
  */
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
 export type HandSide = 'LH' | 'RH';
 
@@ -109,12 +109,33 @@ const RH_PALM_ROWS: number[][] = [
   [128, 127, 126, 125, 124, 123, 122, 121, 120, 119, 118, 117, 116, 115, 114],
 ];
 
+/** 收集所有手形矩阵用到的编号（用于外部全选/清空等操作） */
+export function getHandIndices(side: HandSide): number[] {
+  const fingers = side === 'LH' ? LH_FINGERS : RH_FINGERS;
+  const palmRows = side === 'LH' ? LH_PALM_ROWS : RH_PALM_ROWS;
+  const indices: number[] = [];
+  for (const f of fingers) {
+    indices.push(...f.pressure);
+    indices.push(f.flex);
+  }
+  for (const row of palmRows) {
+    indices.push(...row);
+  }
+  return indices;
+}
+
 // ─────────────────────────────────────────────
 // 颜色工具
 // ─────────────────────────────────────────────
 
-function adcToColor(adc: number): string {
+function adcToColor(adc: number, selected: boolean): string {
   const v = Math.min(255, Math.max(0, adc));
+  if (selected) {
+    // 选中状态：绿色系
+    const intensity = Math.max(0.3, v / 255);
+    return `oklch(${0.40 + intensity * 0.35} 0.22 145)`;
+  }
+  // 未选中：蓝→绿→红热力图
   if (v === 0) return 'oklch(0.16 0.02 265)';
   if (v < 64) {
     const t = v / 64;
@@ -132,6 +153,16 @@ function adcToColor(adc: number): string {
   return `oklch(${0.58 - t * 0.05} ${0.22} ${100 - t * 75})`;
 }
 
+function selectedBorder(selected: boolean): string {
+  return selected
+    ? '2px solid oklch(0.72 0.22 145)'
+    : '1px solid oklch(0.35 0.08 25 / 0.6)';
+}
+
+function selectedGlow(selected: boolean): string {
+  return selected ? '0 0 5px oklch(0.72 0.22 145 / 0.5)' : 'none';
+}
+
 // ─────────────────────────────────────────────
 // Props
 // ─────────────────────────────────────────────
@@ -142,145 +173,92 @@ export interface HandMatrixProps {
   adcValues: number[] | null;
   /** 是否显示数组编号（默认 true） */
   showIndex?: boolean;
+  /** 已选中的数组编号集合 */
+  selectedIndices?: Set<number>;
+  /** 点击格子切换选中状态的回调 */
+  onToggleSelect?: (arrayIndex: number) => void;
 }
 
 // ─────────────────────────────────────────────
-// 子组件：单个压力点格子（紧凑，不显示数值）
+// 尺寸常量
 // ─────────────────────────────────────────────
 
-interface PressureDotProps {
-  arrayIndex: number;
-  adc: number;
-  showIndex: boolean;
-  size: number;
-}
+const DOT = 18;       // 压力点格子尺寸 px
+const GAP = 2;        // 格子间距 px
+const PALM_DOT = 16;  // 手掌格子尺寸 px
+const FINGER_PAD = 4; // 红色框内边距 px
 
-function PressureDot({ arrayIndex, adc, showIndex, size }: PressureDotProps) {
-  const bg = adcToColor(adc);
-  return (
-    <div
-      title={`#${arrayIndex}  ADC: ${adc}`}
-      style={{
-        width: size,
-        height: size,
-        background: bg,
-        border: `1px solid oklch(0.35 0.08 25 / 0.6)`,
-        borderRadius: 3,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        cursor: 'default',
-        transition: 'background 0.12s',
-      }}
-    >
-      {showIndex && (
-        <span style={{
-          fontSize: '6px',
-          color: 'oklch(0.55 0.02 240)',
-          lineHeight: 1,
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}>
-          {arrayIndex}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// 子组件：单根手指区域（红色框 + 4行×3列）
-// ─────────────────────────────────────────────
-
-interface FingerBlockProps {
-  finger: FingerDef;
-  adcValues: number[] | null;
-  showIndex: boolean;
-  dotSize: number;
-  gap: number;
-}
-
-function FingerBlock({ finger, adcValues, showIndex, dotSize, gap }: FingerBlockProps) {
-  const getAdc = (idx: number) => (adcValues && idx >= 1 ? adcValues[idx - 1] ?? 0 : 0);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-      {/* 手指名称 */}
-      <span style={{
-        fontSize: '9px',
-        color: 'oklch(0.65 0.02 240)',
-        fontFamily: "'IBM Plex Mono', monospace",
-        letterSpacing: '0.02em',
-        whiteSpace: 'nowrap',
-      }}>
-        {finger.name}
-      </span>
-
-      {/* 红色压力区域框 */}
-      <div style={{
-        padding: '4px',
-        background: 'oklch(0.65 0.22 25 / 0.08)',
-        border: '1.5px solid oklch(0.65 0.22 25 / 0.55)',
-        borderRadius: 5,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: gap,
-      }}>
-        {/* 4行 × 3列 */}
-        {[0, 1, 2, 3].map(row => (
-          <div key={row} style={{ display: 'flex', gap: gap }}>
-            {[0, 1, 2].map(col => {
-              const idx = finger.pressure[row * 3 + col];
-              return (
-                <PressureDot
-                  key={col}
-                  arrayIndex={idx}
-                  adc={getAdc(idx)}
-                  showIndex={showIndex}
-                  size={dotSize}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// 红色框内部宽度 = 3*DOT + 2*GAP
+const FINGER_INNER_W = DOT * 3 + GAP * 2;
+// 红色框外部宽度（含 padding）= FINGER_INNER_W + 2*FINGER_PAD
+const FINGER_BLOCK_W = FINGER_INNER_W + FINGER_PAD * 2;
+// 手指列间距
+const FINGER_GAP = 6;
 
 // ─────────────────────────────────────────────
 // 主组件
 // ─────────────────────────────────────────────
 
-export default function HandMatrix({ side, adcValues, showIndex = true }: HandMatrixProps) {
+export default function HandMatrix({
+  side,
+  adcValues,
+  showIndex = true,
+  selectedIndices,
+  onToggleSelect,
+}: HandMatrixProps) {
   const fingers = useMemo(() => (side === 'LH' ? LH_FINGERS : RH_FINGERS), [side]);
   const palmRows = useMemo(() => (side === 'LH' ? LH_PALM_ROWS : RH_PALM_ROWS), [side]);
 
-  const getAdc = (idx: number) => (adcValues && idx >= 1 ? adcValues[idx - 1] ?? 0 : 0);
+  const getAdc = useCallback(
+    (idx: number) => (adcValues && idx >= 1 ? adcValues[idx - 1] ?? 0 : 0),
+    [adcValues],
+  );
 
-  const DOT = 18;    // 压力点格子尺寸 px
-  const GAP = 2;     // 格子间距 px
-  const PALM_DOT = 16; // 手掌格子尺寸 px
+  const isSelected = useCallback(
+    (idx: number) => selectedIndices?.has(idx) ?? false,
+    [selectedIndices],
+  );
+
+  const handleClick = useCallback(
+    (idx: number) => {
+      onToggleSelect?.(idx);
+    },
+    [onToggleSelect],
+  );
+
+  const selectable = !!onToggleSelect;
+  const selectedCount = selectedIndices?.size ?? 0;
+
+  // 指尖区域总宽度
+  const fingersAreaWidth = FINGER_BLOCK_W * 5 + FINGER_GAP * 4;
 
   return (
-    <div style={{
-      fontFamily: "'IBM Plex Mono', monospace",
-      display: 'inline-flex',
-      flexDirection: 'column',
-      gap: 8,
-      userSelect: 'none',
-    }}>
+    <div
+      style={{
+        fontFamily: "'IBM Plex Mono', monospace",
+        display: 'inline-flex',
+        flexDirection: 'column',
+        gap: 8,
+        userSelect: 'none',
+      }}
+    >
       {/* ── 标题行 ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          fontSize: '11px',
-          fontWeight: 700,
-          color: side === 'LH' ? 'oklch(0.72 0.20 200)' : 'oklch(0.72 0.20 145)',
-          letterSpacing: '0.06em',
-        }}>
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            color: side === 'LH' ? 'oklch(0.72 0.20 200)' : 'oklch(0.72 0.20 145)',
+            letterSpacing: '0.06em',
+          }}
+        >
           {side === 'LH' ? '◀ LH  Left Hand' : 'RH  Right Hand ▶'}
         </span>
+        {selectedCount > 0 && (
+          <span style={{ fontSize: '9px', color: 'oklch(0.72 0.20 145)' }}>
+            已选 {selectedCount} 点
+          </span>
+        )}
         <span style={{ fontSize: '9px', color: 'oklch(0.40 0.02 240)' }}>
           {showIndex ? '格内显示原始编号' : ''}
         </span>
@@ -288,101 +266,193 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
 
       {/* ── 区域1：指尖压力（5根手指并排） ── */}
       <div>
-        <div style={{
-          fontSize: '8px',
-          color: 'oklch(0.65 0.22 25)',
-          marginBottom: 4,
-          letterSpacing: '0.04em',
-          fontWeight: 600,
-        }}>
+        <div
+          style={{
+            fontSize: '8px',
+            color: 'oklch(0.65 0.22 25)',
+            marginBottom: 4,
+            letterSpacing: '0.04em',
+            fontWeight: 600,
+          }}
+        >
           ▌ 指尖压力区
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          {fingers.map(finger => (
-            <FingerBlock
+        <div style={{ display: 'flex', gap: FINGER_GAP, alignItems: 'flex-start' }}>
+          {fingers.map((finger) => (
+            <div
               key={finger.name}
-              finger={finger}
-              adcValues={adcValues}
-              showIndex={showIndex}
-              dotSize={DOT}
-              gap={GAP}
-            />
+              style={{
+                width: FINGER_BLOCK_W,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {/* 手指名称 */}
+              <span
+                style={{
+                  fontSize: '9px',
+                  color: 'oklch(0.65 0.02 240)',
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {finger.name}
+              </span>
+
+              {/* 红色压力区域框 */}
+              <div
+                style={{
+                  padding: FINGER_PAD,
+                  background: 'oklch(0.65 0.22 25 / 0.08)',
+                  border: '1.5px solid oklch(0.65 0.22 25 / 0.55)',
+                  borderRadius: 5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: GAP,
+                }}
+              >
+                {/* 4行 × 3列 */}
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} style={{ display: 'flex', gap: GAP }}>
+                    {[0, 1, 2].map((col) => {
+                      const idx = finger.pressure[row * 3 + col];
+                      const adc = getAdc(idx);
+                      const sel = isSelected(idx);
+                      return (
+                        <div
+                          key={col}
+                          title={`#${idx}  ADC: ${adc}${sel ? ' ✓已选' : ''}`}
+                          onClick={() => handleClick(idx)}
+                          style={{
+                            width: DOT,
+                            height: DOT,
+                            background: adcToColor(adc, sel),
+                            border: selectedBorder(sel),
+                            borderRadius: 3,
+                            boxShadow: selectedGlow(sel),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            cursor: selectable ? 'pointer' : 'default',
+                            transition: 'background 0.12s, border 0.12s',
+                          }}
+                        >
+                          {showIndex && (
+                            <span
+                              style={{
+                                fontSize: '6px',
+                                color: sel ? 'oklch(0.90 0.10 145)' : 'oklch(0.55 0.02 240)',
+                                lineHeight: 1,
+                                userSelect: 'none',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              {idx}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* ── 区域2：弯折传感器（与指尖一一对齐） ── */}
+      {/* ── 区域2：弯折传感器（与指尖红色框精确中心对齐） ── */}
       <div>
-        <div style={{
-          fontSize: '8px',
-          color: 'oklch(0.70 0.18 55)',
-          marginBottom: 4,
-          letterSpacing: '0.04em',
-          fontWeight: 600,
-        }}>
+        <div
+          style={{
+            fontSize: '8px',
+            color: 'oklch(0.70 0.18 55)',
+            marginBottom: 4,
+            letterSpacing: '0.04em',
+            fontWeight: 600,
+          }}
+        >
           ▌ 弯折传感器
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          {fingers.map((finger, fi) => {
+        <div style={{ display: 'flex', gap: FINGER_GAP, alignItems: 'flex-start' }}>
+          {fingers.map((finger) => {
             const adc = getAdc(finger.flex);
-            const pct = Math.round(adc / 255 * 100);
-            // 判断是否是端部手指（小拇指或大拇指）
-            const isEdgeFinger = finger.name === '小拇指' || finger.name === '大拇指';
+            const pct = Math.round((adc / 255) * 100);
+            const sel = isSelected(finger.flex);
+            const isEdge = finger.name === '小拇指' || finger.name === '大拇指';
             return (
               <div
                 key={finger.name}
-                title={`${finger.name}弯折 #${finger.flex}  ADC: ${adc}`}
                 style={{
-                  // 宽度与上方手指块完全一致：3列格子 + 2间距 + 2×4px(padding)
-                  width: DOT * 3 + GAP * 2 + 8,
+                  // 与上方 FingerBlock 完全相同的外层宽度
+                  width: FINGER_BLOCK_W,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 2,
-                  cursor: 'default',
                 }}
               >
-                {/* 彩色方块 */}
-                <div style={{
-                  width: DOT * 3 + GAP * 2,
-                  height: DOT,
-                  background: finger.color + '28',
-                  border: `2px solid ${finger.color}`,
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}>
+                {/* 彩色方块（居中在 FINGER_BLOCK_W 内） */}
+                <div
+                  title={`${finger.name}弯折 #${finger.flex}  ADC: ${adc}${sel ? ' ✓已选' : ''}`}
+                  onClick={() => handleClick(finger.flex)}
+                  style={{
+                    width: FINGER_INNER_W,
+                    height: DOT,
+                    background: sel ? adcToColor(adc, true) : finger.color + '28',
+                    border: sel
+                      ? '2px solid oklch(0.72 0.22 145)'
+                      : `2px solid ${finger.color}`,
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    cursor: selectable ? 'pointer' : 'default',
+                    boxShadow: selectedGlow(sel),
+                    transition: 'background 0.12s, border 0.12s',
+                  }}
+                >
                   {/* 进度条背景 */}
-                  <div style={{
-                    position: 'absolute',
-                    left: 0, top: 0, bottom: 0,
-                    width: `${pct}%`,
-                    background: finger.color + '40',
-                    transition: 'width 0.15s',
-                  }} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: `${pct}%`,
+                      background: sel ? 'oklch(0.72 0.22 145 / 0.3)' : finger.color + '40',
+                      transition: 'width 0.15s',
+                    }}
+                  />
                   {showIndex && (
-                    <span style={{
-                      position: 'relative',
-                      fontSize: '7px',
-                      color: finger.color,
-                      fontWeight: 700,
-                      zIndex: 1,
-                    }}>
+                    <span
+                      style={{
+                        position: 'relative',
+                        fontSize: '7px',
+                        color: sel ? 'oklch(0.90 0.10 145)' : finger.color,
+                        fontWeight: 700,
+                        zIndex: 1,
+                      }}
+                    >
                       #{finger.flex}
                     </span>
                   )}
                 </div>
-                {/* 标签：小拇指和大拇指显示全名，其他显示简称 */}
-                <span style={{
-                  fontSize: isEdgeFinger ? '8px' : '7px',
-                  color: isEdgeFinger ? finger.color : 'oklch(0.45 0.02 240)',
-                  fontWeight: isEdgeFinger ? 700 : 400,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {isEdgeFinger ? finger.name : finger.name.slice(-2)}
+                {/* 标签：小拇指和大拇指显示全名+高亮 */}
+                <span
+                  style={{
+                    fontSize: isEdge ? '8px' : '7px',
+                    color: isEdge ? finger.color : 'oklch(0.45 0.02 240)',
+                    fontWeight: isEdge ? 700 : 400,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isEdge ? `◆ ${finger.name}` : finger.name.slice(-2)}
                 </span>
               </div>
             );
@@ -392,90 +462,112 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
 
       {/* ── 区域3：手掌（沿中指对齐） ── */}
       <div>
-        <div style={{
-          fontSize: '8px',
-          color: 'oklch(0.60 0.06 265)',
-          marginBottom: 4,
-          letterSpacing: '0.04em',
-          fontWeight: 600,
-        }}>
+        <div
+          style={{
+            fontSize: '8px',
+            color: 'oklch(0.60 0.06 265)',
+            marginBottom: 4,
+            letterSpacing: '0.04em',
+            fontWeight: 600,
+          }}
+        >
           ▌ 手掌掌托区
         </div>
-        {(() => {
-          // 计算指尖区域总宽度（与上方手指块对齐）
-          // 每个手指块宽度 = 3*DOT + 2*GAP + 2*4px(padding) = 3*18+2*2+8 = 66px
-          // 5个手指 + 4个间距(6px) = 5*66 + 4*6 = 354px
-          const fingerBlockWidth = DOT * 3 + GAP * 2 + 8;
-          const fingersAreaWidth = fingerBlockWidth * 5 + 6 * 4;
-          // 手掌最宽行15个格子的宽度
-          const maxPalmRowWidth = PALM_DOT * 15 + GAP * 14;
-
-          return (
-            <div style={{
-              width: fingersAreaWidth,
-              padding: '6px',
-              background: 'oklch(0.20 0.03 265 / 0.6)',
-              border: '1px solid oklch(0.35 0.05 265 / 0.6)',
-              borderRadius: 6,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: GAP,
-              alignItems: 'center',
-            }}>
-              {palmRows.map((row, ri) => (
-                <div key={ri} style={{ display: 'flex', gap: GAP }}>
-                  {row.map(idx => {
-                    const adc = getAdc(idx);
-                    return (
-                      <div
-                        key={idx}
-                        title={`#${idx}  ADC: ${adc}`}
+        <div
+          style={{
+            width: fingersAreaWidth,
+            padding: '6px',
+            background: 'oklch(0.20 0.03 265 / 0.6)',
+            border: '1px solid oklch(0.35 0.05 265 / 0.6)',
+            borderRadius: 6,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: GAP,
+            alignItems: 'center',
+          }}
+        >
+          {palmRows.map((row, ri) => (
+            <div key={ri} style={{ display: 'flex', gap: GAP }}>
+              {row.map((idx) => {
+                const adc = getAdc(idx);
+                const sel = isSelected(idx);
+                return (
+                  <div
+                    key={idx}
+                    title={`#${idx}  ADC: ${adc}${sel ? ' ✓已选' : ''}`}
+                    onClick={() => handleClick(idx)}
+                    style={{
+                      width: PALM_DOT,
+                      height: PALM_DOT,
+                      background: adcToColor(adc, sel),
+                      border: sel
+                        ? '2px solid oklch(0.72 0.22 145)'
+                        : '1px solid oklch(0.32 0.04 265 / 0.7)',
+                      borderRadius: 2,
+                      boxShadow: selectedGlow(sel),
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: selectable ? 'pointer' : 'default',
+                      transition: 'background 0.12s, border 0.12s',
+                    }}
+                  >
+                    {showIndex && (
+                      <span
                         style={{
-                          width: PALM_DOT,
-                          height: PALM_DOT,
-                          background: adcToColor(adc),
-                          border: '1px solid oklch(0.32 0.04 265 / 0.7)',
-                          borderRadius: 2,
-                          flexShrink: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'default',
-                          transition: 'background 0.12s',
+                          fontSize: '5px',
+                          color: sel ? 'oklch(0.90 0.10 145)' : 'oklch(0.50 0.02 240)',
+                          lineHeight: 1,
+                          pointerEvents: 'none',
                         }}
                       >
-                        {showIndex && (
-                          <span style={{
-                            fontSize: '5px',
-                            color: 'oklch(0.50 0.02 240)',
-                            lineHeight: 1,
-                            pointerEvents: 'none',
-                          }}>
-                            {idx}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                        {idx}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })()}
+          ))}
+        </div>
       </div>
 
       {/* ── 底部色阶图例 ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
         <span style={{ fontSize: '8px', color: 'oklch(0.40 0.02 240)' }}>压力:</span>
-        {[0, 32, 64, 96, 128, 160, 192, 224, 255].map(v => (
-          <div key={v} style={{
-            width: 12, height: 8, borderRadius: 1,
-            background: adcToColor(v),
-            border: '1px solid oklch(0.25 0.03 265)',
-          }} />
+        {[0, 32, 64, 96, 128, 160, 192, 224, 255].map((v) => (
+          <div
+            key={v}
+            style={{
+              width: 12,
+              height: 8,
+              borderRadius: 1,
+              background: adcToColor(v, false),
+              border: '1px solid oklch(0.25 0.03 265)',
+            }}
+          />
         ))}
         <span style={{ fontSize: '7px', color: 'oklch(0.35 0.02 240)' }}>低</span>
-        <span style={{ fontSize: '7px', color: 'oklch(0.35 0.02 240)', marginLeft: 'auto' }}>高</span>
+        <span style={{ fontSize: '7px', color: 'oklch(0.35 0.02 240)', marginLeft: 'auto' }}>
+          高
+        </span>
+        {selectable && (
+          <>
+            <span style={{ fontSize: '8px', color: 'oklch(0.40 0.02 240)', marginLeft: 8 }}>
+              选中:
+            </span>
+            <div
+              style={{
+                width: 12,
+                height: 8,
+                borderRadius: 1,
+                background: 'oklch(0.55 0.22 145)',
+                border: '2px solid oklch(0.72 0.22 145)',
+              }}
+            />
+          </>
+        )}
       </div>
     </div>
   );

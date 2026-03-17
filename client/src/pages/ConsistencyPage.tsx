@@ -24,7 +24,7 @@ import {
   exportToCSV,
 } from '@/lib/sensorData';
 import { RefreshCw, Download, Upload } from 'lucide-react';
-import HandMatrix from '@/components/HandMatrix';
+import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 
 const DEFAULT_PARAMS = {
@@ -75,6 +75,32 @@ export default function ConsistencyPage() {
     const selectedKeys = sensors.filter(s => s.selected).map(s => `${s.row}_${s.col}`);
     localStorage.setItem('selectedSensorPoints', JSON.stringify(selectedKeys));
   }, [sensors]);
+
+  // HandMatrix 选点状态（基于数组编号）
+  const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('handSelectedIndices');
+      if (saved) return new Set<number>(JSON.parse(saved));
+    } catch {}
+    return new Set<number>();
+  });
+
+  // HandMatrix 选点变化时保存到 localStorage
+  useEffect(() => {
+    localStorage.setItem('handSelectedIndices', JSON.stringify([...handSelectedIndices]));
+  }, [handSelectedIndices]);
+
+  const handleHandToggleSelect = useCallback((arrayIndex: number) => {
+    setHandSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(arrayIndex)) {
+        next.delete(arrayIndex);
+      } else {
+        next.add(arrayIndex);
+      }
+      return next;
+    });
+  }, []);
   const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType } = useSerialData();
 
   // LH/RH 时自动切换为 16×16 矩阵
@@ -129,7 +155,11 @@ export default function ConsistencyPage() {
   }, []);
 
   const handleStart = useCallback(async () => {
-    if (selectedSensors.length === 0) {
+    // 检查是否有选点：HandMatrix 模式用 handSelectedIndices，普通模式用 selectedSensors
+    const hasSelection = handSide
+      ? handSelectedIndices.size > 0
+      : selectedSensors.length > 0;
+    if (!hasSelection) {
       toast.error('请先选择至少一个传感器点');
       return;
     }
@@ -137,6 +167,9 @@ export default function ConsistencyPage() {
     setIsRunning(true);
     setRecords([]);
     setResult(null);
+
+    // 快照当前 HandMatrix 选点（避免闭包问题）
+    const handIndicesSnapshot = [...handSelectedIndices];
 
     try {
       const pipeline = getRealtimeDataPipeline();
@@ -158,9 +191,16 @@ export default function ConsistencyPage() {
         
         // 只有当同时有压力和传感器数据时才记录
         if (snapshot.forceN !== null && currentAdcValues && currentAdcValues.length > 0) {
-          const adcValues = selectedSensors.map(sensor => 
-            currentAdcValues![sensor.row * matrixCols + sensor.col] ?? 0
-          );
+          let adcValues: number[];
+          if (handSide && handIndicesSnapshot.length > 0) {
+            // HandMatrix 模式：按数组编号取值（编号从1开始，数组索引从0开始）
+            adcValues = handIndicesSnapshot.map(idx => currentAdcValues![idx - 1] ?? 0);
+          } else {
+            // 普通矩阵模式：按行列坐标取值
+            adcValues = selectedSensors.map(sensor => 
+              currentAdcValues![sensor.row * matrixCols + sensor.col] ?? 0
+            );
+          }
           const adcSum = adcValues.reduce((a, b) => a + b, 0);
           
           const record: DataRecord = {
@@ -211,7 +251,7 @@ export default function ConsistencyPage() {
       console.error(error);
       setIsRunning(false);
     }
-  }, [selectedSensors, params, matrixCols]);
+  }, [selectedSensors, params, matrixCols, handSide, handSelectedIndices]);
 
   const handleReset = useCallback(async () => {
     // 向压力计发送 CMD_RESET 归零指令
@@ -315,6 +355,8 @@ export default function ConsistencyPage() {
               side={handSide}
               adcValues={latestAdcValues}
               showIndex={true}
+              selectedIndices={handSelectedIndices}
+              onToggleSelect={handleHandToggleSelect}
             />
           ) : (
             /* 通用矩阵 */
@@ -395,7 +437,7 @@ export default function ConsistencyPage() {
           <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
           <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法A：高频采样力学数据 + 多个压力传感点ADC求和</span>
           <div className="ml-auto flex items-center gap-2">
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{selectedSensors.length} 个传感器点已选</span>
+            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{handSide ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
             <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
             <span style={{ color: 'oklch(0.45 0.02 240)' }}>矩阵 {matrixRows}×{matrixCols}</span>
           </div>

@@ -16,7 +16,7 @@ import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
 import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download } from 'lucide-react';
-import HandMatrix from '@/components/HandMatrix';
+import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 
 interface DataRecord {
@@ -53,7 +53,32 @@ export default function TestPage() {
 
   // LH/RH 时切换手形矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
-  
+
+  // HandMatrix 选点状态（基于数组编号）
+  const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('handSelectedIndices');
+      if (saved) return new Set<number>(JSON.parse(saved));
+    } catch {}
+    return new Set<number>();
+  });
+
+  useEffect(() => {
+    localStorage.setItem('handSelectedIndices', JSON.stringify([...handSelectedIndices]));
+  }, [handSelectedIndices]);
+
+  const handleHandToggleSelect = useCallback((arrayIndex: number) => {
+    setHandSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(arrayIndex)) {
+        next.delete(arrayIndex);
+      } else {
+        next.add(arrayIndex);
+      }
+      return next;
+    });
+  }, []);
+
   // 数据采集状态
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
@@ -410,6 +435,8 @@ export default function TestPage() {
                 side={handSide}
                 adcValues={latestAdcValues}
                 showIndex={true}
+                selectedIndices={handSelectedIndices}
+                onToggleSelect={handleHandToggleSelect}
               />
             ) : (
               <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
