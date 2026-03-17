@@ -31,6 +31,7 @@ class RealtimeDataPipeline {
   };
 
   private subscribers: Set<DataSubscriber> = new Set();
+  private forceCallbacks: Set<(forceN: number) => void> = new Set();
   private lastUpdateTime: number = 0;
   private updateCount: number = 0;
 
@@ -41,6 +42,15 @@ class RealtimeDataPipeline {
   updateForceData(forceN: number): void {
     this.currentData.forceN = forceN;
     this.currentData.timestamp = Date.now();
+    this.updateCount++;
+    // 直接通知专用的 force 回调（零开销，不创建 snapshot 对象）
+    this.forceCallbacks.forEach(cb => {
+      try {
+        cb(forceN);
+      } catch (error) {
+        console.error('Force callback error:', error);
+      }
+    });
     this.notifySubscribers();
   }
 
@@ -103,6 +113,18 @@ class RealtimeDataPipeline {
     this.subscribers.add(subscriber);
     return () => {
       this.subscribers.delete(subscriber);
+    };
+  }
+
+  /**
+   * 订阅压力数据更新（专用通道，仅在 updateForceData 时触发）
+   * 回调直接接收 forceN 数值，零开销，不创建 snapshot 对象
+   * 返回取消订阅函数
+   */
+  subscribeForce(callback: (forceN: number) => void): () => void {
+    this.forceCallbacks.add(callback);
+    return () => {
+      this.forceCallbacks.delete(callback);
     };
   }
 

@@ -1,17 +1,16 @@
 /**
  * PressureChart - 压力数据实时图表组件
  *
- * 数据采集架构（v1.3.6 零延迟版）：
- *   串口 200Hz → useSerialPort.onForceData → RealtimeDataPipeline.updateForceData
- *                                             → notifySubscribers → PressureChart.subscribe 回调
- *                                             → 直接写入 pendingPointsRef 缓冲区（零丢失）
+ * 数据采集架构（v1.3.7）：
+ *   与 v1.3.1 的 SerialDriver.setDataCallback 等效的直接回调模式：
+ *   串口 200Hz → useSerialPort.onForceData → pipeline.updateForceData(n)
+ *                → subscribeForce 回调 → 直接写入 pendingPointsRef 缓冲区（零丢失）
  *   UI 刷新：200ms 定时器批量将缓冲区数据刷入 React State，保持最近200个数据点
  *
- * 关键改进：
- *   - 不再使用轮询（setInterval 50ms），改为事件订阅模式
- *   - 每个串口数据点都会触发 subscribe 回调，零丢失
- *   - 采集频率完全取决于串口数据频率（200Hz），不受定时器间隔限制
- *   - UI 刷新仍为 200ms，人眼无感知，但大幅减少主线程占用
+ * 关键设计：
+ *   - 使用 pipeline.subscribeForce() 专用通道，仅在 force 数据更新时触发
+ *   - 回调直接接收 forceN 数值，不创建 snapshot 对象，零 GC 开销
+ *   - 不受 sensor 数据更新干扰，不会写入重复数据
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RotateCcw, AlertCircle } from 'lucide-react';
@@ -87,36 +86,32 @@ export default function PressureChart() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [latestPressure, setLatestPressure] = useState<number | null>(null);
 
-  // 内部统计 Ref
+  // 内部统计 Ref（不触发 React 重渲染）
   const dataPointCountRef = useRef(0);
   const collectionStartTimeRef = useRef<number | null>(null);
 
-  // 数据缓冲区：subscribe 回调直接写入，UI 定时器批量读取
+  // 数据缓冲区：subscribeForce 回调直接写入，UI 定时器批量读取
   const pendingPointsRef = useRef<ChartDataPoint[]>([]);
 
-  // ===== 核心：通过 subscribe 直接订阅每个压力数据点 =====
+  // ===== 核心：通过 subscribeForce 专用通道直接接收每个压力数据点 =====
+  // 与 v1.3.1 的 serialDriver.setDataCallback 完全等效
   useEffect(() => {
     const pipeline = getRealtimeDataPipeline();
 
-    const unsubscribe = pipeline.subscribe({
-      onData: (snapshot) => {
-        // 只处理压力数据更新（forceN 不为 null 时）
-        if (snapshot.forceN === null) return;
+    const unsubscribe = pipeline.subscribeForce((forceN: number) => {
+      // 初始化采集开始时间
+      if (collectionStartTimeRef.current === null) {
+        collectionStartTimeRef.current = Date.now();
+      }
 
-        // 初始化采集开始时间
-        if (collectionStartTimeRef.current === null) {
-          collectionStartTimeRef.current = Date.now();
-        }
+      dataPointCountRef.current += 1;
 
-        dataPointCountRef.current += 1;
-
-        // 直接写入缓冲区（零开销，不触发 React 重渲染）
-        pendingPointsRef.current.push({
-          index: 0,
-          pressure: snapshot.forceN,
-          time: new Date().toLocaleTimeString('zh-CN'),
-        });
-      },
+      // 直接写入缓冲区（零开销，不触发 React 重渲染）
+      pendingPointsRef.current.push({
+        index: 0,
+        pressure: forceN,
+        time: new Date().toLocaleTimeString('zh-CN'),
+      });
     });
 
     return () => {
@@ -160,6 +155,13 @@ export default function PressureChart() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 连接断开时重置采集开始时间
+  useEffect(() => {
+    if (!isForceConnected) {
+      collectionStartTimeRef.current = null;
+    }
+  }, [isForceConnected]);
 
   // 重置图表数据和统计
   const handleReset = useCallback(() => {
