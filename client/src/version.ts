@@ -17,7 +17,8 @@
  * v1.4.1  - 修复一致性页面传感器矩阵与下方区块溢出覆盖问题，左侧列改为可滚动布局
  * v1.4.2  - 重新规划页面布局：主内容区域改为 overflow-auto，页面内容可滚动，解决底部按钮被截断的问题
  * v1.4.3  - 一致性页面压力数据可视化与综合视图位置互换
+ * v1.4.4  - 传感器设备类型识别：解析PKT01中设备ID字节（0x01~0x05对应LH/RH/LF/RF/WB）并在UI显示；连接面板连接成功后自动关闭，点击顶部按钮可重新打开
  */
-export const APP_VERSION = 'v1.4.3';
+export const APP_VERSION = 'v1.4.4';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

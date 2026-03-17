@@ -33,6 +33,15 @@ export interface SerialPortState {
   lastData: string | null;
 }
 
+/** 设备类型映射 */
+export const DEVICE_TYPE_MAP: Record<number, string> = {
+  0x01: 'LH', // Left Hand
+  0x02: 'RH', // Right Hand
+  0x03: 'LF', // Left Foot
+  0x04: 'RF', // Right Foot
+  0x05: 'WB', // Whole Body
+};
+
 export interface UseSerialPortOptions {
   role: SerialPortRole;
   onData?: (raw: string) => void;
@@ -41,6 +50,8 @@ export interface UseSerialPortOptions {
   onSensorMatrix?: (matrixData: number[][], rows: number, cols: number) => void;
   /** 兼容旧接口：一维数组，行优先展开 */
   onSensorData?: (adcValues: number[]) => void;
+  /** 设备类型回调：当解析到设备类型字节时触发，返回类型字符串如 'LH'/'RH'/'LF'/'RF'/'WB' */
+  onDeviceType?: (deviceType: string, deviceId: number) => void;
   /** 当前矩阵尺寸（用于解析帧体长度） */
   matrixRows?: number;
   matrixCols?: number;
@@ -103,6 +114,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     onForceData,
     onSensorMatrix,
     onSensorData,
+    onDeviceType,
     matrixRows = 16,
     matrixCols = 16,
   } = options;
@@ -142,10 +154,15 @@ export function useSerialPort(options: UseSerialPortOptions) {
   const onForceDataRef = useRef(onForceData);
   const onSensorMatrixRef = useRef(onSensorMatrix);
   const onSensorDataRef = useRef(onSensorData);
+  const onDeviceTypeRef = useRef(onDeviceType);
   onDataRef.current = onData;
   onForceDataRef.current = onForceData;
   onSensorMatrixRef.current = onSensorMatrix;
   onSensorDataRef.current = onSensorData;
+  onDeviceTypeRef.current = onDeviceType;
+  
+  // 已识别的设备类型（避免重复触发回调）
+  const lastDeviceIdRef = useRef<number | null>(null);
   
   // 性能优化：累计字节数和最新数据到 Ref，避免高频 setState
   const pendingBytesRef = useRef(0);
@@ -331,6 +348,14 @@ export function useSerialPort(options: UseSerialPortOptions) {
           return;
         }
 
+        // 解析设备类型字节（帧头4B + 包号1B = 第5字节，索引5）
+        const deviceId = buf[FRAME_HEADER_LEN + 1];
+        if (deviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
+          const deviceType = DEVICE_TYPE_MAP[deviceId] ?? `DEV_${deviceId.toString(16).toUpperCase().padStart(2, '0')}`;
+          lastDeviceIdRef.current = deviceId;
+          onDeviceTypeRef.current(deviceType, deviceId);
+        }
+
         // 跳过帧头(4B) + 包号(1B) + 设备类型(1B)，提取128字节数据
         const dataStart = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD;
         const pkt01Data = buf.slice(dataStart, dataStart + PKT01_DATA_LEN);
@@ -493,6 +518,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
   const disconnect = useCallback(async () => {
     readLoopRef.current = false;
+    lastDeviceIdRef.current = null; // 重置设备类型缓存
     
     // 清理状态更新定时器
     if (stateUpdateTimerRef.current) {

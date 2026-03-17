@@ -55,6 +55,18 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.4（2026-03-17）
+
+**传感器设备类型识别 + 连接面板自动关闭**
+
+新增两个功能：
+
+1. **设备类型识别**：解析传感器数据包 PKT01 中的设备 ID 字节（帧头4B + 包号1B 后的第6字节），映射关系为 `0x01=LH`（Left Hand）、`0x02=RH`（Right Hand）、`0x03=LF`（Left Foot）、`0x04=RF`（Right Foot）、`0x05=WB`（Whole Body）。识别到的设备类型通过 `onDeviceType` 回调传递到 `SerialDataContext`，并在传感器连接按钮标签和底部状态栏显示。
+
+2. **连接面板自动关闭**：串口连接成功后，`SerialConnectPanel` 自动收起展开的连接面板；点击顶部连接按钮可随时切换面板展开/收起（已连接状态下展开显示连接详情和断开按钮）。
+
+修改文件：`client/src/hooks/useSerialPort.ts`、`client/src/pages/Home.tsx`、`client/src/components/SerialConnectPanel.tsx`
+
 ### v1.4.3（2026-03-17）
 
 **一致性页面压力数据可视化与综合视图位置互换**

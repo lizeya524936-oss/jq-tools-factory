@@ -1,6 +1,6 @@
 /**
  * Home - 主页面
- * JQ Tools Factory 产品出厂检测工具 v1.3
+ * JQ Tools Factory 产品出厂检测工具 v1.4
  * 设计风格：精密科学仪器，深色主题，IBM Plex字体
  *
  * 设备连接（第四版需求）：
@@ -32,6 +32,8 @@ export interface SerialDataContext {
   latestRawFrame: string | null;     // 原始串口帧字符串
   isForceConnected: boolean;
   isSensorConnected: boolean;
+  /** 传感器设备类型，如 'LH'/'RH'/'LF'/'RF'/'WB'，未识别时为 null */
+  sensorDeviceType: string | null;
   latestAdcValuesRef?: React.MutableRefObject<number[] | null>; // Ref 中的最新数据
   /** 向力学仪器发送命令（如 CMD_RESET 归零指令） */
   sendForceCommand?: (data: Uint8Array) => Promise<boolean>;
@@ -44,6 +46,7 @@ export const SerialCtx = createContext<SerialDataContext>({
   latestRawFrame: null,
   isForceConnected: false,
   isSensorConnected: false,
+  sensorDeviceType: null,
   sendForceCommand: async () => false,
 });
 
@@ -74,7 +77,7 @@ const tabTitles: Record<TabType, { title: string; subtitle: string }> = {
   },
   about: {
     title: '关于',
-    subtitle: 'JQ Tools Factory v1.3 · 矩侨工业产品出厂检测工具',
+    subtitle: 'JQ Tools Factory v1.4 · 矩侨工业产品出厂检测工具',
   },
 };
 
@@ -85,6 +88,7 @@ export default function Home() {
   const [latestSensorMatrix, setLatestSensorMatrix] = useState<number[][] | null>(null);
   const [latestAdcValues, setLatestAdcValues] = useState<number[] | null>(null);
   const [latestRawFrame, setLatestRawFrame] = useState<string | null>(null);
+  const [sensorDeviceType, setSensorDeviceType] = useState<string | null>(null);
   
   // 使用 Ref 来存储最新的传感器数据，避免不必要的重新渲染
   const latestAdcValuesRef = useRef<number[] | null>(null);
@@ -148,6 +152,9 @@ export default function Home() {
   // 传感器串口
   const sensorSerial = useSerialPort({
     role: 'sensor',
+    onDeviceType: useCallback((deviceType: string, _deviceId: number) => {
+      setSensorDeviceType(deviceType);
+    }, []),
     onData: useCallback((raw: string) => {
       // 暂存到 Ref，等待批量 UI 更新
       pendingRawRef.current = raw.trim();
@@ -184,6 +191,12 @@ export default function Home() {
     return ok;
   }, [sensorSerial]);
 
+  // 传感器断开时清除设备类型
+  const handleSensorDisconnect = useCallback(async () => {
+    await sensorSerial.disconnect();
+    setSensorDeviceType(null);
+  }, [sensorSerial]);
+
   const isForceConnected = forceSerial.state.status === 'connected';
   const isSensorConnected = sensorSerial.state.status === 'connected';
   const bothConnected = isForceConnected && isSensorConnected;
@@ -196,7 +209,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}
@@ -266,7 +279,8 @@ export default function Home() {
               role="sensor"
               state={sensorSerial.state}
               onConnect={handleSensorConnect}
-              onDisconnect={sensorSerial.disconnect}
+              onDisconnect={handleSensorDisconnect}
+              deviceType={sensorDeviceType}
             />
 
             {/* 分隔 */}
@@ -295,7 +309,6 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
               </>
             )}
 
@@ -371,7 +384,7 @@ export default function Home() {
         >
           <div className="flex items-center gap-3">
             <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
-              JQ Tools Factory v1.3
+              JQ Tools Factory v1.4.4
             </span>
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
@@ -392,7 +405,7 @@ export default function Home() {
             </span>
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
-              传感器: {isSensorConnected ? `${sensorSerial.state.portInfo} @ ${sensorSerial.state.baudRate}` : '未连接'}
+              传感器: {isSensorConnected ? `${sensorSerial.state.portInfo} @ ${sensorSerial.state.baudRate}${sensorDeviceType ? ` · ${sensorDeviceType}` : ''}` : '未连接'}
             </span>
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>

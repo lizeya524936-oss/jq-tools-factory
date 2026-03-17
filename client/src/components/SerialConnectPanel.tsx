@@ -2,8 +2,13 @@
  * SerialConnectPanel - 串口连接面板组件
  * force role: 支持"压力计"和"机械手"两种检测设备切换
  * sensor role: 传感器产品（织物触觉传感器）
+ *
+ * v1.4.4 新增：
+ * - deviceType prop：显示传感器设备类型（LH/RH/LF/RF/WB）
+ * - 连接成功后自动关闭面板
+ * - 点击顶部按钮可重新打开面板
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2, Hand } from 'lucide-react';
 import { isWebSerialSupported, SerialPortState, SerialStatus } from '@/hooks/useSerialPort';
 
@@ -12,6 +17,8 @@ interface SerialConnectPanelProps {
   state: SerialPortState;
   onConnect: (baudRate: number) => Promise<boolean>;
   onDisconnect: () => Promise<void>;
+  /** 传感器设备类型标识，如 'LH'/'RH'/'LF'/'RF'/'WB'（仅 sensor role 使用） */
+  deviceType?: string | null;
 }
 
 const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600];
@@ -75,6 +82,7 @@ export default function SerialConnectPanel({
   state,
   onConnect,
   onDisconnect,
+  deviceType,
 }: SerialConnectPanelProps) {
   const cfg = ROLE_CONFIG[role];
   const statusCfg = STATUS_CONFIG[state.status];
@@ -105,7 +113,11 @@ export default function SerialConnectPanel({
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
     if (isNaN(baud) || baud <= 0) return;
-    await onConnect(baud);
+    const ok = await onConnect(baud);
+    // 连接成功后自动关闭面板
+    if (ok) {
+      setShowDetails(false);
+    }
   }, [baudInput, onConnect]);
 
   const handleDisconnect = useCallback(async () => {
@@ -115,10 +127,19 @@ export default function SerialConnectPanel({
   const isConnected = state.status === 'connected';
   const isConnecting = state.status === 'connecting';
 
+  // 连接状态变为 connected 时自动关闭面板
+  useEffect(() => {
+    if (isConnected) {
+      setShowDetails(false);
+    }
+  }, [isConnected]);
+
   // 显示标签：force role 已连接时显示具体设备名
   const displayLabel = role === 'force'
     ? (isConnected ? `${deviceCfg!.label} · ${state.portInfo ?? '已连接'}` : isConnecting ? `${deviceCfg!.label} · 连接中...` : '选择检测设备')
-    : (isConnected ? `${cfg.label} · ${state.portInfo ?? '已连接'}` : isConnecting ? `${cfg.label} · 连接中...` : `选择${cfg.label}`);
+    : (isConnected
+        ? `${deviceType ? `[${deviceType}] ` : ''}${state.portInfo ?? '已连接'}`
+        : isConnecting ? `${cfg.label} · 连接中...` : `选择${cfg.label}`);
 
   // 图标：机械手用 Hand 图标，其他用默认
   const Icon = (role === 'force' && selectedDevice === 'robot') ? Hand : cfg.icon;
@@ -132,7 +153,7 @@ export default function SerialConnectPanel({
           background: isConnected ? cfg.accentBg : 'oklch(0.20 0.025 265)',
           border: `1px solid ${isConnected ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
         }}
-        onClick={() => !isConnected && !isConnecting && setShowDetails(!showDetails)}
+        onClick={() => setShowDetails(!showDetails)}
       >
         {/* 状态指示点 */}
         <div
@@ -164,7 +185,6 @@ export default function SerialConnectPanel({
           <Settings2
             size={10}
             style={{ color: 'oklch(0.42 0.02 240)' }}
-            onClick={e => { e.stopPropagation(); setShowDetails(!showDetails); }}
           />
         )}
       </div>
@@ -398,13 +418,14 @@ export default function SerialConnectPanel({
             {[
               { label: '设备', value: state.portInfo ?? '未知' },
               { label: '波特率', value: `${state.baudRate.toLocaleString()} baud` },
+              ...(role === 'sensor' && deviceType ? [{ label: '设备类型', value: deviceType }] : []),
               { label: '最新数据', value: state.lastData ?? '等待数据...' }
             ].map(row => (
               <div key={row.label} className="flex justify-between gap-3">
                 <span style={{ color: 'oklch(0.45 0.02 240)' }}>{row.label}</span>
                 <span
                   className="truncate max-w-32 text-right"
-                  style={{ color: 'oklch(0.72 0.01 220)' }}
+                  style={{ color: row.label === '设备类型' ? cfg.accentColor : 'oklch(0.72 0.01 220)' }}
                 >
                   {row.value}
                 </span>
