@@ -311,7 +311,7 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
         </div>
       </div>
 
-      {/* ── 区域2：弯折传感器 ── */}
+      {/* ── 区域2：弯折传感器（与指尖一一对齐） ── */}
       <div>
         <div style={{
           fontSize: '8px',
@@ -322,21 +322,23 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
         }}>
           ▌ 弯折传感器
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {fingers.map(finger => {
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          {fingers.map((finger, fi) => {
             const adc = getAdc(finger.flex);
             const pct = Math.round(adc / 255 * 100);
+            // 判断是否是端部手指（小拇指或大拇指）
+            const isEdgeFinger = finger.name === '小拇指' || finger.name === '大拇指';
             return (
               <div
                 key={finger.name}
                 title={`${finger.name}弯折 #${finger.flex}  ADC: ${adc}`}
                 style={{
-                  // 宽度与手指块对齐：3列格子 + 2间距 + 2×4px内边距
+                  // 宽度与上方手指块完全一致：3列格子 + 2间距 + 2×4px(padding)
                   width: DOT * 3 + GAP * 2 + 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 3,
+                  gap: 2,
                   cursor: 'default',
                 }}
               >
@@ -373,8 +375,14 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
                     </span>
                   )}
                 </div>
-                <span style={{ fontSize: '7px', color: 'oklch(0.45 0.02 240)' }}>
-                  {finger.name.slice(-2)}
+                {/* 标签：小拇指和大拇指显示全名，其他显示简称 */}
+                <span style={{
+                  fontSize: isEdgeFinger ? '8px' : '7px',
+                  color: isEdgeFinger ? finger.color : 'oklch(0.45 0.02 240)',
+                  fontWeight: isEdgeFinger ? 700 : 400,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {isEdgeFinger ? finger.name : finger.name.slice(-2)}
                 </span>
               </div>
             );

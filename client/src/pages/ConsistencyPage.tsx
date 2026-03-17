@@ -23,7 +23,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, Upload } from 'lucide-react';
 import HandMatrix from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 
@@ -235,6 +235,74 @@ export default function ConsistencyPage() {
     }
   }, [records]);
 
+  // CSV 上传数据（用于回放展示）
+  const [uploadedRecords, setUploadedRecords] = useState<DataRecord[]>([]);
+  const [uploadFileName, setUploadFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        // 移除 BOM
+        const clean = text.replace(/^\uFEFF/, '');
+        const lines = clean.split('\n').filter(l => l.trim());
+        if (lines.length < 2) {
+          toast.error('CSV 文件为空或格式不正确');
+          return;
+        }
+        // 解析表头：Time,Pressure(N),ADC Value,ADC Sum,ADC Sum(Hex),Test Mode,Sample Index,Product Index
+        const parsed: DataRecord[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          // 处理引号内的分号分隔 ADC Value
+          const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
+          if (!match) continue;
+          const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
+          const pressure = parseFloat(pressureStr);
+          const adcValues = adcValuesStr.split(';').map(Number);
+          const adcSum = parseInt(adcSumStr, 10);
+          const sampleIndex = parseInt(sampleIndexStr, 10);
+          parsed.push({
+            id: `upload_${i}`,
+            timestamp: Date.now() + i,
+            time: time || '',
+            pressure: isNaN(pressure) ? 0 : pressure,
+            adcValues,
+            adcSum: isNaN(adcSum) ? 0 : adcSum,
+            adcSumHex: adcSumHex || '',
+            testMode: (testMode as DataRecord['testMode']) || 'consistency',
+            sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
+            productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
+          });
+        }
+        if (parsed.length === 0) {
+          toast.error('未解析到有效数据');
+          return;
+        }
+        setUploadedRecords(parsed);
+        toast.success(`已导入 ${parsed.length} 条数据`);
+      } catch (err) {
+        toast.error('解析 CSV 失败');
+      }
+    };
+    reader.readAsText(file);
+    // 重置 input 以便重复上传同一文件
+    e.target.value = '';
+  }, []);
+
+  const handleClearUpload = useCallback(() => {
+    setUploadedRecords([]);
+    setUploadFileName('');
+  }, []);
+
+  // 综合曲线显示的数据：优先显示上传数据，否则显示实时采集数据
+  const chartRecords = uploadedRecords.length > 0 ? uploadedRecords : records;
+
   return (
     <div className="flex gap-3 p-3" style={{ minHeight: '100%' }}>
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
@@ -357,16 +425,70 @@ export default function ConsistencyPage() {
           </div>
 
           {/* 压力 & ADC Sum 综合曲线 */}
-          <div className="flex-1 min-h-0">
-            <DataChart
-              records={records}
-              title="压力 & ADC Sum 综合曲线"
-              showBrush={records.length > 50}
-              referenceLines={[
-                { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
-                { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
-              ]}
-            />
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* 曲线标题栏 + 上传按钮 */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
+                压力 & ADC Sum 综合曲线
+              </span>
+              {uploadedRecords.length > 0 && (
+                <span className="px-2 py-0.5 rounded text-xs font-mono"
+                  style={{
+                    background: 'oklch(0.72 0.20 145 / 0.15)',
+                    border: '1px solid oklch(0.72 0.20 145 / 0.3)',
+                    color: 'oklch(0.72 0.20 145)',
+                    fontSize: '9px',
+                  }}
+                >
+                  已导入: {uploadFileName} ({uploadedRecords.length}条)
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                {uploadedRecords.length > 0 && (
+                  <button
+                    onClick={handleClearUpload}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
+                    style={{
+                      background: 'oklch(0.65 0.22 25 / 0.12)',
+                      border: '1px solid oklch(0.65 0.22 25 / 0.3)',
+                      color: 'oklch(0.65 0.22 25)',
+                    }}
+                  >
+                    清除导入
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
+                  style={{
+                    background: 'oklch(0.58 0.22 265 / 0.15)',
+                    border: '1px solid oklch(0.58 0.22 265 / 0.3)',
+                    color: 'oklch(0.70 0.18 200)',
+                  }}
+                  title="上传之前导出的 CSV 文件回放数据"
+                >
+                  <Upload size={11} />
+                  上传CSV
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0">
+              <DataChart
+                records={chartRecords}
+                showBrush={chartRecords.length > 50}
+                referenceLines={[
+                  { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
+                  { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
+                ]}
+              />
+            </div>
           </div>
         </div>
       </div>
