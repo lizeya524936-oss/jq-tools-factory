@@ -11,6 +11,12 @@
  *
  * 力学仪器数据格式：
  *   ASCII 文本行，如 "+0012.34N\r\n" 或 "12.34\r\n"
+ *
+ * CL2-500N-MH01 压力计初始化协议：
+ *   连接命令:      0x23 0x50 0x00 0x0A
+ *   开始采集命令:  0x23 0x51 0x00 0x0A
+ *   停止采集命令:  0x23 0x52 0x00 0x0A
+ *   重置/归零命令: 0x23 0x55 0x00 0x0A
  */
 import { useState, useRef, useCallback } from 'react';
 import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
@@ -338,6 +344,14 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
   }, [role, parseForceData, appendBinary, processSensorBuffer]);
 
+  // CL2-500N-MH01 压力计协议命令
+  const CL2_CMD_CONNECT = new Uint8Array([0x23, 0x50, 0x00, 0x0A]);
+  const CL2_CMD_START   = new Uint8Array([0x23, 0x51, 0x00, 0x0A]);
+  const CL2_CMD_STOP    = new Uint8Array([0x23, 0x52, 0x00, 0x0A]);
+
+  // 当前串口写入器（用于发送初始化命令）
+  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
+
   const connect = useCallback(async (baudRate: number): Promise<boolean> => {
     if (!isWebSerialSupported()) {
       setState(prev => ({
@@ -356,11 +370,29 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
       await port.open({ baudRate });
 
+      const portInfo = `${port.getInfo().usbProductId ?? 'Unknown'}`;
+
+      // force role：先获取 writer，发送 CL2 初始化命令，再获取 reader
+      // （顺序很重要：必须在 getReader() 之前调用 getWriter()，否则 writable 流被锁定）
+      if (role === 'force' && port.writable) {
+        const writer = port.writable.getWriter();
+        writerRef.current = writer;
+        try {
+          // 发送连接命令
+          await writer.write(CL2_CMD_CONNECT);
+          // 等待 500ms，等待压力计响应
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // 发送开始采集命令
+          await writer.write(CL2_CMD_START);
+        } catch (cmdErr) {
+          console.warn('[useSerialPort] CL2 初始化命令发送失败:', cmdErr);
+        }
+      }
+
       const reader = port.readable?.getReader();
       if (!reader) throw new Error('Failed to get reader');
       readerRef.current = reader;
 
-      const portInfo = `${port.getInfo().usbProductId ?? 'Unknown'}`;
       setState(prev => ({
         ...prev,
         status: 'connected',
@@ -393,7 +425,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
       }));
       return false;
     }
-  }, [startReadLoop]);
+  }, [role, startReadLoop]);
 
   const disconnect = useCallback(async () => {
     readLoopRef.current = false;
@@ -402,6 +434,19 @@ export function useSerialPort(options: UseSerialPortOptions) {
     if (stateUpdateTimerRef.current) {
       clearInterval(stateUpdateTimerRef.current);
       stateUpdateTimerRef.current = null;
+    }
+
+    // force role：断开前发送 CL2 停止采集命令
+    if (role === 'force' && writerRef.current) {
+      try {
+        await writerRef.current.write(new Uint8Array([0x23, 0x52, 0x00, 0x0A]));
+      } catch (e) {
+        // 忽略错误，继续断开
+      }
+      try {
+        await writerRef.current.close();
+      } catch (e) { /* ignore */ }
+      writerRef.current = null;
     }
 
     if (readerRef.current) {
@@ -429,7 +474,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
       bytesReceived: 0,
       lastData: null,
     }));
-  }, []);
+  }, [role]);
 
   return {
     state,
