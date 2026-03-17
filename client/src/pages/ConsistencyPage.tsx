@@ -367,38 +367,63 @@ export default function ConsistencyPage() {
   }, []);
 
   const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+
     setUploadedSeries(prev => {
-      if (prev.length >= 20) {
-        toast.error('最多支持 20 个文件，请先清除部分文件');
+      const remaining = 20 - prev.length;
+      if (remaining <= 0) {
+        toast.error('已达最大文件数量(20)，请先清除部分文件');
         return prev;
       }
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const text = ev.target?.result as string;
-          const parsed = parseCSVText(text);
-          if (parsed.length === 0) {
-            toast.error('未解析到有效数据');
-            return;
+      const toProcess = fileArray.slice(0, remaining);
+      if (fileArray.length > remaining) {
+        toast.warning(`仅导入前 ${remaining} 个文件（已达上限 20）`);
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      let currentIdx = prev.length;
+
+      toProcess.forEach((file, fi) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const text = ev.target?.result as string;
+            const parsed = parseCSVText(text);
+            if (parsed.length === 0) {
+              failCount++;
+              if (successCount + failCount === toProcess.length && failCount > 0) {
+                toast.error(`${failCount} 个文件解析失败`);
+              }
+              return;
+            }
+            const colorIdx = (currentIdx + fi) % SERIES_COLORS.length;
+            const newSeries: DataSeries = {
+              id: `file_${Date.now()}_${fi}`,
+              name: file.name.replace(/\.csv$/i, ''),
+              records: parsed,
+              color: SERIES_COLORS[colorIdx],
+              visible: true,
+            };
+            setUploadedSeries(p => [...p, newSeries]);
+            successCount++;
+            if (successCount + failCount === toProcess.length) {
+              toast.success(`已导入 ${successCount} 个文件`);
+            }
+          } catch (err) {
+            failCount++;
+            console.error(err);
+            if (successCount + failCount === toProcess.length) {
+              if (successCount > 0) toast.success(`已导入 ${successCount} 个文件`);
+              if (failCount > 0) toast.error(`${failCount} 个文件解析失败`);
+            }
           }
-          const colorIdx = prev.length % SERIES_COLORS.length;
-          const newSeries: DataSeries = {
-            id: `file_${Date.now()}`,
-            name: file.name.replace(/\.csv$/i, ''),
-            records: parsed,
-            color: SERIES_COLORS[colorIdx],
-            visible: true,
-          };
-          setUploadedSeries(p => [...p, newSeries]);
-          toast.success(`已导入 "${file.name}"（${parsed.length} 条数据）`);
-        } catch (err) {
-          toast.error('解析 CSV 失败');
-          console.error(err);
-        }
-      };
-      reader.readAsText(file);
+        };
+        reader.readAsText(file);
+      });
       return prev;
     });
     e.target.value = '';
@@ -589,6 +614,7 @@ export default function ConsistencyPage() {
                   ref={fileInputRef}
                   type="file"
                   accept=".csv"
+                  multiple
                   onChange={handleCSVUpload}
                   style={{ display: 'none' }}
                 />
