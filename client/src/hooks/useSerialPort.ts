@@ -57,7 +57,7 @@ export interface UseSerialPortOptions {
   matrixCols?: number;
 }
 
-const DEFAULT_BAUD_FORCE = 115200;
+const DEFAULT_BAUD_FORCE = 19200;
 const DEFAULT_BAUD_SENSOR = 921600; // 与硬件一致
 
 // 帧头字节序列：AA 55 03 99

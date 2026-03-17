@@ -36,8 +36,8 @@ const DETECTION_DEVICES: Record<DetectionDevice, {
   pressure: {
     label: '压力计',
     sublabel: 'CL2-500N-MH01',
-    defaultBaud: 115200,
-    quickBauds: [19200, 115200, 921600],
+    defaultBaud: 19200,
+    quickBauds: [9600, 19200, 115200],
     hint: '数显手持测力仪，量程500N/50Kgf',
   },
   robot: {
