@@ -273,7 +273,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           boxShadow: isZoomCenter
             ? '0 0 8px oklch(0.85 0.18 55 / 0.5)'
             : inBox ? '0 0 3px oklch(0.58 0.22 265 / 0.5)' : colors.glow,
-          cursor: selectMode === 'box' ? 'crosshair' : 'pointer',
+          cursor: 'pointer',
           borderRadius: '2px',
           transition: 'background 0.08s, box-shadow 0.08s',
         }}
@@ -500,7 +500,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           border: '1px solid oklch(0.25 0.03 265)',
           maxHeight: rows > 32 ? '140px' : rows > 16 ? '300px' : rows > 8 ? '300px' : '360px',
           userSelect: 'none',
-          cursor: selectMode === 'box' ? 'crosshair' : 'default',
+          cursor: 'default',
         }}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { handleMouseUp(); handleSensorHoverLeave(); }}
