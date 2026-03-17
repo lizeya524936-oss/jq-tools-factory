@@ -1,12 +1,12 @@
 /**
  * DataChart - 力学数据与ADC数据图表
  * 支持多系列数据（多CSV文件），每个系列用不同颜色绘制
- * 支持框选缩放和复位功能
+ * 快捷按钮切换X轴范围：20N / 30N / 50N / 70N / 100N(复位)
  * 显示形式：
  *   横坐标：串口数据上报的力学数据，以N为单位
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
  */
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ScatterChart,
   Scatter,
@@ -16,9 +16,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine,
   ZAxis,
-  ReferenceArea,
 } from 'recharts';
 import { DataRecord, toHex } from '@/lib/sensorData';
 
@@ -38,7 +36,6 @@ interface DataChartProps {
   series?: DataSeries[];
   title?: string;
   showBrush?: boolean;
-  referenceLines?: { value: number; axis: 'left' | 'right'; label: string }[];
 }
 
 interface ChartDataPoint {
@@ -51,12 +48,8 @@ interface ChartDataPoint {
   seriesColor?: string;
 }
 
-interface ZoomState {
-  xMin: number | 'auto';
-  xMax: number | 'auto';
-  yMin: number | 'auto';
-  yMax: number | 'auto';
-}
+// X轴范围预设
+const X_RANGE_PRESETS = [20, 30, 50, 70, 100] as const;
 
 // 20 种区分度高的颜色
 export const SERIES_COLORS = [
@@ -130,15 +123,9 @@ const formatAdcTick = (value: number) => {
   return `${value}`;
 };
 
-const DEFAULT_ZOOM: ZoomState = { xMin: 0, xMax: 100, yMin: 'auto', yMax: 'auto' };
-
-export default function DataChart({ records, series, title, showBrush = false, referenceLines = [] }: DataChartProps) {
-  // 缩放状态
-  const [zoom, setZoom] = useState<ZoomState>(DEFAULT_ZOOM);
-  const [selecting, setSelecting] = useState(false);
-  const [selStart, setSelStart] = useState<{ x: number; y: number } | null>(null);
-  const [selEnd, setSelEnd] = useState<{ x: number; y: number } | null>(null);
-  const isZoomed = zoom.xMin !== DEFAULT_ZOOM.xMin || zoom.xMax !== DEFAULT_ZOOM.xMax || zoom.yMin !== DEFAULT_ZOOM.yMin || zoom.yMax !== DEFAULT_ZOOM.yMax;
+export default function DataChart({ records, series, title }: DataChartProps) {
+  // X轴范围状态
+  const [xMax, setXMax] = useState<number>(100);
 
   // 构建多系列数据
   const allSeries = useMemo(() => {
@@ -175,52 +162,6 @@ export default function DataChart({ records, series, title, showBrush = false, r
 
   const hasData = allSeries.some(s => s.data.length > 0);
 
-  // 框选缩放处理
-  const handleMouseDown = useCallback((e: any) => {
-    if (e && e.xValue !== undefined && e.yValue !== undefined) {
-      setSelecting(true);
-      setSelStart({ x: e.xValue, y: e.yValue });
-      setSelEnd(null);
-    }
-  }, []);
-
-  const handleMouseMove = useCallback((e: any) => {
-    if (selecting && e && e.xValue !== undefined && e.yValue !== undefined) {
-      setSelEnd({ x: e.xValue, y: e.yValue });
-    }
-  }, [selecting]);
-
-  const handleMouseUp = useCallback(() => {
-    if (selecting && selStart && selEnd) {
-      const xMin = Math.min(selStart.x, selEnd.x);
-      const xMax = Math.max(selStart.x, selEnd.x);
-      const yMin = Math.min(selStart.y, selEnd.y);
-      const yMax = Math.max(selStart.y, selEnd.y);
-
-      // 只有当框选区域足够大时才缩放（避免误触）
-      const xRange = xMax - xMin;
-      const yRange = yMax - yMin;
-      if (xRange > 0.5 || yRange > 10) {
-        // 添加 5% 的边距
-        const xPad = xRange * 0.05;
-        const yPad = yRange * 0.05;
-        setZoom({
-          xMin: Math.max(0, xMin - xPad),
-          xMax: xMax + xPad,
-          yMin: Math.max(0, yMin - yPad),
-          yMax: yMax + yPad,
-        });
-      }
-    }
-    setSelecting(false);
-    setSelStart(null);
-    setSelEnd(null);
-  }, [selecting, selStart, selEnd]);
-
-  const handleReset = useCallback(() => {
-    setZoom(DEFAULT_ZOOM);
-  }, []);
-
   return (
     <div className="chart-container p-3 h-full flex flex-col">
       {title && (
@@ -247,37 +188,32 @@ export default function DataChart({ records, series, title, showBrush = false, r
         </div>
       ) : (
         <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
-          {/* 缩放控制栏 */}
-          <div className="flex items-center gap-2 mb-1" style={{ minHeight: '22px' }}>
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
-              {isZoomed
-                ? `X: ${typeof zoom.xMin === 'number' ? zoom.xMin.toFixed(1) : '?'}~${typeof zoom.xMax === 'number' ? zoom.xMax.toFixed(1) : '?'} N | Y: ${typeof zoom.yMin === 'number' ? zoom.yMin.toFixed(0) : '?'}~${typeof zoom.yMax === 'number' ? zoom.yMax.toFixed(0) : '?'}`
-                : '拖拽框选区域进行缩放'}
+          {/* X轴范围快捷按钮 */}
+          <div className="flex items-center gap-1.5 mb-1.5" style={{ minHeight: '24px' }}>
+            <span className="text-xs font-mono mr-1" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+              X轴范围:
             </span>
-            {isZoomed && (
+            {X_RANGE_PRESETS.map(val => (
               <button
-                onClick={handleReset}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
+                key={val}
+                onClick={() => setXMax(val)}
+                className="px-2 py-0.5 rounded text-xs font-mono transition-all"
                 style={{
-                  background: 'oklch(0.65 0.22 25 / 0.15)',
-                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                  color: 'oklch(0.65 0.22 25)',
-                  fontSize: '9px',
+                  background: xMax === val ? 'oklch(0.70 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
+                  border: `1px solid ${xMax === val ? 'oklch(0.70 0.18 200 / 0.6)' : 'oklch(0.30 0.03 265)'}`,
+                  color: xMax === val ? 'oklch(0.85 0.12 200)' : 'oklch(0.55 0.02 240)',
+                  fontSize: '10px',
+                  fontWeight: xMax === val ? 600 : 400,
                 }}
               >
-                复位
+                {val === 100 ? '100N (全部)' : `${val}N`}
               </button>
-            )}
+            ))}
           </div>
 
-          <div className="flex-1" style={{ minHeight: 0, cursor: 'crosshair' }}>
+          <div className="flex-1" style={{ minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart
-                margin={{ top: 5, right: 15, left: 5, bottom: 5 }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
+              <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="oklch(0.25 0.03 265)"
@@ -299,7 +235,7 @@ export default function DataChart({ records, series, title, showBrush = false, r
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
-                  domain={[zoom.xMin, zoom.xMax]}
+                  domain={[0, xMax]}
                   allowDataOverflow={true}
                 />
                 {/* 纵坐标：ADC求和 */}
@@ -319,8 +255,7 @@ export default function DataChart({ records, series, title, showBrush = false, r
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
-                  domain={[zoom.yMin, zoom.yMax]}
-                  allowDataOverflow={true}
+                  domain={['auto', 'auto']}
                 />
                 <ZAxis range={[20, 20]} />
                 <Tooltip content={<MultiSeriesTooltip />} />
@@ -331,34 +266,6 @@ export default function DataChart({ records, series, title, showBrush = false, r
                     color: 'oklch(0.60 0.02 240)',
                   }}
                 />
-                {referenceLines.map((rl, i) => (
-                  <ReferenceLine
-                    key={i}
-                    y={rl.value}
-                    stroke="oklch(0.65 0.22 25)"
-                    strokeDasharray="4 4"
-                    label={{
-                      value: rl.label,
-                      fill: 'oklch(0.65 0.22 25)',
-                      fontSize: 9,
-                      fontFamily: "'IBM Plex Mono', monospace",
-                    }}
-                  />
-                ))}
-                {/* 框选区域高亮 */}
-                {selecting && selStart && selEnd && (
-                  <ReferenceArea
-                    x1={selStart.x}
-                    x2={selEnd.x}
-                    y1={selStart.y}
-                    y2={selEnd.y}
-                    stroke="oklch(0.70 0.18 200)"
-                    strokeOpacity={0.8}
-                    fill="oklch(0.70 0.18 200)"
-                    fillOpacity={0.15}
-                    strokeDasharray="4 4"
-                  />
-                )}
                 {/* 多系列散点 */}
                 {allSeries.map((s, idx) => (
                   <Scatter

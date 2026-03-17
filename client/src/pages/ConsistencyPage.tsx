@@ -690,10 +690,6 @@ export default function ConsistencyPage() {
             <div className="flex-1 min-h-0">
               <DataChart
                 series={chartSeries}
-                referenceLines={[
-                  { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
-                  { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
-                ]}
               />
             </div>
           </div>
