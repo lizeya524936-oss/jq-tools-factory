@@ -1,12 +1,17 @@
 /**
  * PressureChart - 压力数据实时图表组件
- * 数据来源：从 RealtimeDataPipeline 全局单例读取最新压力值
- * 采集模式：连接后启动定时轮询（50ms），持续采集并绘制最近200个数据点
- *           无论压力值是否变化，都会持续写入新数据点
- * 绘制方式：Recharts ComposedChart + Area + Line
- * 颜色方案：橙黄主题 + 深色背景
  *
- * 性能优化：50ms 定时器写入 Ref 缓冲区，200ms 定时器批量刷新 UI
+ * 数据采集架构（v1.3.6 零延迟版）：
+ *   串口 200Hz → useSerialPort.onForceData → RealtimeDataPipeline.updateForceData
+ *                                             → notifySubscribers → PressureChart.subscribe 回调
+ *                                             → 直接写入 pendingPointsRef 缓冲区（零丢失）
+ *   UI 刷新：200ms 定时器批量将缓冲区数据刷入 React State，保持最近200个数据点
+ *
+ * 关键改进：
+ *   - 不再使用轮询（setInterval 50ms），改为事件订阅模式
+ *   - 每个串口数据点都会触发 subscribe 回调，零丢失
+ *   - 采集频率完全取决于串口数据频率（200Hz），不受定时器间隔限制
+ *   - UI 刷新仍为 200ms，人眼无感知，但大幅减少主线程占用
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RotateCcw, AlertCircle } from 'lucide-react';
@@ -30,8 +35,7 @@ interface ChartDataPoint {
 }
 
 const MAX_CHART_POINTS = 200;
-const POLL_INTERVAL = 50;    // 数据采集轮询间隔（ms）
-const UI_REFRESH_INTERVAL = 200; // UI 刷新间隔（ms）
+const UI_REFRESH_INTERVAL = 200;
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -87,50 +91,38 @@ export default function PressureChart() {
   const dataPointCountRef = useRef(0);
   const collectionStartTimeRef = useRef<number | null>(null);
 
-  // 数据缓冲区：采集定时器写入此 Ref，UI 刷新定时器批量读取
+  // 数据缓冲区：subscribe 回调直接写入，UI 定时器批量读取
   const pendingPointsRef = useRef<ChartDataPoint[]>([]);
 
-  // 采集定时器 Ref
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // ===== 核心：连接后启动持续采集定时器 =====
+  // ===== 核心：通过 subscribe 直接订阅每个压力数据点 =====
   useEffect(() => {
-    if (isForceConnected) {
-      // 初始化采集开始时间
-      if (collectionStartTimeRef.current === null) {
-        collectionStartTimeRef.current = Date.now();
-      }
+    const pipeline = getRealtimeDataPipeline();
 
-      const pipeline = getRealtimeDataPipeline();
+    const unsubscribe = pipeline.subscribe({
+      onData: (snapshot) => {
+        // 只处理压力数据更新（forceN 不为 null 时）
+        if (snapshot.forceN === null) return;
 
-      // 启动 50ms 轮询定时器：持续从全局单例读取最新压力值
-      pollTimerRef.current = setInterval(() => {
-        const force = pipeline.getLatestForce();
-        const value = force ?? 0; // 如果没有数据，使用 0
+        // 初始化采集开始时间
+        if (collectionStartTimeRef.current === null) {
+          collectionStartTimeRef.current = Date.now();
+        }
 
         dataPointCountRef.current += 1;
 
+        // 直接写入缓冲区（零开销，不触发 React 重渲染）
         pendingPointsRef.current.push({
-          index: 0, // 后续 UI 刷新时重新编号
-          pressure: value,
+          index: 0,
+          pressure: snapshot.forceN,
           time: new Date().toLocaleTimeString('zh-CN'),
         });
-      }, POLL_INTERVAL);
-    } else {
-      // 断开连接：停止采集
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-    }
+      },
+    });
 
     return () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
+      unsubscribe();
     };
-  }, [isForceConnected]);
+  }, []);
 
   // ===== 200ms UI 批量刷新定时器 =====
   useEffect(() => {
