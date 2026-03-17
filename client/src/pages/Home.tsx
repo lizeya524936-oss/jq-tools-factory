@@ -350,7 +350,7 @@ export default function Home() {
         {/* 主体区域 */}
         <div className="flex flex-1 min-h-0">
           <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <main className="flex-1 min-w-0 overflow-hidden">
+          <main className="flex-1 min-w-0 overflow-auto">
             {activeTab === 'test' && <TestPage />}
             {activeTab === 'consistency' && <ConsistencyPage />}
             {activeTab === 'repeatability' && <RepeatabilityPage />}

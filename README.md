@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.2（2026-03-17）
+
+**重新规划页面布局，支持整页滚动**
+
+数据采集控制区域的按钮被挤压出可视区域外。根本原因是 `Home.tsx` 中主内容区域 `<main>` 设置了 `overflow-hidden`，同时 `ConsistencyPage` 外层容器使用 `h-full` 限制了高度。修复方案：`<main>` 改为 `overflow-auto` 允许滚动，`ConsistencyPage` 外层从 `h-full` 改为 `minHeight: 100%` 允许内容自然撑开高度。
+
+修改文件：`client/src/pages/Home.tsx`、`client/src/pages/ConsistencyPage.tsx`
+
 ### v1.4.1（2026-03-17）
 
 **修复传感器矩阵与下方区块溢出覆盖问题**
