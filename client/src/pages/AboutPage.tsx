@@ -3,6 +3,7 @@
  * 展示产品信息、检测工具说明、检测目标（第三版需求）
  */
 import { CheckCircle, Cpu, Layers, Zap, Usb, GitBranch } from 'lucide-react';
+import { APP_VERSION, BUILD_DATE } from '@/version';
 
 export default function AboutPage() {
   return (
@@ -24,7 +25,7 @@ export default function AboutPage() {
               JQ Tools Factory
             </h1>
             <p className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-              产品出厂检测工具 v1.2 | 矩侨工业
+              产品出厂检测工具 {APP_VERSION} | 矩侨工业 · {BUILD_DATE}
             </p>
           </div>
           <div className="ml-auto text-right">

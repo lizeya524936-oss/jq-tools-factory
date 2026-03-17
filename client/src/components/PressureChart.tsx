@@ -1,15 +1,15 @@
 /**
  * PressureChart - 压力数据实时图表组件
- * 使用 Web Serial API 和 SerialDriver 实现低频采集压力计的数据采集和可视化
- * 绘制方式：采用一致性页面的绿化曲线方式（Recharts ComposedChart + Area + Line）
- * 颜色方案：橙黄主题 + 深色背景，与整体软件风格协调
- * 
- * 性能优化：数据回调只写入 Ref 缓冲区（零 React 开销），
+ * 数据来源：从 SerialCtx（Context）读取 latestForceN，由 Home.tsx 的 useSerialPort 提供
+ * 绘制方式：Recharts ComposedChart + Area + Line
+ * 颜色方案：橙黄主题 + 深色背景
+ *
+ * 性能优化：新数据通过 useEffect 写入 Ref 缓冲区，
  * UI 通过 200ms 定时器批量刷新，避免高频 setState 阻塞主线程
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { RotateCcw, Usb, AlertCircle } from 'lucide-react';
-import { getSerialDriver, PressureData } from '@/lib/serialDriver';
+import { RotateCcw, AlertCircle } from 'lucide-react';
+import { useSerialData } from '@/pages/Home';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import {
   ComposedChart,
@@ -18,7 +18,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Area,
 } from 'recharts';
@@ -60,203 +59,132 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-interface PressureChartProps {
-  showControls?: boolean;
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h${m.toString().padStart(2, '0')}m${s.toString().padStart(2, '0')}s`;
+  if (m > 0) return `${m}m${s.toString().padStart(2, '0')}s`;
+  return `${s}s`;
 }
 
-export default function PressureChart({ showControls = true }: PressureChartProps) {
-  const serialDriver = getSerialDriver();
+export default function PressureChart() {
+  // 从全局 Context 读取压力数据和连接状态（由 Home.tsx 的 useSerialPort 驱动）
+  const { latestForceN, isForceConnected } = useSerialData();
+
   const [pressureData, setPressureData] = useState<ChartDataPoint[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  
-  // 统计信息状态
-  const [collectionStartTime, setCollectionStartTime] = useState<number | null>(null);
+  const [errorMsg] = useState('');
+
+  // 统计信息
   const [totalDataPoints, setTotalDataPoints] = useState(0);
   const [collectionRate, setCollectionRate] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // ===== 性能优化核心：数据缓冲区 =====
-  // 串口回调只写入这些 Ref（零 React 开销），不触发任何 setState
+  // 内部统计 Ref（不触发 React 重渲染）
+  const dataPointCountRef = useRef(0);
+  const collectionStartTimeRef = useRef<number | null>(null);
+
+  // 数据缓冲区：新数据先写入此 Ref，200ms 定时器批量刷入 State
   const pendingPointsRef = useRef<ChartDataPoint[]>([]);
 
-  // 初始化全局SerialDriver的回调
+  // 监听 latestForceN 变化，写入缓冲区（不触发图表重渲染）
   useEffect(() => {
-    // 设置数据回调 - 只写入 Ref，不调用任何 setState
-    serialDriver.setDataCallback((data: PressureData) => {
-      // globalDataPointCount 和 globalCollectionStartTime 已在 SerialDriver.onData 中自动更新
-      // 同时写入 RealtimeDataPipeline 全局单例（供采集逻辑读取）
-      getRealtimeDataPipeline().updateForceData(data.value);
-      
-      // 只写入缓冲区 Ref，不触发 React 重渲染
-      pendingPointsRef.current.push({
-        index: 0, // 后续批量更新时重新计算
-        pressure: data.value,
-        time: new Date().toLocaleTimeString('zh-CN'),
-      });
-    });
+    if (latestForceN === null || !isForceConnected) return;
 
-    // 设置错误回调
-    serialDriver.setErrorCallback((error: string) => {
-      setErrorMsg(error);
-      setIsConnected(false);
-      setIsConnecting(false);
-    });
-
-    // 设置状态回调
-    serialDriver.setStatusCallback((status: string) => {
-      setStatusMsg(status);
-    });
-
-    // 更新连接状态（组件挂载时从全局单例恢复）
-    const connected = serialDriver.getIsConnected();
-    setIsConnected(connected);
-    
-    // 如果已连接，从全局单例恢复统计数据（解决切换页面后数据丢失的 bug）
-    if (connected) {
-      const globalCount = serialDriver.getGlobalDataPointCount();
-      const globalStartTime = serialDriver.getGlobalCollectionStartTime();
-      setTotalDataPoints(globalCount);
-      setCollectionStartTime(globalStartTime);
-      if (globalStartTime && globalCount > 0) {
-        const elapsed = (Date.now() - globalStartTime) / 1000;
-        setCollectionRate(Math.round((globalCount / elapsed) * 10) / 10);
-        setElapsedTime(Math.floor(elapsed));
-      }
+    // 初始化采集开始时间
+    if (collectionStartTimeRef.current === null) {
+      collectionStartTimeRef.current = Date.now();
     }
-  }, [serialDriver]);
 
-  // ===== UI 批量刷新定时器：每 200ms 将缓冲区数据刷入 React State =====
+    dataPointCountRef.current += 1;
+
+    // 同步写入全局单例（供采集逻辑读取）
+    getRealtimeDataPipeline().updateForceData(latestForceN);
+
+    // 写入缓冲区，等待批量刷新
+    pendingPointsRef.current.push({
+      index: 0,
+      pressure: latestForceN,
+      time: new Date().toLocaleTimeString('zh-CN'),
+    });
+  }, [latestForceN, isForceConnected]);
+
+  // 连接断开时重置采集开始时间
+  useEffect(() => {
+    if (!isForceConnected) {
+      collectionStartTimeRef.current = null;
+    }
+  }, [isForceConnected]);
+
+  // ===== 200ms 批量刷新定时器 =====
   useEffect(() => {
     const timer = setInterval(() => {
       // 1. 刷新图表数据
       const pending = pendingPointsRef.current;
       if (pending.length > 0) {
-        pendingPointsRef.current = []; // 清空缓冲区
-        
+        pendingPointsRef.current = [];
         setPressureData(prev => {
           const combined = [...prev, ...pending];
-          // 只保留最新的 MAX_CHART_POINTS 个点
-          const truncated = combined.length > MAX_CHART_POINTS 
-            ? combined.slice(-MAX_CHART_POINTS) 
+          const truncated = combined.length > MAX_CHART_POINTS
+            ? combined.slice(-MAX_CHART_POINTS)
             : combined;
-          // 重新计算 index
           return truncated.map((item, idx) => ({ ...item, index: idx + 1 }));
         });
       }
-      
-      // 2. 从全局单例读取统计信息（不依赖局部 Ref，切换页面后仍能正确显示）
-      const globalCount = serialDriver.getGlobalDataPointCount();
-      const globalStartTime = serialDriver.getGlobalCollectionStartTime();
-      
-      if (globalCount > 0) {
-        setTotalDataPoints(globalCount);
+
+      // 2. 刷新统计信息
+      const count = dataPointCountRef.current;
+      const startTime = collectionStartTimeRef.current;
+      if (count > 0) {
+        setTotalDataPoints(count);
       }
-      
-      if (globalStartTime && globalCount > 0) {
-        const elapsed = (Date.now() - globalStartTime) / 1000;
-        setCollectionRate(Math.round((globalCount / elapsed) * 10) / 10);
+      if (startTime && count > 0) {
+        const elapsed = (Date.now() - startTime) / 1000;
+        setCollectionRate(Math.round((count / elapsed) * 10) / 10);
         setElapsedTime(Math.floor(elapsed));
       }
-    }, 200); // 200ms = 5fps UI 刷新，足够流畅且不阻塞主线程
-    
+    }, 200);
+
     return () => clearInterval(timer);
-  }, [serialDriver]);
+  }, []);
 
-  const handleConnect = useCallback(async () => {
-    setIsConnecting(true);
-    setErrorMsg('');
-    
-    const success = await serialDriver.connect({ baudRate: 19200 });
-    
-    if (success) {
-      setIsConnected(true);
-      setPressureData([]);
-      pendingPointsRef.current = [];
-      // 全局统计数据已在 serialDriver.connect() 内部重置，无需在此重置
-      setCollectionStartTime(serialDriver.getGlobalCollectionStartTime());
-      setTotalDataPoints(0);
-      setCollectionRate(0);
-      setElapsedTime(0);
-    }
-    
-    setIsConnecting(false);
-  }, [serialDriver]);
-
-  const handleDisconnect = useCallback(async () => {
-    await serialDriver.disconnect();
-    setIsConnected(false);
-    setStatusMsg('');
-    setCollectionStartTime(null);
-  }, [serialDriver]);
-
-  const handleReset = useCallback(async () => {
-    await serialDriver.reset();
-    // 重置全局统计数据（包括全局单例中的计数）
-    serialDriver.resetGlobalStats();
+  // 重置图表数据和统计
+  const handleReset = useCallback(() => {
     setPressureData([]);
     pendingPointsRef.current = [];
-    const newStartTime = serialDriver.getGlobalCollectionStartTime();
-    setCollectionStartTime(newStartTime);
+    dataPointCountRef.current = 0;
+    collectionStartTimeRef.current = isForceConnected ? Date.now() : null;
     setTotalDataPoints(0);
     setCollectionRate(0);
     setElapsedTime(0);
-  }, [serialDriver]);
-
-  const isSupported = 'serial' in navigator;
-
-  // 监听全局连接状态变化
-  useEffect(() => {
-    const checkConnectionStatus = () => {
-      setIsConnected(serialDriver.getIsConnected());
-    };
-    
-    const interval = setInterval(checkConnectionStatus, 1000);
-    return () => clearInterval(interval);
-  }, [serialDriver]);
+  }, [isForceConnected]);
 
   const hasData = pressureData.length > 0;
-  
-  // 格式化时间显示
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    } else {
-      return `${secs}s`;
-    }
-  };
+  const latestPressure = pressureData.length > 0 ? pressureData[pressureData.length - 1].pressure : null;
 
   return (
-    <div className="flex flex-col h-full gap-2">
-      {/* 统计信息面板 */}
-      {isConnected && hasData && (
-        <div className="grid grid-cols-3 gap-2">
+    <div className="flex flex-col gap-3 h-full">
+      {/* 统计信息卡片 */}
+      {(hasData || isForceConnected) && (
+        <div className="grid grid-cols-3 gap-2 flex-shrink-0">
           <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
             <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               采集速率
             </div>
-            <div style={{ color: 'oklch(0.75 0.18 55)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
-              {collectionRate} Hz
+            <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
+              {collectionRate} <span style={{ fontSize: '9px' }}>Hz</span>
             </div>
           </div>
-          
+
           <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
             <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               数据点数
             </div>
-            <div style={{ color: 'oklch(0.75 0.18 55)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
+            <div style={{ color: 'oklch(0.72 0.20 145)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
               {totalDataPoints}
             </div>
           </div>
-          
+
           <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
             <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               采集时长
@@ -267,14 +195,14 @@ export default function PressureChart({ showControls = true }: PressureChartProp
           </div>
         </div>
       )}
-      
+
       {/* 标题栏 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.75 0.18 55)' }}>
             压力数据可视化
           </span>
-          {isConnected && (
+          {isForceConnected && (
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 55)' }} />
               <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>
@@ -282,9 +210,14 @@ export default function PressureChart({ showControls = true }: PressureChartProp
               </span>
             </div>
           )}
+          {isForceConnected && latestPressure !== null && (
+            <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
+              {latestPressure.toFixed(2)} N
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {(hasData || isConnected) && (
+          {(hasData || isForceConnected) && (
             <button
               onClick={handleReset}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors"
@@ -300,14 +233,13 @@ export default function PressureChart({ showControls = true }: PressureChartProp
               <span>重置</span>
             </button>
           )}
-
         </div>
       </div>
 
       {/* 错误提示 */}
       {errorMsg && (
         <div
-          className="flex items-start gap-2 p-2 rounded text-xs"
+          className="flex items-start gap-2 p-2 rounded text-xs flex-shrink-0"
           style={{ background: 'oklch(0.65 0.22 25 / 0.1)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}
         >
           <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
@@ -320,10 +252,10 @@ export default function PressureChart({ showControls = true }: PressureChartProp
         <div className="flex-1 flex items-center justify-center rounded" style={{ background: 'oklch(0.15 0.025 265)', border: '1px dashed oklch(0.25 0.03 265)' }}>
           <div className="text-center">
             <div className="text-sm font-mono mb-1" style={{ color: 'oklch(0.45 0.02 240)' }}>
-              {!isSupported ? '浏览器不支持 Web Serial API' : isConnecting ? '连接中...' : '等待数据'}
+              {isForceConnected ? '等待数据...' : '等待数据'}
             </div>
             <div className="text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
-              {!isSupported ? '请使用 Chrome 89+ 或 Edge 89+' : isConnecting ? '正在连接设备...' : '请在右上角连接检测设备后开始采集'}
+              {isForceConnected ? '已连接，正在接收压力数据' : '请在右上角连接检测设备后开始采集'}
             </div>
           </div>
         </div>
@@ -345,6 +277,7 @@ export default function PressureChart({ showControls = true }: PressureChartProp
               <XAxis
                 dataKey="index"
                 type="number"
+                domain={['dataMin', 'dataMax']}
                 tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                 axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
@@ -358,7 +291,6 @@ export default function PressureChart({ showControls = true }: PressureChartProp
                 }}
               />
               <YAxis
-                yAxisId="left"
                 tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                 axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                 tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
@@ -372,62 +304,24 @@ export default function PressureChart({ showControls = true }: PressureChartProp
                 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{
-                  fontSize: '11px',
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  color: 'oklch(0.60 0.02 240)',
-                  paddingTop: '10px',
-                }}
-                verticalAlign="top"
-                height={36}
-              />
               <Area
-                yAxisId="left"
                 type="monotone"
                 dataKey="pressure"
-                name="压力值 (N)"
-                stroke="oklch(0.75 0.18 55)"
                 fill="url(#pressureGradient)"
-                strokeWidth={2}
+                stroke="none"
+                isAnimationActive={false}
               />
               <Line
-                yAxisId="left"
                 type="monotone"
                 dataKey="pressure"
-                name="压力值 (N)"
                 stroke="oklch(0.75 0.18 55)"
-                strokeWidth={2}
-                dot={{ r: 2, fill: 'oklch(0.75 0.18 55)' }}
-                activeDot={{ r: 5, fill: 'oklch(0.75 0.18 55)', stroke: 'oklch(0.85 0.10 55)', strokeWidth: 2 }}
-                legendType="none"
+                strokeWidth={1.5}
+                dot={false}
+                isAnimationActive={false}
+                name="压力 (N)"
               />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* 统计信息 */}
-      {hasData && (
-        <div className="grid grid-cols-3 gap-2 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-          <div className="rounded p-2" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>最大值</div>
-            <div style={{ color: 'oklch(0.75 0.18 55)', fontSize: '12px', fontWeight: 600, marginTop: '2px' }}>
-              {Math.max(...pressureData.map(d => d.pressure)).toFixed(2)} N
-            </div>
-          </div>
-          <div className="rounded p-2" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>平均值</div>
-            <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '12px', fontWeight: 600, marginTop: '2px' }}>
-              {(pressureData.reduce((a, b) => a + b.pressure, 0) / pressureData.length).toFixed(2)} N
-            </div>
-          </div>
-          <div className="rounded p-2" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>采样点</div>
-            <div style={{ color: 'oklch(0.82 0.01 220)', fontSize: '12px', fontWeight: 600, marginTop: '2px' }}>
-              {pressureData.length}
-            </div>
-          </div>
         </div>
       )}
     </div>
