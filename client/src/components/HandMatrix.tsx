@@ -382,7 +382,7 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
         </div>
       </div>
 
-      {/* ── 区域3：手掌 ── */}
+      {/* ── 区域3：手掌（沿中指对齐） ── */}
       <div>
         <div style={{
           fontSize: '8px',
@@ -393,54 +393,67 @@ export default function HandMatrix({ side, adcValues, showIndex = true }: HandMa
         }}>
           ▌ 手掌掌托区
         </div>
-        <div style={{
-          padding: '6px',
-          background: 'oklch(0.20 0.03 265 / 0.6)',
-          border: '1px solid oklch(0.35 0.05 265 / 0.6)',
-          borderRadius: 6,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: GAP,
-          alignItems: 'flex-start',
-        }}>
-          {palmRows.map((row, ri) => (
-            <div key={ri} style={{ display: 'flex', gap: GAP }}>
-              {row.map(idx => {
-                const adc = getAdc(idx);
-                return (
-                  <div
-                    key={idx}
-                    title={`#${idx}  ADC: ${adc}`}
-                    style={{
-                      width: PALM_DOT,
-                      height: PALM_DOT,
-                      background: adcToColor(adc),
-                      border: '1px solid oklch(0.32 0.04 265 / 0.7)',
-                      borderRadius: 2,
-                      flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'default',
-                      transition: 'background 0.12s',
-                    }}
-                  >
-                    {showIndex && (
-                      <span style={{
-                        fontSize: '5px',
-                        color: 'oklch(0.50 0.02 240)',
-                        lineHeight: 1,
-                        pointerEvents: 'none',
-                      }}>
-                        {idx}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+        {(() => {
+          // 计算指尖区域总宽度（与上方手指块对齐）
+          // 每个手指块宽度 = 3*DOT + 2*GAP + 2*4px(padding) = 3*18+2*2+8 = 66px
+          // 5个手指 + 4个间距(6px) = 5*66 + 4*6 = 354px
+          const fingerBlockWidth = DOT * 3 + GAP * 2 + 8;
+          const fingersAreaWidth = fingerBlockWidth * 5 + 6 * 4;
+          // 手掌最宽行15个格子的宽度
+          const maxPalmRowWidth = PALM_DOT * 15 + GAP * 14;
+
+          return (
+            <div style={{
+              width: fingersAreaWidth,
+              padding: '6px',
+              background: 'oklch(0.20 0.03 265 / 0.6)',
+              border: '1px solid oklch(0.35 0.05 265 / 0.6)',
+              borderRadius: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: GAP,
+              alignItems: 'center',
+            }}>
+              {palmRows.map((row, ri) => (
+                <div key={ri} style={{ display: 'flex', gap: GAP }}>
+                  {row.map(idx => {
+                    const adc = getAdc(idx);
+                    return (
+                      <div
+                        key={idx}
+                        title={`#${idx}  ADC: ${adc}`}
+                        style={{
+                          width: PALM_DOT,
+                          height: PALM_DOT,
+                          background: adcToColor(adc),
+                          border: '1px solid oklch(0.32 0.04 265 / 0.7)',
+                          borderRadius: 2,
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'default',
+                          transition: 'background 0.12s',
+                        }}
+                      >
+                        {showIndex && (
+                          <span style={{
+                            fontSize: '5px',
+                            color: 'oklch(0.50 0.02 240)',
+                            lineHeight: 1,
+                            pointerEvents: 'none',
+                          }}>
+                            {idx}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          );
+        })()}
       </div>
 
       {/* ── 底部色阶图例 ── */}
