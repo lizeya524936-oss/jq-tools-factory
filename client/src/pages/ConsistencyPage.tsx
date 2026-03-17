@@ -227,9 +227,9 @@ export default function ConsistencyPage() {
   return (
     <div className="flex gap-3 h-full p-3">
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
-      <div className="flex flex-col gap-3" style={{ width: '520px' }}>
+      <div className="flex flex-col gap-3 overflow-y-auto" style={{ width: '520px', flexShrink: 0 }}>
         {/* 传感器矩阵 - 放大区域 */}
-        <div className="flex-1 min-h-0 rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}>
           <SensorMatrix
             rows={matrixRows}
             cols={matrixCols}

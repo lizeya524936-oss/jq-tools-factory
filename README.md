@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.1（2026-03-17）
+
+**修复传感器矩阵与下方区块溢出覆盖问题**
+
+16×16 矩阵在 520px 宽度下内容高度超出容器，导致矩阵底部与下方的“导出数据”“重置”按钮及“一致性判定”区域产生视觉覆盖。修复方案：左侧列容器添加 `overflow-y: auto` 使其可滚动，矩阵容器移除 `flex-1 min-h-0` 改为 `flexShrink: 0` 保持自然高度。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`
+
 ### v1.4.0（2026-03-17）
 
 **一致性检测页面精简优化**

@@ -14,7 +14,8 @@
  * v1.3.8  - 修复压力计数据解析：force role 改为 CL2 二进制协议解析（与 v1.3.1 SerialDriver 一致）
  * v1.3.9  - 重置按钮增加 CMD_RESET 归零指令：点击重置时同时向压力计发送 0x23 0x55 0x00 0x0A
  * v1.4.0  - 一致性检测页面精简：移除多产品对比/数据表格Tab、平均压力/ADC区域、开始检测按钮，放大传感器数组
+ * v1.4.1  - 修复一致性页面传感器矩阵与下方区块溢出覆盖问题，左侧列改为可滚动布局
  */
-export const APP_VERSION = 'v1.4.0';
+export const APP_VERSION = 'v1.4.1';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';
