@@ -1,11 +1,12 @@
 /**
  * PressureChart - 压力数据实时图表组件
- * 数据来源：从 SerialCtx（Context）读取 latestForceN，由 Home.tsx 的 useSerialPort 提供
+ * 数据来源：从 RealtimeDataPipeline 全局单例读取最新压力值
+ * 采集模式：连接后启动定时轮询（50ms），持续采集并绘制最近200个数据点
+ *           无论压力值是否变化，都会持续写入新数据点
  * 绘制方式：Recharts ComposedChart + Area + Line
  * 颜色方案：橙黄主题 + 深色背景
  *
- * 性能优化：新数据通过 useEffect 写入 Ref 缓冲区，
- * UI 通过 200ms 定时器批量刷新，避免高频 setState 阻塞主线程
+ * 性能优化：50ms 定时器写入 Ref 缓冲区，200ms 定时器批量刷新 UI
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RotateCcw, AlertCircle } from 'lucide-react';
@@ -29,6 +30,8 @@ interface ChartDataPoint {
 }
 
 const MAX_CHART_POINTS = 200;
+const POLL_INTERVAL = 50;    // 数据采集轮询间隔（ms）
+const UI_REFRESH_INTERVAL = 200; // UI 刷新间隔（ms）
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -69,8 +72,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function PressureChart() {
-  // 从全局 Context 读取压力数据和连接状态（由 Home.tsx 的 useSerialPort 驱动）
-  const { latestForceN, isForceConnected } = useSerialData();
+  const { isForceConnected } = useSerialData();
 
   const [pressureData, setPressureData] = useState<ChartDataPoint[]>([]);
   const [errorMsg] = useState('');
@@ -79,50 +81,69 @@ export default function PressureChart() {
   const [totalDataPoints, setTotalDataPoints] = useState(0);
   const [collectionRate, setCollectionRate] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [latestPressure, setLatestPressure] = useState<number | null>(null);
 
-  // 内部统计 Ref（不触发 React 重渲染）
+  // 内部统计 Ref
   const dataPointCountRef = useRef(0);
   const collectionStartTimeRef = useRef<number | null>(null);
 
-  // 数据缓冲区：新数据先写入此 Ref，200ms 定时器批量刷入 State
+  // 数据缓冲区：采集定时器写入此 Ref，UI 刷新定时器批量读取
   const pendingPointsRef = useRef<ChartDataPoint[]>([]);
 
-  // 监听 latestForceN 变化，写入缓冲区（不触发图表重渲染）
-  useEffect(() => {
-    if (latestForceN === null || !isForceConnected) return;
+  // 采集定时器 Ref
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // 初始化采集开始时间
-    if (collectionStartTimeRef.current === null) {
-      collectionStartTimeRef.current = Date.now();
+  // ===== 核心：连接后启动持续采集定时器 =====
+  useEffect(() => {
+    if (isForceConnected) {
+      // 初始化采集开始时间
+      if (collectionStartTimeRef.current === null) {
+        collectionStartTimeRef.current = Date.now();
+      }
+
+      const pipeline = getRealtimeDataPipeline();
+
+      // 启动 50ms 轮询定时器：持续从全局单例读取最新压力值
+      pollTimerRef.current = setInterval(() => {
+        const force = pipeline.getLatestForce();
+        const value = force ?? 0; // 如果没有数据，使用 0
+
+        dataPointCountRef.current += 1;
+
+        pendingPointsRef.current.push({
+          index: 0, // 后续 UI 刷新时重新编号
+          pressure: value,
+          time: new Date().toLocaleTimeString('zh-CN'),
+        });
+      }, POLL_INTERVAL);
+    } else {
+      // 断开连接：停止采集
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
     }
 
-    dataPointCountRef.current += 1;
-
-    // 同步写入全局单例（供采集逻辑读取）
-    getRealtimeDataPipeline().updateForceData(latestForceN);
-
-    // 写入缓冲区，等待批量刷新
-    pendingPointsRef.current.push({
-      index: 0,
-      pressure: latestForceN,
-      time: new Date().toLocaleTimeString('zh-CN'),
-    });
-  }, [latestForceN, isForceConnected]);
-
-  // 连接断开时重置采集开始时间
-  useEffect(() => {
-    if (!isForceConnected) {
-      collectionStartTimeRef.current = null;
-    }
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
   }, [isForceConnected]);
 
-  // ===== 200ms 批量刷新定时器 =====
+  // ===== 200ms UI 批量刷新定时器 =====
   useEffect(() => {
     const timer = setInterval(() => {
       // 1. 刷新图表数据
       const pending = pendingPointsRef.current;
       if (pending.length > 0) {
         pendingPointsRef.current = [];
+
+        // 更新最新压力值显示
+        const lastPoint = pending[pending.length - 1];
+        setLatestPressure(lastPoint.pressure);
+
         setPressureData(prev => {
           const combined = [...prev, ...pending];
           const truncated = combined.length > MAX_CHART_POINTS
@@ -143,7 +164,7 @@ export default function PressureChart() {
         setCollectionRate(Math.round((count / elapsed) * 10) / 10);
         setElapsedTime(Math.floor(elapsed));
       }
-    }, 200);
+    }, UI_REFRESH_INTERVAL);
 
     return () => clearInterval(timer);
   }, []);
@@ -157,10 +178,10 @@ export default function PressureChart() {
     setTotalDataPoints(0);
     setCollectionRate(0);
     setElapsedTime(0);
+    setLatestPressure(null);
   }, [isForceConnected]);
 
   const hasData = pressureData.length > 0;
-  const latestPressure = pressureData.length > 0 ? pressureData[pressureData.length - 1].pressure : null;
 
   return (
     <div className="flex flex-col gap-3 h-full">
@@ -210,7 +231,7 @@ export default function PressureChart() {
               </span>
             </div>
           )}
-          {isForceConnected && latestPressure !== null && (
+          {latestPressure !== null && (
             <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
               {latestPressure.toFixed(2)} N
             </span>
