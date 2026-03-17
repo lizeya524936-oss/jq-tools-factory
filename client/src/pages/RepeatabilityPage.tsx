@@ -65,7 +65,7 @@ export default function RepeatabilityPage() {
   const [activeView, setActiveView] = useState<'timeline' | 'scatter' | 'table'>('timeline');
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand } = useSerialData();
 
   // 实时将串口ADC数据按行列坐标精确注入传感器矩阵
   useEffect(() => {
@@ -123,7 +123,11 @@ export default function RepeatabilityPage() {
     }
   }, [selectedSensors, params]);
 
-  const handleReset = () => {
+  const handleReset = async () => {
+    // 向压力计发送 CMD_RESET 归零指令
+    if (isForceConnected && sendForceCommand) {
+      await sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+    }
     setRecords([]);
     setResult(null);
     toast.info('数据已重置');

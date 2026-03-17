@@ -540,9 +540,27 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }));
   }, [role]);
 
+  /**
+   * 向串口发送命令（如 CL2 压力计归零指令）
+   */
+  const sendCommand = useCallback(async (data: Uint8Array): Promise<boolean> => {
+    if (!writerRef.current) {
+      console.warn('[useSerialPort] sendCommand: writer 不可用');
+      return false;
+    }
+    try {
+      await writerRef.current.write(data);
+      return true;
+    } catch (err) {
+      console.error('[useSerialPort] sendCommand 失败:', err);
+      return false;
+    }
+  }, []);
+
   return {
     state,
     connect,
     disconnect,
+    sendCommand,
   };
 }

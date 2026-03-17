@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.3.9（2026-03-17）
+
+**重置按钮增加 CMD_RESET 归零指令**
+
+在 `useSerialPort` Hook 中新增 `sendCommand()` 方法，通过 `SerialCtx` 上下文将 `sendForceCommand` 暴露给所有子组件。点击重置按钮时，除了清空界面数据外，还会向压力计发送 `CMD_RESET`（`0x23 0x55 0x00 0x0A`）归零指令，与硬件状态保持同步。涉及页面包括 PressureChart、ConsistencyPage、RepeatabilityPage 和 DurabilityPage。
+
+修改文件：`client/src/hooks/useSerialPort.ts`、`client/src/pages/Home.tsx`、`client/src/components/PressureChart.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/RepeatabilityPage.tsx`、`client/src/pages/DurabilityPage.tsx`
+
 ### v1.3.8（2026-03-17）
 
 **修复压力计数据解析方式，彻底解决图表刷新问题**

@@ -33,6 +33,8 @@ export interface SerialDataContext {
   isForceConnected: boolean;
   isSensorConnected: boolean;
   latestAdcValuesRef?: React.MutableRefObject<number[] | null>; // Ref 中的最新数据
+  /** 向力学仪器发送命令（如 CMD_RESET 归零指令） */
+  sendForceCommand?: (data: Uint8Array) => Promise<boolean>;
 }
 
 export const SerialCtx = createContext<SerialDataContext>({
@@ -42,6 +44,7 @@ export const SerialCtx = createContext<SerialDataContext>({
   latestRawFrame: null,
   isForceConnected: false,
   isSensorConnected: false,
+  sendForceCommand: async () => false,
 });
 
 export function useSerialData() {
@@ -193,7 +196,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestAdcValuesRef }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}

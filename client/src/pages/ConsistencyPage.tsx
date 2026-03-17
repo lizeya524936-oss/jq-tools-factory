@@ -76,7 +76,7 @@ export default function ConsistencyPage() {
     const selectedKeys = sensors.filter(s => s.selected).map(s => `${s.row}_${s.col}`);
     localStorage.setItem('selectedSensorPoints', JSON.stringify(selectedKeys));
   }, [sensors]);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand } = useSerialData();
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -205,10 +205,14 @@ export default function ConsistencyPage() {
     }
   }, [selectedSensors, params, matrixCols]);
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
+    // 向压力计发送 CMD_RESET 归零指令
+    if (isForceConnected && sendForceCommand) {
+      await sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+    }
     setRecords([]);
     setResult(null);
-  }, []);
+  }, [isForceConnected, sendForceCommand]);
 
   const handleExport = useCallback(() => {
     if (records.length === 0) {

@@ -11,9 +11,9 @@
  * v1.3.5  - 压力图表改为定时轮询模式，连接后持续采集并实时绘制200个数据点，无论压力值是否变化
  * v1.3.6  - 修复采集频率和延迟问题：改为 subscribe 事件订阅模式，零丢失零延迟接收200Hz数据
  * v1.3.7  - 修复压力数据丢失：新增 subscribeForce 专用通道，每个数据点直接写入缓冲区
- * v1.3.8  - 修复压力计数据解析：force role 改为 CL2 二进制协议解析（与 v1.3.1 SerialDriver 一致），
- *           帧格式 0x23 + float32LE + 0x0A，彻底解决数据显示刷新问题
+ * v1.3.8  - 修复压力计数据解析：force role 改为 CL2 二进制协议解析（与 v1.3.1 SerialDriver 一致）
+ * v1.3.9  - 重置按钮增加 CMD_RESET 归零指令：点击重置时同时向压力计发送 0x23 0x55 0x00 0x0A
  */
-export const APP_VERSION = 'v1.3.8';
+export const APP_VERSION = 'v1.3.9';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

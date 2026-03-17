@@ -75,7 +75,10 @@ function formatTime(seconds: number): string {
 }
 
 export default function PressureChart() {
-  const { isForceConnected } = useSerialData();
+  const { isForceConnected, sendForceCommand } = useSerialData();
+
+  // CL2 压力计归零/重置命令
+  const CL2_CMD_RESET = new Uint8Array([0x23, 0x55, 0x00, 0x0A]);
 
   const [pressureData, setPressureData] = useState<ChartDataPoint[]>([]);
   const [errorMsg] = useState('');
@@ -163,8 +166,16 @@ export default function PressureChart() {
     }
   }, [isForceConnected]);
 
-  // 重置图表数据和统计
-  const handleReset = useCallback(() => {
+  // 重置图表数据和统计，同时向压力计发送 CMD_RESET 归零指令
+  const handleReset = useCallback(async () => {
+    // 向压力计发送归零指令
+    if (isForceConnected && sendForceCommand) {
+      const ok = await sendForceCommand(CL2_CMD_RESET);
+      if (ok) {
+        console.log('[PressureChart] CMD_RESET 归零指令已发送');
+      }
+    }
+    // 重置界面数据
     setPressureData([]);
     pendingPointsRef.current = [];
     dataPointCountRef.current = 0;
@@ -173,7 +184,7 @@ export default function PressureChart() {
     setCollectionRate(0);
     setElapsedTime(0);
     setLatestPressure(null);
-  }, [isForceConnected]);
+  }, [isForceConnected, sendForceCommand]);
 
   const hasData = pressureData.length > 0;
 
