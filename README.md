@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.3（2026-03-17）
+
+**一致性页面压力数据可视化与综合视图位置互换**
+
+将右侧列中“压力数据可视化”（PressureChart）与“压力 & ADC Sum 综合曲线”（DataChart）的上下位置互换，现在压力实时曲线在上方，综合分析曲线在下方。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`
+
 ### v1.4.2（2026-03-17）
 
 **重新规划页面布局，支持整页滚动**

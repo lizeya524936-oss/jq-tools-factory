@@ -16,7 +16,8 @@
  * v1.4.0  - 一致性检测页面精简：移除多产品对比/数据表格Tab、平均压力/ADC区域、开始检测按钮，放大传感器数组
  * v1.4.1  - 修复一致性页面传感器矩阵与下方区块溢出覆盖问题，左侧列改为可滚动布局
  * v1.4.2  - 重新规划页面布局：主内容区域改为 overflow-auto，页面内容可滚动，解决底部按钮被截断的问题
+ * v1.4.3  - 一致性页面压力数据可视化与综合视图位置互换
  */
-export const APP_VERSION = 'v1.4.2';
+export const APP_VERSION = 'v1.4.3';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

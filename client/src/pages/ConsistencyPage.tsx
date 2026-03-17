@@ -328,8 +328,13 @@ export default function ConsistencyPage() {
           </div>
         </div>
 
-        {/* 图表内容：压力 & ADC 综合曲线 + 压力数据可视化 */}
+        {/* 图表内容：压力数据可视化 + 压力 & ADC 综合曲线 */}
         <div className="flex-1 min-h-0 flex flex-col gap-3">
+          {/* 压力数据可视化 */}
+          <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', padding: '12px', height: '220px' }}>
+            <PressureChart showControls={false} />
+          </div>
+
           {/* 压力 & ADC Sum 综合曲线 */}
           <div className="flex-1 min-h-0">
             <DataChart
@@ -341,11 +346,6 @@ export default function ConsistencyPage() {
                 { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
               ]}
             />
-          </div>
-
-          {/* 压力数据可视化 */}
-          <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', padding: '12px', height: '220px' }}>
-            <PressureChart showControls={false} />
           </div>
         </div>
       </div>
