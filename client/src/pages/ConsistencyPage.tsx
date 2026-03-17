@@ -295,39 +295,111 @@ export default function ConsistencyPage() {
           toast.error('CSV 文件为空或格式不正确');
           return;
         }
-        // 解析表头：Time,Pressure(N),ADC Value,ADC Sum,ADC Sum(Hex),Test Mode,Sample Index,Product Index
+
+        const headerLine = lines[0];
         const parsed: DataRecord[] = [];
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i];
-          // 处理引号内的分号分隔 ADC Value
-          const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
-          if (!match) continue;
-          const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
-          const pressure = parseFloat(pressureStr);
-          const adcValues = adcValuesStr.split(';').map(Number);
-          const adcSum = parseInt(adcSumStr, 10);
-          const sampleIndex = parseInt(sampleIndexStr, 10);
-          parsed.push({
-            id: `upload_${i}`,
-            timestamp: Date.now() + i,
-            time: time || '',
-            pressure: isNaN(pressure) ? 0 : pressure,
-            adcValues,
-            adcSum: isNaN(adcSum) ? 0 : adcSum,
-            adcSumHex: adcSumHex || '',
-            testMode: (testMode as DataRecord['testMode']) || 'consistency',
-            sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
-            productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
-          });
+
+        // 判断 CSV 格式：
+        // 格式A (SerialMonitor/TestPage 导出): 时间,压力(N),传感器#1,传感器#2,...
+        // 格式B (ConsistencyPage 导出): Time,Pressure(N),"ADC1;ADC2;...",ADC Sum,...
+        const isFormatA = headerLine.includes('传感器#') || headerLine.includes('压力(N)');
+        const isFormatB = headerLine.includes('ADC Value') || headerLine.includes('ADC Sum');
+
+        if (isFormatA) {
+          // 格式A：时间,压力(N),传感器#N,传感器#M,...
+          // 表头列数确定传感器数量
+          const headerCols = headerLine.split(',');
+          const sensorCount = headerCols.length - 2; // 前2列是时间和压力
+
+          for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            if (cols.length < 2) continue;
+
+            const time = cols[0] || '';
+            const pressure = parseFloat(cols[1]);
+            if (isNaN(pressure) && cols[1]?.trim() === '') continue; // 跳过空行
+
+            // 传感器 ADC 值：从第3列开始
+            const adcValues: number[] = [];
+            for (let j = 2; j < cols.length; j++) {
+              const val = parseInt(cols[j], 10);
+              adcValues.push(isNaN(val) ? 0 : val);
+            }
+            // 横向求和
+            const adcSum = adcValues.reduce((a, b) => a + b, 0);
+
+            parsed.push({
+              id: `upload_${i}`,
+              timestamp: Date.now() + i,
+              time,
+              pressure: isNaN(pressure) ? 0 : pressure,
+              adcValues,
+              adcSum,
+              adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+              testMode: 'consistency',
+              sampleIndex: i - 1,
+            });
+          }
+        } else if (isFormatB) {
+          // 格式B：Time,Pressure(N),"ADC1;ADC2;...",ADC Sum,ADC Sum(Hex),Test Mode,Sample Index,Product Index
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
+            if (!match) continue;
+            const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
+            const pressure = parseFloat(pressureStr);
+            const adcValues = adcValuesStr.split(';').map(Number);
+            const adcSum = parseInt(adcSumStr, 10);
+            const sampleIndex = parseInt(sampleIndexStr, 10);
+            parsed.push({
+              id: `upload_${i}`,
+              timestamp: Date.now() + i,
+              time: time || '',
+              pressure: isNaN(pressure) ? 0 : pressure,
+              adcValues,
+              adcSum: isNaN(adcSum) ? adcValues.reduce((a, b) => a + b, 0) : adcSum,
+              adcSumHex: adcSumHex || '',
+              testMode: (testMode as DataRecord['testMode']) || 'consistency',
+              sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
+              productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
+            });
+          }
+        } else {
+          // 通用回退：尝试按逗号分割，第1列时间，第2列压力，其余列为传感器数据
+          for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            if (cols.length < 2) continue;
+            const time = cols[0] || '';
+            const pressure = parseFloat(cols[1]);
+            const adcValues: number[] = [];
+            for (let j = 2; j < cols.length; j++) {
+              const val = parseInt(cols[j], 10);
+              if (!isNaN(val)) adcValues.push(val);
+            }
+            const adcSum = adcValues.reduce((a, b) => a + b, 0);
+            parsed.push({
+              id: `upload_${i}`,
+              timestamp: Date.now() + i,
+              time,
+              pressure: isNaN(pressure) ? 0 : pressure,
+              adcValues,
+              adcSum,
+              adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+              testMode: 'consistency',
+              sampleIndex: i - 1,
+            });
+          }
         }
+
         if (parsed.length === 0) {
           toast.error('未解析到有效数据');
           return;
         }
         setUploadedRecords(parsed);
-        toast.success(`已导入 ${parsed.length} 条数据`);
+        toast.success(`已导入 ${parsed.length} 条数据（横向求和 ADC Sum）`);
       } catch (err) {
         toast.error('解析 CSV 失败');
+        console.error(err);
       }
     };
     reader.readAsText(file);
