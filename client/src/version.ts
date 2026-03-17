@@ -23,7 +23,8 @@
  * v1.4.7  - 手掌区域沿中指中心对齐：手掌各行以中指中心列为轴居中排列，宽度与指尖区域对齐
  * v1.4.8  - 弯折区与指尖一一对齐并标明小拇指/大拇指；综合曲线区添加CSV上传按钮，支持导入历史数据回放展示
  * v1.4.9  - 手形矩阵支持选点功能：点击格子可选中/取消，选中点参与ADC Sum计算；弯折区与指尖红色框精确中心对齐
+ * v1.5.0  - 修复HandMatrix选点与采集逻辑联动：SerialMonitor和ConsistencyPage的handleStart现在正确识别handSelectedIndices，支持手形矩阵模式下的数据采集和CSV导出
  */
-export const APP_VERSION = 'v1.4.9';
+export const APP_VERSION = 'v1.5.0';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

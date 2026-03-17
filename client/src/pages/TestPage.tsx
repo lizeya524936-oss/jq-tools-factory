@@ -124,8 +124,10 @@ export default function TestPage() {
   // 使用 Ref 保存 sensors 和 matrixCols 的最新值，供 exportCSV 使用
   const sensorsRef = useRef(sensors);
   const matrixColsRef = useRef(matrixCols);
+  const handSelectedIndicesRef = useRef(handSelectedIndices);
   useEffect(() => { sensorsRef.current = sensors; }, [sensors]);
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
+  useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
   
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
     if (dataToExport.length === 0) {
@@ -133,10 +135,18 @@ export default function TestPage() {
       return;
     }
 
-    const currentSensors = sensorsRef.current;
-    const currentMatrixCols = matrixColsRef.current;
-    const selectedSensors = currentSensors.filter(s => s.selected);
-    const selectedIndices = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
+    const handIndices = handSelectedIndicesRef.current;
+    const hasHandSelection = handIndices && handIndices.size > 0;
+    let selectedIndices: number[];
+    if (hasHandSelection) {
+      // HandMatrix 模式：数组编号即为索引（从1开始）
+      selectedIndices = [...handIndices].sort((a, b) => a - b);
+    } else {
+      const currentSensors = sensorsRef.current;
+      const currentMatrixCols = matrixColsRef.current;
+      const selectedSensors = currentSensors.filter(s => s.selected);
+      selectedIndices = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
+    }
 
     // 时间戳格式化函数：将 Date.now() 毫秒时间戳转为 xxh.xxm.xxs.xxxms
     const formatTimestamp = (ts: number) => {

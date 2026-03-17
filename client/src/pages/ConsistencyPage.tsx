@@ -419,6 +419,7 @@ export default function ConsistencyPage() {
           latestAdcValues={latestAdcValues}
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
+          handSelectedIndices={handSide ? handSelectedIndices : undefined}
         />
       </div>
 

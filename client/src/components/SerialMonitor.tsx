@@ -37,6 +37,8 @@ interface SerialMonitorProps {
   latestAdcValues?: number[] | null;
   selectedSensors?: Array<{ row: number; col: number }>;
   matrixCols?: number;
+  /** HandMatrix 模式下的选中数组编号集合 */
+  handSelectedIndices?: Set<number>;
 }
 
 export default function SerialMonitor({
@@ -47,6 +49,7 @@ export default function SerialMonitor({
   latestAdcValues = null,
   selectedSensors = [],
   matrixCols = 8,
+  handSelectedIndices,
 }: SerialMonitorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
@@ -60,10 +63,12 @@ export default function SerialMonitor({
   // 只用 Ref 保存 selectedSensors 和 matrixCols（这两个不是高频更新的）
   const selectedSensorsRef = useRef(selectedSensors);
   const matrixColsRef = useRef(matrixCols);
+  const handSelectedIndicesRef = useRef(handSelectedIndices);
   
   // 同步低频 props 到 Ref（这两个变化频率很低，不会造成延迟）
   useEffect(() => { selectedSensorsRef.current = selectedSensors; }, [selectedSensors]);
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
+  useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
   
   // ===== 导出 CSV =====
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
@@ -72,9 +77,17 @@ export default function SerialMonitor({
       return;
     }
     
-    const currentSensors = selectedSensorsRef.current;
-    const currentMatrixCols = matrixColsRef.current;
-    const selectedIndices = currentSensors.map(s => s.row * currentMatrixCols + s.col);
+    const handIndices = handSelectedIndicesRef.current;
+    const hasHandSelection = handIndices && handIndices.size > 0;
+    let selectedIndices: number[];
+    if (hasHandSelection) {
+      // HandMatrix 模式：数组编号从1开始，转换为0开始的索引
+      selectedIndices = [...handIndices].sort((a, b) => a - b).map(idx => idx - 1);
+    } else {
+      const currentSensors = selectedSensorsRef.current;
+      const currentMatrixCols = matrixColsRef.current;
+      selectedIndices = currentSensors.map(s => s.row * currentMatrixCols + s.col);
+    }
 
     // 时间戳格式化函数：将 Date.now() 毫秒时间戳转为 xxh.xxm.xxs.xxxms
     const formatTimestamp = (ts: number) => {
@@ -124,7 +137,10 @@ export default function SerialMonitor({
   
   // ===== 开始采集 =====
   const handleStartRecording = useCallback(() => {
-    if (selectedSensorsRef.current.length === 0) {
+    const handIndices = handSelectedIndicesRef.current;
+    const hasHandSelection = handIndices && handIndices.size > 0;
+    const hasMatrixSelection = selectedSensorsRef.current.length > 0;
+    if (!hasHandSelection && !hasMatrixSelection) {
       alert('请先在传感器矩阵中选择至少一个点位后再开始采集');
       return;
     }
