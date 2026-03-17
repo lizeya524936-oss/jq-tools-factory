@@ -9,8 +9,8 @@
  *   设备类型：0x01=LH(Left Hand), 0x02=RH(Right Hand), 0x03=LF(Left Foot), 0x04=RF(Right Foot), 0x05=WB(Whole Body)
  *   矩阵：256字节 → 16×16，按行优先排列
  *
- * 力学仪器数据格式：
- *   ASCII 文本行，如 "+0012.34N\r\n" 或 "12.34\r\n"
+ * 力学仪器数据格式（CL2 二进制协议）：
+ *   帧头: 0x23 + 4字节浮点数(小端float32) + 帧尾: 0x0A（总6字节/帧）
  *
  * CL2-500N-MH01 压力计初始化协议：
  *   连接命令:      0x23 0x50 0x00 0x0A
@@ -122,7 +122,9 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
   // 二进制字节缓冲区（用于传感器帧解析）
   const binaryBufRef = useRef<Uint8Array>(new Uint8Array(0));
-  // 文本缓冲区（用于力学仪器ASCII解析）
+  // 力学仪器二进制缓冲区（CL2 协议：0x23 + float32LE + 0x0A）
+  const forceBinaryBufRef = useRef<Uint8Array>(new Uint8Array(0));
+  // 文本缓冲区（用于力学仪器ASCII解析 fallback）
   const textBufRef = useRef<string>('');
 
   // 双包缓冲区：存储PKT01和PKT02的数据
@@ -150,7 +152,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
   const pendingLastDataRef = useRef<string | null>(null);
   const stateUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // 解析力学仪器数据（ASCII行格式）
+  // 解析力学仪器数据（ASCII行格式 - fallback）
   const parseForceData = useCallback((line: string) => {
     const cleaned = line.trim();
     const match = cleaned.match(/([+-]?\d+\.?\d*)/);
@@ -160,6 +162,68 @@ export function useSerialPort(options: UseSerialPortOptions) {
         onForceDataRef.current(value);
       }
     }
+  }, []);
+
+  /**
+   * 解析 CL2 二进制协议帧（与 v1.3.1 SerialDriver.parseBuffer 完全一致）
+   * 帧格式：0x23 + 4字节浮点数(小端float32) + 0x0A（总6字节）
+   */
+  const parseForceBinaryBuffer = useCallback(() => {
+    let buf = forceBinaryBufRef.current;
+
+    while (buf.length >= 6) {
+      // 查找帧头 0x23
+      let startIndex = -1;
+      for (let i = 0; i <= buf.length - 6; i++) {
+        if (buf[i] === 0x23) {
+          startIndex = i;
+          break;
+        }
+      }
+
+      if (startIndex === -1) {
+        // 没有找到帧头，清空缓冲区
+        buf = new Uint8Array(0);
+        break;
+      }
+
+      if (startIndex > 0) {
+        // 移除帧头前的数据
+        buf = buf.slice(startIndex);
+      }
+
+      // 检查是否有完整的帧（6字节）
+      if (buf.length < 6) {
+        break;
+      }
+
+      // 检查帧尾 0x0A
+      if (buf[5] !== 0x0A) {
+        // 帧尾不正确，跳过这个字节继续
+        buf = buf.slice(1);
+        continue;
+      }
+
+      // 提取 4 字节数据（索引 1~4）
+      const dataBytes = buf.slice(1, 5);
+
+      try {
+        // 使用小端解析为 32 位浮点数
+        const dataView = new DataView(dataBytes.buffer, dataBytes.byteOffset, 4);
+        const value = dataView.getFloat32(0, true); // true = 小端
+
+        if (!isNaN(value) && onForceDataRef.current) {
+          onForceDataRef.current(value);
+        }
+      } catch (error) {
+        console.error('[CL2] 解析错误:', error);
+      }
+
+      // 移除已处理的帧
+      buf = buf.slice(6);
+    }
+
+    forceBinaryBufRef.current = buf;
   }, []);
 
   /**
@@ -309,6 +373,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
     readLoopRef.current = true;
     binaryBufRef.current = new Uint8Array(0);
+    forceBinaryBufRef.current = new Uint8Array(0);
     textBufRef.current = '';
     pkt01DataRef.current = null;
     pkt02DataRef.current = null;
@@ -320,19 +385,18 @@ export function useSerialPort(options: UseSerialPortOptions) {
         if (!value || value.length === 0) continue;
 
         if (role === 'force') {
-          // 力学仪器：ASCII文本行解析
-          const decoder = new TextDecoder();
-          const chunk = decoder.decode(value, { stream: true });
-          textBufRef.current += chunk;
-
-          const lines = textBufRef.current.split(/\r?\n/);
-          textBufRef.current = lines.pop() ?? '';
-
-          for (const line of lines) {
-            if (line.trim()) {
-              parseForceData(line);
-            }
+          // 力学仪器：CL2 二进制协议解析（与 v1.3.1 SerialDriver.parseBuffer 完全一致）
+          // 帧格式：0x23 + 4字节float32小端 + 0x0A
+          const prev = forceBinaryBufRef.current;
+          if (prev.length === 0) {
+            forceBinaryBufRef.current = new Uint8Array(value);
+          } else {
+            const next = new Uint8Array(prev.length + value.length);
+            next.set(prev);
+            next.set(value, prev.length);
+            forceBinaryBufRef.current = next;
           }
+          parseForceBinaryBuffer();
         } else {
           // 传感器：二进制帧解析
           appendBinary(value);
@@ -342,7 +406,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     } catch (err) {
       console.error('Read loop error:', err);
     }
-  }, [role, parseForceData, appendBinary, processSensorBuffer]);
+  }, [role, parseForceBinaryBuffer, appendBinary, processSensorBuffer]);
 
   // CL2-500N-MH01 压力计协议命令
   const CL2_CMD_CONNECT = new Uint8Array([0x23, 0x50, 0x00, 0x0A]);
