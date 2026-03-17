@@ -7,10 +7,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
 import DataChart from '@/components/DataChart';
-import ConsistencyChart from '@/components/ConsistencyChart';
 import TestResultCard from '@/components/TestResultCard';
 import ParameterPanel from '@/components/ParameterPanel';
-import DataTable from '@/components/DataTable';
 import SerialMonitor from '@/components/SerialMonitor';
 import PressureChart from '@/components/PressureChart';
 import { useSerialData } from './Home';
@@ -25,7 +23,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { Play, RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 
 const DEFAULT_PARAMS = {
   threshold: 8,
@@ -67,7 +65,6 @@ export default function ConsistencyPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [params, setParams] = useState(DEFAULT_PARAMS);
-  const [activeView, setActiveView] = useState<'overview' | 'compare' | 'table'>('overview');
 
   const selectedSensors = sensors.filter(s => s.selected);
   
@@ -99,7 +96,7 @@ export default function ConsistencyPage() {
           adcValue: snapshot.adcValues![s.row * matrixCols + s.col] ?? 0,
         })));
       }
-    }, 50); // 每50ms更新一次UI，而不是每10ms
+    }, 50); // 每50ms更新一次UI
     
     return () => {
       if (updateIntervalRef.current) {
@@ -229,9 +226,9 @@ export default function ConsistencyPage() {
 
   return (
     <div className="flex gap-3 h-full p-3">
-      {/* 左侧：矩阵 + 参数 */}
-      <div className="flex flex-col gap-3 w-96">
-        {/* 传感器矩阵 */}
+      {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
+      <div className="flex flex-col gap-3" style={{ width: '520px' }}>
+        {/* 传感器矩阵 - 放大区域 */}
         <div className="flex-1 min-h-0 rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
           <SensorMatrix
             rows={matrixRows}
@@ -242,33 +239,12 @@ export default function ConsistencyPage() {
           />
         </div>
 
-        {/* 参数面板 */}
-        <ParameterPanel mode="consistency" params={params} onChange={setParams} />
-
-        {/* 操作按钮 */}
+        {/* 操作按钮：导出 + 重置 */}
         <div className="flex gap-2">
-          <button
-            onClick={handleStart}
-            disabled={isRunning}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-medium transition-all disabled:opacity-50"
-            style={{
-              background: isRunning ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.58 0.22 265)',
-              color: 'white',
-            }}
-          >
-            {isRunning ? (
-              <>
-                <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin" style={{ borderColor: 'white', borderTopColor: 'transparent' }} />
-                检测中...
-              </>
-            ) : (
-              <><Play size={12} />开始检测</>
-            )}
-          </button>
           <button
             onClick={handleExport}
             disabled={isRunning || records.length === 0}
-            className="px-3 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
             style={{
               background: 'oklch(0.72 0.20 145 / 0.15)',
               border: '1px solid oklch(0.72 0.20 145 / 0.3)',
@@ -277,11 +253,12 @@ export default function ConsistencyPage() {
             title="导出CSV"
           >
             <Download size={12} />
+            导出数据
           </button>
           <button
             onClick={handleReset}
             disabled={isRunning}
-            className="px-3 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
             style={{
               background: 'oklch(0.22 0.03 265)',
               border: '1px solid oklch(0.30 0.03 265)',
@@ -289,6 +266,7 @@ export default function ConsistencyPage() {
             }}
           >
             <RefreshCw size={12} />
+            重置
           </button>
         </div>
 
@@ -299,6 +277,7 @@ export default function ConsistencyPage() {
           description={`判断方法A：平滑曲线${params.forceMin}N到${params.forceMax}N范围内，选取${params.checkPoints}个同隔一致的数值，判断误差范围是否在±${params.threshold}%范围内`}
           isRunning={isRunning}
         />
+
         {/* 数据采集控制面板 */}
         <SerialMonitor
           isRunning={isRunning}
@@ -326,8 +305,6 @@ export default function ConsistencyPage() {
           </div>
           <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
           <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法A：高频采样力学数据 + 多个压力传感点ADC求和</span>
-          <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
-          <span style={{ color: 'oklch(0.55 0.02 240)' }}>抽样 {params.productCount} 个产品，剔除偏差较大数据，求出均值{params.productCount}条曲线的线性均值曲线</span>
           <div className="ml-auto flex items-center gap-2">
             <span style={{ color: 'oklch(0.45 0.02 240)' }}>{selectedSensors.length} 个传感器点已选</span>
             <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
@@ -335,96 +312,41 @@ export default function ConsistencyPage() {
           </div>
         </div>
 
-        {/* 视图切换 */}
+        {/* 综合视图标题 */}
         <div className="flex items-center gap-1">
-          {[
-            { id: 'overview', label: '综合视图' },
-            { id: 'compare', label: '多产品对比' },
-            { id: 'table', label: '数据表格' },
-          ].map(v => (
-            <button
-              key={v.id}
-              onClick={() => setActiveView(v.id as typeof activeView)}
-              className="px-3 py-1 rounded text-xs font-mono transition-all"
-              style={{
-                background: activeView === v.id ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.17 0.025 265)',
-                border: `1px solid ${activeView === v.id ? 'oklch(0.58 0.22 265 / 0.5)' : 'oklch(0.25 0.03 265)'}`,
-                color: activeView === v.id ? 'oklch(0.70 0.18 200)' : 'oklch(0.55 0.02 240)',
-              }}
-            >
-              {v.label}
-            </button>
-          ))}
+          <span className="px-3 py-1 rounded text-xs font-mono"
+            style={{
+              background: 'oklch(0.58 0.22 265 / 0.2)',
+              border: '1px solid oklch(0.58 0.22 265 / 0.5)',
+              color: 'oklch(0.70 0.18 200)',
+            }}
+          >
+            综合视图
+          </span>
           <div className="ml-auto text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
             判定方法A：{params.forceMin}N-{params.forceMax}N，{params.checkPoints}个检查点，误差阈值±{params.threshold}%
           </div>
         </div>
 
-        {/* 图表内容 */}
-        <div className="flex-1 min-h-0">
-          {activeView === 'overview' && (
-            <div className="grid grid-rows-2 gap-3 h-full">
-              <DataChart
-                records={records}
-                title="压力 & ADC Sum 综合曲线"
-                showBrush={records.length > 50}
-                referenceLines={[
-                  { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
-                  { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
-                ]}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    {
-                      label: '平均压力',
-                      value: records.length > 0
-                        ? `${(records.reduce((a, r) => a + r.pressure, 0) / records.length).toFixed(2)} N`
-                        : '--',
-                      color: 'oklch(0.72 0.20 145)',
-                    },
-                    {
-                      label: '平均ADC Sum',
-                      value: records.length > 0
-                        ? Math.round(records.reduce((a, r) => a + r.adcSum, 0) / records.length).toString()
-                        : '--',
-                      color: 'oklch(0.70 0.18 200)',
-                    },
-                  ].map(stat => (
-                    <div
-                      key={stat.label}
-                      className="rounded p-3 flex flex-col justify-between"
-                      style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
-                    >
-                      <div className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-                        {stat.label}
-                      </div>
-                      <div className="text-xl font-mono font-medium mt-1" style={{ color: stat.color }}>
-                        {stat.value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', padding: '12px', minHeight: 0 }}>
-                  <div style={{ height: '100%' }}>
-                    <PressureChart showControls={false} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeView === 'compare' && (
-            <ConsistencyChart
+        {/* 图表内容：压力 & ADC 综合曲线 + 压力数据可视化 */}
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
+          {/* 压力 & ADC Sum 综合曲线 */}
+          <div className="flex-1 min-h-0">
+            <DataChart
               records={records}
-              productCount={params.productCount}
-              samplesPerProduct={params.samplesPerProduct}
+              title="压力 & ADC Sum 综合曲线"
+              showBrush={records.length > 50}
+              referenceLines={[
+                { value: params.forceMin, axis: 'left', label: `${params.forceMin}N` },
+                { value: params.forceMax, axis: 'left', label: `${params.forceMax}N` },
+              ]}
             />
-          )}
+          </div>
 
-          {activeView === 'table' && (
-            <DataTable records={records} onClear={handleReset} />
-          )}
+          {/* 压力数据可视化 */}
+          <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', padding: '12px', height: '220px' }}>
+            <PressureChart showControls={false} />
+          </div>
         </div>
       </div>
     </div>

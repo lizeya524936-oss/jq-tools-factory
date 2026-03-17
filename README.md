@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.0（2026-03-17）
+
+**一致性检测页面精简优化**
+
+根据实际使用需求精简了一致性检测页面的布局：移除了“多产品对比”和“数据表格”两个 Tab 页，仅保留综合视图；移除了“平均压力”和“平均ADC Sum”统计卡片；移除了“开始检测”按钮区域（保留导出和重置按钮）；将传感器数组展示区域从 384px 放大到 520px，提升矩阵可视化效果。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`
+
 ### v1.3.9（2026-03-17）
 
 **重置按钮增加 CMD_RESET 归零指令**
