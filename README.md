@@ -55,6 +55,28 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.4.5（2026-03-17）
+
+**手形矩阵可视化：LH/RH 自动切换手形矩阵**
+
+当传感器识别为 LH（左手）或 RH（右手）时，矩阵自动切换为专用手形可视化组件 `HandMatrix`，替代通用点阵矩阵。
+
+手形矩阵布局设计：
+
+| 区域 | 左手（LH）列位 | 右手（RH）列位 | 传感器数量 |
+|------|---------|---------|----------|
+| 小拇指压力 | col 0-2 | col 12-14 | 12个 |
+| 无名指压力 | col 3-5 | col 9-11 | 12个 |
+| 中指压力 | col 6-8 | col 6-8 | 12个 |
+| 食指压力 | col 9-11 | col 3-5 | 12个 |
+| 大拇指压力 | col 12-14 | col 0-2 | 12个 |
+| 弯折传感器 | row 4-5 | row 4-5 | 5个 |
+| 手掌 | row 5-9 | row 5-9 | 67个 |
+
+每个单元格显示原始数组编号（#N）和实时 ADC 值，热力图色彩映射压力大小。弯折传感器用彩色方块区分。同时在一致性检测页自动将矩阵尺寸设置为 16×16。
+
+修改文件：`client/src/components/HandMatrix.tsx`（新建）、`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`
+
 ### v1.4.4（2026-03-17）
 
 **传感器设备类型识别 + 连接面板自动关闭**

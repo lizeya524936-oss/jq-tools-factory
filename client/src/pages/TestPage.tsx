@@ -16,6 +16,8 @@ import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
 import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download } from 'lucide-react';
+import HandMatrix from '@/components/HandMatrix';
+import type { HandSide } from '@/components/HandMatrix';
 
 interface DataRecord {
   timestamp: number;
@@ -47,7 +49,10 @@ export default function TestPage() {
     } catch {}
     return matrix;
   });
-  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected } = useSerialData();
+  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType } = useSerialData();
+
+  // LH/RH 时切换手形矩阵
+  const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
   
   // 数据采集状态
   const [isRecording, setIsRecording] = useState(false);
@@ -398,16 +403,26 @@ export default function TestPage() {
             />
           </div>
 
-          {/* 传感器矩阵（增加1.5倍尺寸） */}
-          <div className="flex-1 min-h-0 overflow-auto" style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
-            <SensorMatrix
-              sensors={sensors}
-              onSelectionChange={handleSensorChange}
-              rows={matrixRows}
-              cols={matrixCols}
-              realtimeMatrix={latestSensorMatrix ?? undefined}
-              isConnected={isSensorConnected}
-            />
+          {/* 传感器矩阵 */}
+          <div className="flex-1 min-h-0 overflow-auto">
+            {handSide ? (
+              <HandMatrix
+                side={handSide}
+                adcValues={latestAdcValues}
+                showIndex={true}
+              />
+            ) : (
+              <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
+                <SensorMatrix
+                  sensors={sensors}
+                  onSelectionChange={handleSensorChange}
+                  rows={matrixRows}
+                  cols={matrixCols}
+                  realtimeMatrix={latestSensorMatrix ?? undefined}
+                  isConnected={isSensorConnected}
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -24,6 +24,8 @@ import {
   exportToCSV,
 } from '@/lib/sensorData';
 import { RefreshCw, Download } from 'lucide-react';
+import HandMatrix from '@/components/HandMatrix';
+import type { HandSide } from '@/components/HandMatrix';
 
 const DEFAULT_PARAMS = {
   threshold: 8,
@@ -73,7 +75,16 @@ export default function ConsistencyPage() {
     const selectedKeys = sensors.filter(s => s.selected).map(s => `${s.row}_${s.col}`);
     localStorage.setItem('selectedSensorPoints', JSON.stringify(selectedKeys));
   }, [sensors]);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType } = useSerialData();
+
+  // LH/RH 时自动切换为 16×16 矩阵
+  const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
+
+  useEffect(() => {
+    if (handSide && (matrixRows !== 16 || matrixCols !== 16)) {
+      handleMatrixResize(16, 16);
+    }
+  }, [handSide]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -229,14 +240,24 @@ export default function ConsistencyPage() {
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
       <div className="flex flex-col gap-3" style={{ width: '520px', flexShrink: 0 }}>
         {/* 传感器矩阵 - 放大区域 */}
-        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}>
-          <SensorMatrix
-            rows={matrixRows}
-            cols={matrixCols}
-            sensors={sensors}
-            onSelectionChange={setSensors}
-            onResize={handleMatrixResize}
-          />
+        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
+          {handSide ? (
+            /* 手形矩阵（LH/RH 专用） */
+            <HandMatrix
+              side={handSide}
+              adcValues={latestAdcValues}
+              showIndex={true}
+            />
+          ) : (
+            /* 通用矩阵 */
+            <SensorMatrix
+              rows={matrixRows}
+              cols={matrixCols}
+              sensors={sensors}
+              onSelectionChange={setSensors}
+              onResize={handleMatrixResize}
+            />
+          )}
         </div>
 
         {/* 操作按钮：导出 + 重置 */}

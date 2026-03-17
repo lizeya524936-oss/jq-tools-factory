@@ -18,7 +18,8 @@
  * v1.4.2  - 重新规划页面布局：主内容区域改为 overflow-auto，页面内容可滚动，解决底部按钮被截断的问题
  * v1.4.3  - 一致性页面压力数据可视化与综合视图位置互换
  * v1.4.4  - 传感器设备类型识别：解析PKT01中设备ID字节（0x01~0x05对应LH/RH/LF/RF/WB）并在UI显示；连接面板连接成功后自动关闭，点击顶部按钮可重新打开
+ * v1.4.5  - 手形矩阵可视化：检测到LH/RH时自动切换为16×16手形矩阵，展示左手/右手传感器布局（小拇指/无名指/中指/食指/大拇指压力点+弯折传感器+手掌区域），实时ADC热力图显示
  */
-export const APP_VERSION = 'v1.4.4';
+export const APP_VERSION = 'v1.4.5';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';
