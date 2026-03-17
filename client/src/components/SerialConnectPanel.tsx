@@ -1,10 +1,10 @@
 /**
  * SerialConnectPanel - 串口连接面板组件
- * 支持力学仪器（CL2-500N-MH01）和传感器各自独立的串口连接
- * 波特率可自定义，实时显示连接状态和数据接收情况
+ * force role: 支持"压力计"和"机械手"两种检测设备切换
+ * sensor role: 传感器产品（织物触觉传感器）
  */
 import { useState, useCallback } from 'react';
-import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2 } from 'lucide-react';
+import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2, Hand } from 'lucide-react';
 import { isWebSerialSupported, SerialPortState, SerialStatus } from '@/hooks/useSerialPort';
 
 interface SerialConnectPanelProps {
@@ -16,25 +16,46 @@ interface SerialConnectPanelProps {
 
 const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600];
 
-// 快捷预设：最常用的几个波特率，直接显示为按钮
-const QUICK_BAUDS = [2400, 115200, 921600];
+// 检测设备类型
+type DetectionDevice = 'pressure' | 'robot';
+
+const DETECTION_DEVICES: Record<DetectionDevice, {
+  label: string;
+  sublabel: string;
+  defaultBaud: number;
+  quickBauds: number[];
+  hint: string;
+}> = {
+  pressure: {
+    label: '压力计',
+    sublabel: 'CL2-500N-MH01',
+    defaultBaud: 115200,
+    quickBauds: [19200, 115200, 921600],
+    hint: '数显手持测力仪，量程500N/50Kgf',
+  },
+  robot: {
+    label: '机械手',
+    sublabel: '智元灵巧手',
+    defaultBaud: 460800,
+    quickBauds: [115200, 460800, 921600],
+    hint: '智元灵巧手，10轴控制，波特率 460800',
+  },
+};
 
 const ROLE_CONFIG = {
   force: {
-    label: '力学仪器',
-    sublabel: 'CL2-500N-MH01',
+    label: '检测设备',
     icon: Cpu,
-    defaultBaud: 115200,
     accentColor: 'oklch(0.70 0.18 200)',
     accentBg: 'oklch(0.70 0.18 200 / 0.12)',
     accentBorder: 'oklch(0.70 0.18 200 / 0.35)',
-    hint: '数显手持测力仪，量程500N/50Kgf',
   },
   sensor: {
     label: '传感器产品',
     sublabel: '织物触觉传感器',
     icon: Layers,
     defaultBaud: 115200,
+    quickBauds: [2400, 115200, 921600],
     accentColor: 'oklch(0.72 0.20 145)',
     accentBg: 'oklch(0.72 0.20 145 / 0.12)',
     accentBorder: 'oklch(0.72 0.20 145 / 0.35)',
@@ -56,13 +77,30 @@ export default function SerialConnectPanel({
   onDisconnect,
 }: SerialConnectPanelProps) {
   const cfg = ROLE_CONFIG[role];
-  const Icon = cfg.icon;
   const statusCfg = STATUS_CONFIG[state.status];
   const supported = isWebSerialSupported();
 
-  const [baudInput, setBaudInput] = useState(cfg.defaultBaud.toString());
+  // force role 专用：检测设备选择（压力计 / 机械手）
+  const [selectedDevice, setSelectedDevice] = useState<DetectionDevice>('pressure');
+  const deviceCfg = role === 'force' ? DETECTION_DEVICES[selectedDevice] : null;
+
+  // 波特率
+  const defaultBaud = role === 'force'
+    ? DETECTION_DEVICES[selectedDevice].defaultBaud
+    : (ROLE_CONFIG.sensor as any).defaultBaud;
+  const [baudInput, setBaudInput] = useState(defaultBaud.toString());
+  const quickBauds = role === 'force'
+    ? DETECTION_DEVICES[selectedDevice].quickBauds
+    : (ROLE_CONFIG.sensor as any).quickBauds;
+
   const [showBaudMenu, setShowBaudMenu] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  // 切换检测设备时同步波特率
+  const handleDeviceChange = useCallback((device: DetectionDevice) => {
+    setSelectedDevice(device);
+    setBaudInput(DETECTION_DEVICES[device].defaultBaud.toString());
+  }, []);
 
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
@@ -76,6 +114,14 @@ export default function SerialConnectPanel({
 
   const isConnected = state.status === 'connected';
   const isConnecting = state.status === 'connecting';
+
+  // 显示标签：force role 已连接时显示具体设备名
+  const displayLabel = role === 'force'
+    ? (isConnected ? `${deviceCfg!.label} · ${state.portInfo ?? '已连接'}` : isConnecting ? `${deviceCfg!.label} · 连接中...` : '选择检测设备')
+    : (isConnected ? `${cfg.label} · ${state.portInfo ?? '已连接'}` : isConnecting ? `${cfg.label} · 连接中...` : `选择${cfg.label}`);
+
+  // 图标：机械手用 Hand 图标，其他用默认
+  const Icon = (role === 'force' && selectedDevice === 'robot') ? Hand : cfg.icon;
 
   return (
     <div className="relative">
@@ -101,14 +147,10 @@ export default function SerialConnectPanel({
         <Icon size={11} style={{ color: isConnected ? cfg.accentColor : 'oklch(0.55 0.02 240)', flexShrink: 0 }} />
 
         <span
-          className="text-xs font-mono max-w-28 truncate"
+          className="text-xs font-mono max-w-32 truncate"
           style={{ color: isConnected ? cfg.accentColor : 'oklch(0.55 0.02 240)' }}
         >
-          {isConnected
-            ? `${cfg.label} · ${state.portInfo ?? '已连接'}`
-            : isConnecting
-            ? `${cfg.label} · 连接中...`
-            : `选择${cfg.label}`}
+          {displayLabel}
         </span>
 
         {isConnected ? (
@@ -134,7 +176,7 @@ export default function SerialConnectPanel({
           style={{
             background: 'oklch(0.16 0.025 265)',
             border: '1px solid oklch(0.28 0.04 265)',
-            minWidth: '280px',
+            minWidth: '300px',
           }}
         >
           {/* 标题 */}
@@ -142,7 +184,7 @@ export default function SerialConnectPanel({
             <div className="flex items-center gap-2">
               <Icon size={13} style={{ color: cfg.accentColor }} />
               <span className="text-xs font-medium" style={{ color: cfg.accentColor }}>
-                {cfg.label}
+                {role === 'force' ? '选择检测设备' : cfg.label}
               </span>
             </div>
             <button onClick={() => setShowDetails(false)}>
@@ -150,10 +192,46 @@ export default function SerialConnectPanel({
             </button>
           </div>
 
-          {/* 提示信息 */}
-          <p className="text-xs mb-3" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
-            {cfg.hint}
-          </p>
+          {/* force role：设备类型切换 */}
+          {role === 'force' && (
+            <div className="mb-3">
+              <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+                检测仪器类型
+              </label>
+              <div className="flex gap-2">
+                {(Object.entries(DETECTION_DEVICES) as [DetectionDevice, typeof DETECTION_DEVICES[DetectionDevice]][]).map(([key, dev]) => {
+                  const isActive = selectedDevice === key;
+                  const DevIcon = key === 'robot' ? Hand : Cpu;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleDeviceChange(key)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-medium transition-all"
+                      style={{
+                        background: isActive ? cfg.accentBg : 'oklch(0.20 0.025 265)',
+                        border: `1px solid ${isActive ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
+                        color: isActive ? cfg.accentColor : 'oklch(0.55 0.02 240)',
+                        boxShadow: isActive ? `0 0 6px oklch(0.70 0.18 200 / 0.15)` : 'none',
+                      }}
+                    >
+                      <DevIcon size={11} />
+                      <span>{dev.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
+                {deviceCfg!.sublabel} · {deviceCfg!.hint}
+              </p>
+            </div>
+          )}
+
+          {/* sensor role：提示信息 */}
+          {role === 'sensor' && (
+            <p className="text-xs mb-3" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+              {(ROLE_CONFIG.sensor as any).hint}
+            </p>
+          )}
 
           {/* 浏览器不支持提示 */}
           {!supported && (
@@ -196,7 +274,7 @@ export default function SerialConnectPanel({
                     border: '1px solid oklch(0.25 0.03 265)',
                     color: 'oklch(0.82 0.01 220)',
                   }}
-                  placeholder="115200"
+                  placeholder={defaultBaud.toString()}
                   min={300}
                   max={4000000}
                 />
@@ -241,7 +319,7 @@ export default function SerialConnectPanel({
 
             {/* 快捷预设按钮 */}
             <div className="flex gap-1.5 mt-2">
-              {QUICK_BAUDS.map(b => {
+              {quickBauds.map((b: number) => {
                 const isActive = parseInt(baudInput) === b;
                 return (
                   <button
@@ -309,7 +387,7 @@ export default function SerialConnectPanel({
             <div className="flex items-center gap-2">
               <CheckCircle2 size={12} style={{ color: cfg.accentColor }} />
               <span className="text-xs font-medium" style={{ color: cfg.accentColor }}>
-                {cfg.label} · 已连接
+                {role === 'force' ? `${deviceCfg!.label} · 已连接` : `${cfg.label} · 已连接`}
               </span>
             </div>
             <button onClick={() => setShowDetails(false)}>

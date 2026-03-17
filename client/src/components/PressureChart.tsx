@@ -300,47 +300,10 @@ export default function PressureChart({ showControls = true }: PressureChartProp
               <span>重置</span>
             </button>
           )}
-          {showControls && (
-          <>
-            {isConnected ? (
-              <button
-                onClick={handleDisconnect}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors"
-                style={{
-                  background: 'oklch(0.65 0.22 25 / 0.12)',
-                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                  color: 'oklch(0.65 0.22 25)',
-                  fontSize: '9px',
-                }}
-                title="断开连接"
-              >
-                <Usb size={10} />
-                <span>断开</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleConnect}
-                disabled={!isSupported || isConnecting}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors disabled:opacity-50"
-                style={{
-                  background: isSupported ? 'oklch(0.75 0.18 55 / 0.12)' : 'oklch(0.20 0.025 265)',
-                  border: `1px solid ${isSupported ? 'oklch(0.75 0.18 55 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
-                  color: isSupported ? 'oklch(0.75 0.18 55)' : 'oklch(0.45 0.02 240)',
-                  fontSize: '9px',
-                }}
-                title={isSupported ? '连接压力测试仪（波特率19200）' : '浏览器不支持 Web Serial API'}
-              >
-                <Usb size={10} />
-                <span>{isConnecting ? '连接中...' : '连接'}</span>
-              </button>
-            )}
-          </>
-          )}
+
         </div>
       </div>
 
-      {showControls && (
-      <>
       {/* 错误提示 */}
       {errorMsg && (
         <div
@@ -352,27 +315,15 @@ export default function PressureChart({ showControls = true }: PressureChartProp
         </div>
       )}
 
-      {/* 状态提示 */}
-      {statusMsg && !isConnected && (
-        <div
-          className="flex items-start gap-2 p-2 rounded text-xs"
-          style={{ background: 'oklch(0.75 0.18 55 / 0.1)', border: '1px solid oklch(0.75 0.18 55 / 0.3)' }}
-        >
-          <span style={{ color: 'oklch(0.75 0.18 55)' }}>{statusMsg}</span>
-        </div>
-      )}
-      </>
-      )}
-
       {/* 图表容器 */}
       {!hasData ? (
         <div className="flex-1 flex items-center justify-center rounded" style={{ background: 'oklch(0.15 0.025 265)', border: '1px dashed oklch(0.25 0.03 265)' }}>
           <div className="text-center">
             <div className="text-sm font-mono mb-1" style={{ color: 'oklch(0.45 0.02 240)' }}>
-              {!isSupported ? '浏览器不支持 Web Serial API' : isConnecting ? '连接中...' : '暂无数据'}
+              {!isSupported ? '浏览器不支持 Web Serial API' : isConnecting ? '连接中...' : '等待数据'}
             </div>
             <div className="text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
-              {!isSupported ? '请使用 Chrome 89+ 或 Edge 89+' : isConnecting ? '正在连接设备...' : '点击"连接"按钮开始采集压力数据'}
+              {!isSupported ? '请使用 Chrome 89+ 或 Edge 89+' : isConnecting ? '正在连接设备...' : '请在右上角连接检测设备后开始采集'}
             </div>
           </div>
         </div>
