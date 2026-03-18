@@ -28,7 +28,7 @@
 
 | 设备 | 型号 | 波特率 | 协议 |
 |------|------|--------|------|
-| 压力计 | CL2-500N-MH01 | 115200 | CL2 二进制协议（0x23 + float32LE + 0x0A） |
+| 压力计 | CL2-500N-MH01 | 19200 | CL2 二进制协议（0x23 + float32LE + 0x0A） |
 | 机械手 | 智元灵巧手 | 460800 | - |
 
 ## 在线访问
@@ -54,6 +54,118 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 ---
 
 ## 版本变动记录
+
+### v1.5.9（2026-03-18）
+
+**耐久性页面改造：灵巧手控制面板 + 滚动修复**
+
+右侧区域从“趋势/概览/表格”替换为灵巧手控制面板：上传 JSON 动作文件解析动作库，单击添加到循环序列，双击手动执行；循环序列支持上移/下移/删除/清空；设置循环次数和动作间隔；连接灵巧手后执行循环测试，实时显示进度和运行日志。修复左侧面板滚动问题。
+
+修改文件：`client/src/pages/DurabilityPage.tsx`
+
+### v1.5.8（2026-03-18）
+
+**耐久性页面集成 HandMatrix**
+
+删除旧的灵巧手控制面板，集成 HandMatrix 组件（LH/RH 自动切换手形矩阵），选点状态与一致性页面同步。
+
+修改文件：`client/src/pages/DurabilityPage.tsx`
+
+### v1.5.7（2026-03-18）
+
+**HandMatrix 全选/全部取消按钮**
+
+在手形矩阵底部按钮区域新增全选/全部取消按钮，一键切换所有传感器点的选中状态。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`、`client/src/components/HandMatrix.tsx`
+
+### v1.5.6（2026-03-18）
+
+**CSV 上传自动过滤压力下降阶段**
+
+上传 CSV 文件后自动识别压力峰值点，只保留上升阶段（0→峰值 N）数据，舍弃下降阶段，避免设备放松时数据失真干扰分析。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`
+
+### v1.5.5（2026-03-18）
+
+**压力计默认波特率改为 19200bps**
+
+压力计默认波特率从 115200 改为 19200，匹配 CL2-500N-MH01 实际配置。删除矩阵框选 crosshair 鼠标样式。
+
+修改文件：`client/src/hooks/useSerialPort.ts`、`client/src/components/SerialConnectPanel.tsx`、`client/src/components/SensorMatrix.tsx`
+
+### v1.5.4（2026-03-17）
+
+**图表缩放改为快捷按钮**
+
+删除红色参考线（forceMin/forceMax）避免误导；图表缩放从框选模式改为 5 个快捷按钮（20N/30N/50N/70N/100N）切换 X 轴范围。
+
+修改文件：`client/src/components/DataChart.tsx`、`client/src/pages/ConsistencyPage.tsx`
+
+### v1.5.3（2026-03-17）
+
+**CSV 批量上传 + 图表框选缩放**
+
+文件选择框支持多选，一次可导入多个 CSV 文件；图表支持拖拽框选区域放大查看，复位按钮恢复全局视图。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`、`client/src/components/DataChart.tsx`
+
+### v1.5.2（2026-03-17）
+
+**多 CSV 文件上传管理**
+
+支持最多 20 个 CSV 文件，每个文件用不同颜色曲线绘制，checkbox 控制显示/隐藏，支持单独移除或清除全部。DataChart 改为 ScatterChart 多系列模式。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`、`client/src/components/DataChart.tsx`
+
+### v1.5.1（2026-03-17）
+
+**修复 CSV 上传解析**
+
+自动识别两种 CSV 格式（SerialMonitor 导出的多列传感器格式 + ConsistencyPage 导出的分号分隔格式）；传感器数据横向求和生成 ADC Sum。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`
+
+### v1.5.0（2026-03-17）
+
+**修复 HandMatrix 选点与采集逻辑联动**
+
+SerialMonitor 新增 `handSelectedIndices` prop，选点检查同时判断 `handSelectedIndices.size > 0` 或 `selectedSensors.length > 0`，修复手形矩阵模式下采集报错的问题。
+
+修改文件：`client/src/components/SerialMonitor.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/TestPage.tsx`
+
+### v1.4.9（2026-03-17）
+
+**手形矩阵选点功能 + 弯折区对齐修复**
+
+HandMatrix 支持点击选中/取消，选中点参与 ADC Sum 计算；弯折区与指尖红色框精确中心对齐。
+
+修改文件：`client/src/components/HandMatrix.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/TestPage.tsx`
+
+### v1.4.8（2026-03-17）
+
+**弯折区对齐 + CSV 上传功能**
+
+弯折区与指尖一一中心对齐并标明小拇指/大拇指；综合曲线区添加 CSV 上传按钮，支持导入历史数据回放展示。
+
+修改文件：`client/src/components/HandMatrix.tsx`、`client/src/pages/ConsistencyPage.tsx`
+
+### v1.4.7（2026-03-17）
+
+**手掌区域沿中指中心对齐**
+
+手掌各行以中指中心列为轴居中排列，宽度与指尖区域对齐。
+
+修改文件：`client/src/components/HandMatrix.tsx`
+
+### v1.4.6（2026-03-17）
+
+**HandMatrix 紧凑分区视图**
+
+重新设计 HandMatrix 布局：指尖红色框→弯折彩色方块→手掌暗色区，不显示 ADC 数值，格子仅显示原始编号。
+
+修改文件：`client/src/components/HandMatrix.tsx`
 
 ### v1.4.5（2026-03-17）
 

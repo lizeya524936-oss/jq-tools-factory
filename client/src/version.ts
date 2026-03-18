@@ -32,7 +32,8 @@
  * v1.5.6  - CSV上传自动过滤：只保留压力上升阶段（0→峰值）数据，舍弃下降阶段
  * v1.5.7  - HandMatrix添加全选/全部取消按钮，一键切换所有传感器点的选中状态
  * v1.5.8  - 耐久性页面：删除灵巧手控制面板，集成HandMatrix（LH/RH自动切换），选点状态与一致性页面同步
+ * v1.5.9  - 耐久性页面改造：右侧改为灵巧手控制面板（上传JSON动作文件、动作库、循环序列编排、循环参数、执行控制、运行日志）；修复左侧滚动问题；补全README版本记录
  */
-export const APP_VERSION = 'v1.5.8';
+export const APP_VERSION = 'v1.5.9';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';
