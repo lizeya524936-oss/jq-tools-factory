@@ -21,6 +21,7 @@ import { useSerialPort, isWebSerialSupported } from '@/hooks/useSerialPort';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { Activity } from 'lucide-react';
 import { toast } from 'sonner';
+import { APP_VERSION } from '@/version';
 
 // 全局串口数据上下文，供子页面消费
 export interface SerialDataContext {
@@ -384,7 +385,7 @@ export default function Home() {
         >
           <div className="flex items-center gap-3">
             <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
-              JQ Tools Factory v1.5.9
+              JQ Tools Factory {APP_VERSION}
             </span>
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
