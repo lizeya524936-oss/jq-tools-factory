@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.6.0（2026-03-18）
+
+**修复一致性页面图表高度问题**
+
+上传20个CSV文件时，文件列表占据过多空间导致图表Y轴被压缩无法显示。文件列表区域限制最大高度100px并支持滚动，图表区域设置最小高度500px（内部绘图区400px），确保Y轴与X轴同等空间充分显示。
+
+修改文件：`client/src/pages/ConsistencyPage.tsx`、`client/src/components/DataChart.tsx`
+
 ### v1.5.9（2026-03-18）
 
 **耐久性页面改造：灵巧手控制面板 + 滚动修复**

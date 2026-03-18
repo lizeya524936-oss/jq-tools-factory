@@ -163,7 +163,7 @@ export default function DataChart({ records, series, title }: DataChartProps) {
   const hasData = allSeries.some(s => s.data.length > 0);
 
   return (
-    <div className="chart-container p-3 h-full flex flex-col">
+    <div className="chart-container p-3 flex flex-col" style={{ minHeight: '480px', height: '100%' }}>
       {title && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
@@ -211,7 +211,7 @@ export default function DataChart({ records, series, title }: DataChartProps) {
             ))}
           </div>
 
-          <div className="flex-1" style={{ minHeight: 0 }}>
+          <div className="flex-1" style={{ minHeight: '400px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
                 <CartesianGrid

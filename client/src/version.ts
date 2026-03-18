@@ -33,7 +33,8 @@
  * v1.5.7  - HandMatrix添加全选/全部取消按钮，一键切换所有传感器点的选中状态
  * v1.5.8  - 耐久性页面：删除灵巧手控制面板，集成HandMatrix（LH/RH自动切换），选点状态与一致性页面同步
  * v1.5.9  - 耐久性页面改造：右侧改为灵巧手控制面板（上传JSON动作文件、动作库、循环序列编排、循环参数、执行控制、运行日志）；修复左侧滚动问题；补全README版本记录
+ * v1.6.0  - 修复一致性页面图表高度问题：文件列表区域限制最大高度100px可滚动，图表区域设置最小高度500px确保Y轴充分显示
  */
-export const APP_VERSION = 'v1.5.9';
+export const APP_VERSION = 'v1.6.0';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-03-17';
+export const BUILD_DATE = '2026-03-18';

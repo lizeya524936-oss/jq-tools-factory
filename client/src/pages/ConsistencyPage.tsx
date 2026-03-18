@@ -693,8 +693,8 @@ export default function ConsistencyPage() {
             {/* 文件列表 - checkbox 控制显示/隐藏 */}
             {uploadedSeries.length > 0 && (
               <div
-                className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 mb-1 rounded"
-                style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+                className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 mb-1 rounded overflow-y-auto"
+                style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)', maxHeight: '100px' }}
               >
                 {uploadedSeries.map((s) => (
                   <label
@@ -742,7 +742,7 @@ export default function ConsistencyPage() {
               </div>
             )}
 
-            <div className="flex-1 min-h-0">
+            <div style={{ minHeight: '500px' }}>
               <DataChart
                 series={chartSeries}
               />
