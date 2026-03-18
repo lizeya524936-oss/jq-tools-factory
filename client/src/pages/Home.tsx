@@ -384,7 +384,7 @@ export default function Home() {
         >
           <div className="flex items-center gap-3">
             <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
-              JQ Tools Factory v1.5.5
+              JQ Tools Factory v1.5.6
             </span>
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>

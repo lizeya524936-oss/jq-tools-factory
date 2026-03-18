@@ -363,7 +363,18 @@ export default function ConsistencyPage() {
         });
       }
     }
-    return parsed;
+    // 过滤：只保留压力上升阶段（0→峰值），舍弃下降阶段（峰值→0）
+    if (parsed.length <= 1) return parsed;
+    let peakIdx = 0;
+    let peakPressure = parsed[0].pressure;
+    for (let i = 1; i < parsed.length; i++) {
+      if (parsed[i].pressure >= peakPressure) {
+        peakPressure = parsed[i].pressure;
+        peakIdx = i;
+      }
+    }
+    // 只保留从开始到峰值点（含）的数据
+    return parsed.slice(0, peakIdx + 1);
   }, []);
 
   const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
