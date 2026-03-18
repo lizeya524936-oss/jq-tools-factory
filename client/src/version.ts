@@ -30,7 +30,8 @@
  * v1.5.4  - 删除红色参考线（forceMin/forceMax）避免误导；图表缩放改为快捷按钮（20N/30N/50N/70N/100N）切换X轴范围
  * v1.5.5  - 压力计默认波特率改为19200bps；删除矩阵框选crosshair鼠标样式
  * v1.5.6  - CSV上传自动过滤：只保留压力上升阶段（0→峰值）数据，舍弃下降阶段
+ * v1.5.7  - HandMatrix添加全选/全部取消按钮，一键切换所有传感器点的选中状态
  */
-export const APP_VERSION = 'v1.5.6';
+export const APP_VERSION = 'v1.5.7';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';

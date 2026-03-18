@@ -491,8 +491,52 @@ export default function ConsistencyPage() {
           )}
         </div>
 
-        {/* 操作按钮：导出 + 重置 */}
+        {/* 操作按钮：全选/取消 + 导出 + 重置 */}
         <div className="flex gap-2">
+          {handSide && (
+            <button
+              onClick={() => {
+                const allIndices = getHandIndices(handSide);
+                const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                if (allSelected) {
+                  // 全部取消
+                  setHandSelectedIndices(new Set());
+                } else {
+                  // 全选
+                  setHandSelectedIndices(new Set(allIndices));
+                }
+              }}
+              disabled={isRunning}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
+              style={{
+                background: (() => {
+                  if (!handSide) return 'oklch(0.22 0.03 265)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                })(),
+                border: (() => {
+                  if (!handSide) return '1px solid oklch(0.30 0.03 265)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                })(),
+                color: (() => {
+                  if (!handSide) return 'oklch(0.60 0.02 240)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                })(),
+              }}
+            >
+              {(() => {
+                if (!handSide) return '全选';
+                const allIndices = getHandIndices(handSide);
+                const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                return allSelected ? '全部取消' : '全选';
+              })()}
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={isRunning || records.length === 0}
