@@ -2,17 +2,22 @@
  * DurabilityPage - 耐久性检测页面
  * 机器人灵巧手套，反复抓握特定物体N次，查看ADC求和数据
  * 验证全部传感感点的有效性和灵敏度是否变化，阈值±threshold%（可定义）
+ *
+ * v1.5.8 改动：
+ * - 删除灵巧手控制面板（OmniHandControl）
+ * - 集成 HandMatrix（LH/RH 时自动切换手形矩阵，与一致性页面同步）
+ * - 添加 handSelectedIndices 选点状态，支持全选/全部取消
+ * - 修复 handleStart 选点检查，HandMatrix 模式使用 handSelectedIndices
  */
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
-import DataChart from '@/components/DataChart';
 import TestResultCard from '@/components/TestResultCard';
 import ParameterPanel from '@/components/ParameterPanel';
 import DataTable from '@/components/DataTable';
 import SerialMonitor from '@/components/SerialMonitor';
-import OmniHandControl from '@/components/OmniHandControl';
-import type { OmniHandTestConfig } from '@/components/OmniHandControl';
+import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
+import type { HandSide } from '@/components/HandMatrix';
 import { useSerialData } from './Home';
 import {
   SensorPoint,
@@ -23,7 +28,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { Play, RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -68,13 +73,43 @@ export default function DurabilityPage() {
   const [params, setParams] = useState(DEFAULT_PARAMS);
   const [activeView, setActiveView] = useState<'trend' | 'overview' | 'table'>('trend');
   const [progress, setProgress] = useState(0);
-  // 机械手状态
-  const [handTestRunning, setHandTestRunning] = useState(false);
-  const [handCycle, setHandCycle] = useState(0);
-  const [handTotalCycles, setHandTotalCycles] = useState(0);
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType } = useSerialData();
+
+  // ─── HandMatrix 选点状态（与一致性页面共享 localStorage key） ───
+  const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('handSelectedIndices');
+      if (saved) return new Set<number>(JSON.parse(saved));
+    } catch {}
+    return new Set<number>();
+  });
+
+  useEffect(() => {
+    localStorage.setItem('handSelectedIndices', JSON.stringify([...handSelectedIndices]));
+  }, [handSelectedIndices]);
+
+  const handleHandToggleSelect = useCallback((arrayIndex: number) => {
+    setHandSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(arrayIndex)) {
+        next.delete(arrayIndex);
+      } else {
+        next.add(arrayIndex);
+      }
+      return next;
+    });
+  }, []);
+
+  // LH/RH 时自动切换为 16×16 矩阵
+  const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
+
+  useEffect(() => {
+    if (handSide && (matrixRows !== 16 || matrixCols !== 16)) {
+      handleMatrixResize(16, 16);
+    }
+  }, [handSide]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 实时将串口ADC数据按行列坐标精确注入传感器矩阵
   useEffect(() => {
@@ -95,7 +130,6 @@ export default function DurabilityPage() {
     setMatrixRows(rows);
     setMatrixCols(cols);
     setSensors(generateSensorMatrix(rows, cols));
-    // 保存到 localStorage
     localStorage.setItem('matrixRows', rows.toString());
     localStorage.setItem('matrixCols', cols.toString());
     setRecords([]);
@@ -103,7 +137,12 @@ export default function DurabilityPage() {
   }, []);
 
   const handleStart = useCallback(async () => {
-    if (selectedSensors.length === 0) {
+    // 检查是否有选点：HandMatrix 模式用 handSelectedIndices，普通模式用 selectedSensors
+    const hasSelection = handSide
+      ? handSelectedIndices.size > 0
+      : selectedSensors.length > 0;
+
+    if (!hasSelection) {
       toast.error('请先选择至少一个传感器点');
       return;
     }
@@ -131,10 +170,9 @@ export default function DurabilityPage() {
     } else {
       toast.error(`耐久性检测未通过，ADC衰减 ${(testResult.maxError ?? 0).toFixed(2)}% 超出阈值 ±${params.threshold}%`);
     }
-  }, [selectedSensors, params]);
+  }, [selectedSensors, params, handSide, handSelectedIndices]);
 
   const handleReset = async () => {
-    // 向压力计发送 CMD_RESET 归零指令
     if (isForceConnected && sendForceCommand) {
       await sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
     }
@@ -177,38 +215,108 @@ export default function DurabilityPage() {
       <div
         className="flex flex-col gap-3 p-3 overflow-y-auto"
         style={{
-          width: '280px',
+          width: '520px',
           minWidth: '280px',
           borderRight: '1px solid oklch(0.22 0.03 265)',
         }}
       >
-        <SensorMatrix
-          sensors={sensors}
-          rows={matrixRows}
-          cols={matrixCols}
-          onSelectionChange={setSensors}
-          onResize={handleMatrixResize}
-        />
+        {/* 传感器矩阵 */}
+        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
+          {handSide ? (
+            /* 手形矩阵（LH/RH 专用） */
+            <HandMatrix
+              side={handSide}
+              adcValues={latestAdcValues}
+              showIndex={true}
+              selectedIndices={handSelectedIndices}
+              onToggleSelect={handleHandToggleSelect}
+            />
+          ) : (
+            /* 通用矩阵 */
+            <SensorMatrix
+              sensors={sensors}
+              rows={matrixRows}
+              cols={matrixCols}
+              onSelectionChange={setSensors}
+              onResize={handleMatrixResize}
+            />
+          )}
+        </div>
+
+        {/* 操作按钮：全选/取消 + 导出 + 重置 */}
+        <div className="flex gap-2">
+          {handSide && (
+            <button
+              onClick={() => {
+                const allIndices = getHandIndices(handSide);
+                const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                if (allSelected) {
+                  setHandSelectedIndices(new Set());
+                } else {
+                  setHandSelectedIndices(new Set(allIndices));
+                }
+              }}
+              disabled={isRunning}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
+              style={{
+                background: (() => {
+                  if (!handSide) return 'oklch(0.22 0.03 265)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                })(),
+                border: (() => {
+                  if (!handSide) return '1px solid oklch(0.30 0.03 265)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                })(),
+                color: (() => {
+                  if (!handSide) return 'oklch(0.60 0.02 240)';
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                })(),
+              }}
+            >
+              {(() => {
+                if (!handSide) return '全选';
+                const allIndices = getHandIndices(handSide);
+                const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                return allSelected ? '全部取消' : '全选';
+              })()}
+            </button>
+          )}
+          <button
+            onClick={handleExport}
+            disabled={isRunning || records.length === 0}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
+            style={{
+              background: 'oklch(0.72 0.20 145 / 0.15)',
+              border: '1px solid oklch(0.72 0.20 145 / 0.3)',
+              color: 'oklch(0.72 0.20 145)',
+            }}
+            title="导出CSV"
+          >
+            <Download size={12} />
+            导出数据
+          </button>
+          <button
+            onClick={handleReset}
+            disabled={isRunning}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
+            style={{
+              background: 'oklch(0.22 0.03 265)',
+              border: '1px solid oklch(0.30 0.03 265)',
+              color: 'oklch(0.60 0.02 240)',
+            }}
+          >
+            <RefreshCw size={12} />
+            重置
+          </button>
+        </div>
+
         <ParameterPanel params={params} onChange={setParams} mode="durability" />
-
-        {/* 机械手控制面板 */}
-        <OmniHandControl
-          onTestStart={(config: OmniHandTestConfig) => {
-            setHandTestRunning(true);
-            setHandTotalCycles(config.cycleCount);
-            setHandCycle(0);
-          }}
-          onTestStop={() => {
-            setHandTestRunning(false);
-          }}
-          onCycleComplete={(current: number, total: number) => {
-            setHandCycle(current);
-            setHandTotalCycles(total);
-          }}
-          isTestRunning={handTestRunning}
-        />
-
-
 
         {/* 进度条 */}
         {isRunning && (
@@ -243,6 +351,7 @@ export default function DurabilityPage() {
           latestAdcValues={latestAdcValues}
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
+          handSelectedIndices={handSide ? handSelectedIndices : undefined}
         />
 
         {/* 传感器有效性统计 */}
@@ -256,7 +365,7 @@ export default function DurabilityPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: '有效传感器', value: `${selectedSensors.length}/${sensors.length}`, color: 'oklch(0.72 0.20 145)' },
+                { label: '有效传感器', value: `${handSide ? handSelectedIndices.size : selectedSensors.length}/${handSide ? getHandIndices(handSide).length : sensors.length}`, color: 'oklch(0.72 0.20 145)' },
                 { label: '总抓握次数', value: `${params.durabilityCount}`, color: 'oklch(0.70 0.18 200)' },
                 { label: '数据记录', value: `${records.length}`, color: 'oklch(0.75 0.18 55)' },
                 {
@@ -285,6 +394,9 @@ export default function DurabilityPage() {
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.65 0.22 25)', flexShrink: 0 }} />
             <span style={{ color: 'oklch(0.45 0.02 240)' }}>耐久性检测：机械手反复抓握产品，采集压力和传感器数据，评估灵敏度变化</span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{handSide ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
           </div>
         </div>
 

@@ -31,7 +31,8 @@
  * v1.5.5  - 压力计默认波特率改为19200bps；删除矩阵框选crosshair鼠标样式
  * v1.5.6  - CSV上传自动过滤：只保留压力上升阶段（0→峰值）数据，舍弃下降阶段
  * v1.5.7  - HandMatrix添加全选/全部取消按钮，一键切换所有传感器点的选中状态
+ * v1.5.8  - 耐久性页面：删除灵巧手控制面板，集成HandMatrix（LH/RH自动切换），选点状态与一致性页面同步
  */
-export const APP_VERSION = 'v1.5.7';
+export const APP_VERSION = 'v1.5.8';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-17';
