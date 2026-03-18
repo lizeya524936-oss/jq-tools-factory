@@ -509,7 +509,7 @@ export default function DurabilityPage() {
   const testProgress = totalCycles > 0 ? (currentCycle / totalCycles) * 100 : 0;
 
   return (
-    <div className="flex gap-0" style={{ height: 'calc(100vh - 80px)', overflow: 'hidden' }}>
+    <div className="flex gap-0" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden' }}>
       {/* ═══ 左侧：传感器矩阵 + 数据采集 ═══ */}
       <div
         className="flex flex-col gap-3 p-3"
@@ -519,7 +519,7 @@ export default function DurabilityPage() {
           borderRight: '1px solid oklch(0.22 0.03 265)',
           overflowY: 'auto',
           overflowX: 'hidden',
-          height: '100%',
+          minHeight: 0,
         }}
       >
         {/* 传感器矩阵 */}
@@ -635,7 +635,7 @@ export default function DurabilityPage() {
       </div>
 
       {/* ═══ 右侧：灵巧手控制面板 ═══ */}
-      <div className="flex-1 flex flex-col min-w-0 p-3 gap-3 overflow-y-auto" style={{ height: '100%' }}>
+      <div className="flex-1 flex flex-col min-w-0 p-3 gap-3 overflow-y-auto" style={{ minHeight: 0 }}>
         {/* 标题栏 + 连接按钮 */}
         <div
           className="flex items-center justify-between px-3 py-2 rounded"
