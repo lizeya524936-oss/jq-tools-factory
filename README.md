@@ -55,6 +55,19 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.8.0（2026-03-19）
+
+**支持32×32高密度手部压力传感器（JQGY-YL-09）**
+
+1. 新增传感器产品选择器：右上角“选择传感器产品”支持选择16×16或32×32传感器，切换时自动调整波特率
+2. 新增1000000bps波特率选项，适配32×32传感器高速数据传输
+3. 实现单帧1028字节协议解析：帧头0xAA 0x55 0x03 0x99 + 1024字节数据域，与现有16×16双包协议共存
+4. 实现32×32矩阵映射表：将线性字节流按规格书定义的行列顺序重排到矩阵坐标
+5. 各页面（测试页/一致性/重复性/耐久性）自动感知传感器协议变化，自动切换矩阵尺寸为32×32
+6. 矩阵尺寸上限从16放开到64，支持更大规模传感器阵列
+
+修改文件：`client/src/hooks/useSerialPort.ts`、`client/src/components/SerialConnectPanel.tsx`、`client/src/pages/Home.tsx`、`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/RepeatabilityPage.tsx`、`client/src/pages/DurabilityPage.tsx`
+
 ### v1.7.1（2026-03-19）
 
 **灵巧手控制增强：使能按钮 + 默认动作库 + 快捷执行**

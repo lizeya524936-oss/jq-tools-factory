@@ -49,7 +49,7 @@ export default function TestPage() {
     } catch {}
     return matrix;
   });
-  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType } = useSerialData();
+  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize } = useSerialData();
 
   // LH/RH 时切换手形矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -79,6 +79,13 @@ export default function TestPage() {
     });
   }, []);
 
+  // 当传感器协议变化时，自动切换矩阵尺寸
+  useEffect(() => {
+    if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
+      handleMatrixSizeChange(sensorMatrixSize, sensorMatrixSize);
+    }
+  }, [sensorMatrixSize]);
+
   // 数据采集状态
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
@@ -101,7 +108,7 @@ export default function TestPage() {
 
   // 更新矩阵尺寸并保存到 localStorage
   const handleMatrixSizeChange = (rows: number, cols: number) => {
-    if (rows >= 1 && rows <= 16 && cols >= 1 && cols <= 16) {
+    if (rows >= 1 && rows <= 64 && cols >= 1 && cols <= 64) {
       setMatrixRows(rows);
       setMatrixCols(cols);
       setSensors(generateSensorMatrix(rows, cols));

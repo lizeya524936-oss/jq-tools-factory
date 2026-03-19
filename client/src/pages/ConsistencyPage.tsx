@@ -101,7 +101,7 @@ export default function ConsistencyPage() {
       return next;
     });
   }, []);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, sensorMatrixSize } = useSerialData();
 
   // LH/RH 时自动切换为 16×16 矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -111,6 +111,13 @@ export default function ConsistencyPage() {
       handleMatrixResize(16, 16);
     }
   }, [handSide]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 当传感器协议变化时，自动切换矩阵尺寸
+  useEffect(() => {
+    if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
+      handleMatrixResize(sensorMatrixSize, sensorMatrixSize);
+    }
+  }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);

@@ -15,13 +15,42 @@ import { isWebSerialSupported, SerialPortState, SerialStatus } from '@/hooks/use
 interface SerialConnectPanelProps {
   role: 'force' | 'sensor';
   state: SerialPortState;
-  onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot') => Promise<boolean>;
+  onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProduct) => Promise<boolean>;
   onDisconnect: () => Promise<void>;
-  /** 传感器设备类型标识，如 'LH'/'RH'/'LF'/'RF'/'WB'（仅 sensor role 使用） */
+  /** 传感器设备类型标识，如 'LH'/'RH'/'LF'/'RF'/'WB'/'HD'（仅 sensor role 使用） */
   deviceType?: string | null;
 }
 
-const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600];
+const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600, 1000000];
+
+// 传感器产品类型
+export type SensorProduct = '16x16' | '32x32';
+
+const SENSOR_PRODUCTS: Record<SensorProduct, {
+  label: string;
+  sublabel: string;
+  defaultBaud: number;
+  quickBauds: number[];
+  hint: string;
+  matrixSize: number;
+}> = {
+  '16x16': {
+    label: '16×16 触觉传感器',
+    sublabel: '织物触觉传感器',
+    defaultBaud: 921600,
+    quickBauds: [2400, 115200, 921600],
+    hint: '16×16点阵，256个ADC，双包协议',
+    matrixSize: 16,
+  },
+  '32x32': {
+    label: '32×32 高密度传感器',
+    sublabel: 'JQGY-YL-09',
+    defaultBaud: 1000000,
+    quickBauds: [921600, 1000000],
+    hint: '32×32点阵，1024个ADC，单帧协议，100Hz',
+    matrixSize: 32,
+  },
+};
 
 // 检测设备类型
 type DetectionDevice = 'pressure' | 'robot';
@@ -59,14 +88,10 @@ const ROLE_CONFIG = {
   },
   sensor: {
     label: '传感器产品',
-    sublabel: '织物触觉传感器',
     icon: Layers,
-    defaultBaud: 115200,
-    quickBauds: [2400, 115200, 921600],
     accentColor: 'oklch(0.72 0.20 145)',
     accentBg: 'oklch(0.72 0.20 145 / 0.12)',
     accentBorder: 'oklch(0.72 0.20 145 / 0.35)',
-    hint: '最大64×64点阵，ADC值范围0~255',
   },
 };
 
@@ -92,14 +117,18 @@ export default function SerialConnectPanel({
   const [selectedDevice, setSelectedDevice] = useState<DetectionDevice>('pressure');
   const deviceCfg = role === 'force' ? DETECTION_DEVICES[selectedDevice] : null;
 
+  // sensor role 专用：传感器产品选择（16×16 / 32×32）
+  const [selectedSensor, setSelectedSensor] = useState<SensorProduct>('16x16');
+  const sensorCfg = role === 'sensor' ? SENSOR_PRODUCTS[selectedSensor] : null;
+
   // 波特率
   const defaultBaud = role === 'force'
     ? DETECTION_DEVICES[selectedDevice].defaultBaud
-    : (ROLE_CONFIG.sensor as any).defaultBaud;
+    : SENSOR_PRODUCTS[selectedSensor].defaultBaud;
   const [baudInput, setBaudInput] = useState(defaultBaud.toString());
   const quickBauds = role === 'force'
     ? DETECTION_DEVICES[selectedDevice].quickBauds
-    : (ROLE_CONFIG.sensor as any).quickBauds;
+    : SENSOR_PRODUCTS[selectedSensor].quickBauds;
 
   const [showBaudMenu, setShowBaudMenu] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -110,16 +139,26 @@ export default function SerialConnectPanel({
     setBaudInput(DETECTION_DEVICES[device].defaultBaud.toString());
   }, []);
 
+  // 切换传感器产品时同步波特率
+  const handleSensorChange = useCallback((product: SensorProduct) => {
+    setSelectedSensor(product);
+    setBaudInput(SENSOR_PRODUCTS[product].defaultBaud.toString());
+  }, []);
+
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
     if (isNaN(baud) || baud <= 0) return;
-    // force role 传递当前选择的设备模式
-    const ok = await onConnect(baud, role === 'force' ? selectedDevice : undefined);
+    // force role 传递设备模式，sensor role 传递传感器产品类型
+    const ok = await onConnect(
+      baud,
+      role === 'force' ? selectedDevice : undefined,
+      role === 'sensor' ? selectedSensor : undefined,
+    );
     // 连接成功后自动关闭面板
     if (ok) {
       setShowDetails(false);
     }
-  }, [baudInput, onConnect, role, selectedDevice]);
+  }, [baudInput, onConnect, role, selectedDevice, selectedSensor]);
 
   const handleDisconnect = useCallback(async () => {
     await onDisconnect();
@@ -247,11 +286,37 @@ export default function SerialConnectPanel({
             </div>
           )}
 
-          {/* sensor role：提示信息 */}
+          {/* sensor role：传感器产品选择 */}
           {role === 'sensor' && (
-            <p className="text-xs mb-3" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
-              {(ROLE_CONFIG.sensor as any).hint}
-            </p>
+            <div className="mb-3">
+              <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+                传感器产品类型
+              </label>
+              <div className="flex gap-2">
+                {(Object.entries(SENSOR_PRODUCTS) as [SensorProduct, typeof SENSOR_PRODUCTS[SensorProduct]][]).map(([key, prod]) => {
+                  const isActive = selectedSensor === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleSensorChange(key)}
+                      className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded text-xs font-mono font-medium transition-all"
+                      style={{
+                        background: isActive ? cfg.accentBg : 'oklch(0.20 0.025 265)',
+                        border: `1px solid ${isActive ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
+                        color: isActive ? cfg.accentColor : 'oklch(0.55 0.02 240)',
+                        boxShadow: isActive ? `0 0 6px oklch(0.72 0.20 145 / 0.15)` : 'none',
+                      }}
+                    >
+                      <Layers size={11} />
+                      <span>{prod.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
+                {sensorCfg!.sublabel} · {sensorCfg!.hint}
+              </p>
+            </div>
           )}
 
           {/* 浏览器不支持提示 */}

@@ -39,7 +39,8 @@
  * v1.6.3  - 修复耐久性页面放大后无法滚动到底部的问题：外层容器改为height:100%+overflow-y:auto自身滚动，右侧面板maxHeight改为100%
  * v1.7.0  - 灵巧手连接整合：移除耐久性页面独立的“连接(460800)”按钮，灵巧手连接统一通过右上角“选择检测设备”的机械手模式管理；连接成功后自动发送使能命令，断开时自动发送失能命令；协议函数提取到公共模块omniHandProtocol.ts
  * v1.7.1  - 灵巧手控制增强：添加使能/失能切换按钮；默认内嵌okandreleasehold.json动作库（连接后自动加载）；动作库下方增加快捷执行按钮行，点击直接发送动作命令
+ * v1.8.0  - 支持32×32高密度手部压力传感器（JQGY-YL-09）：新增1000000bps波特率选项，单帧1028字节协议解析（帧头0xAA 0x55 0x03 0x99 + 1024字节数据域），32×32矩阵映射表，传感器产品选择器（16×16/32×32），各页面自动切换矩阵尺寸
  */
-export const APP_VERSION = 'v1.7.1';
+export const APP_VERSION = 'v1.8.0';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-19';

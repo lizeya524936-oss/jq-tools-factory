@@ -17,7 +17,8 @@ import DurabilityPage from './DurabilityPage';
 import DataLogPage from './DataLogPage';
 import AboutPage from './AboutPage';
 import SerialConnectPanel from '@/components/SerialConnectPanel';
-import { useSerialPort, isWebSerialSupported } from '@/hooks/useSerialPort';
+import { useSerialPort, isWebSerialSupported, type SensorProtocol } from '@/hooks/useSerialPort';
+import type { SensorProduct } from '@/components/SerialConnectPanel';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { Activity } from 'lucide-react';
 import { toast } from 'sonner';
@@ -34,13 +35,17 @@ export interface SerialDataContext {
   latestRawFrame: string | null;     // 原始串口帧字符串
   isForceConnected: boolean;
   isSensorConnected: boolean;
-  /** 传感器设备类型，如 'LH'/'RH'/'LF'/'RF'/'WB'，未识别时为 null */
+  /** 传感器设备类型，如 'LH'/'RH'/'LF'/'RF'/'WB'/'HD'，未识别时为 null */
   sensorDeviceType: string | null;
   latestAdcValuesRef?: React.MutableRefObject<number[] | null>; // Ref 中的最新数据
   /** 向力学仪器/机械手发送命令 */
   sendForceCommand?: (data: Uint8Array) => Promise<boolean>;
   /** 右上角检测设备的模式：'pressure' | 'robot'，未连接时为 null */
   forceDeviceMode?: 'pressure' | 'robot' | null;
+  /** 当前传感器协议模式：'16x16' | '32x32' */
+  sensorProtocol?: SensorProtocol;
+  /** 当前传感器矩阵尺寸 */
+  sensorMatrixSize?: number;
 }
 
 export const SerialCtx = createContext<SerialDataContext>({
@@ -53,6 +58,8 @@ export const SerialCtx = createContext<SerialDataContext>({
   sensorDeviceType: null,
   sendForceCommand: async () => false,
   forceDeviceMode: null,
+  sensorProtocol: '16x16' as SensorProtocol,
+  sensorMatrixSize: 16,
 });
 
 export function useSerialData() {
@@ -95,6 +102,8 @@ export default function Home() {
   const [latestRawFrame, setLatestRawFrame] = useState<string | null>(null);
   const [sensorDeviceType, setSensorDeviceType] = useState<string | null>(null);
   const [forceDeviceMode, setForceDeviceMode] = useState<'pressure' | 'robot' | null>(null);
+  const [sensorProtocol, setSensorProtocol] = useState<SensorProtocol>('16x16');
+  const sensorMatrixSize = sensorProtocol === '32x32' ? 32 : 16;
   
   // 使用 Ref 来存储最新的传感器数据，避免不必要的重新渲染
   const latestAdcValuesRef = useRef<number[] | null>(null);
@@ -158,6 +167,7 @@ export default function Home() {
   // 传感器串口
   const sensorSerial = useSerialPort({
     role: 'sensor',
+    sensorProtocol,
     onDeviceType: useCallback((deviceType: string, _deviceId: number) => {
       setSensorDeviceType(deviceType);
     }, []),
@@ -212,9 +222,15 @@ export default function Home() {
     return ok;
   }, [forceSerial]);
 
-  const handleSensorConnect = useCallback(async (baudRate: number) => {
+  const handleSensorConnect = useCallback(async (baudRate: number, _deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProduct) => {
+    // 先设置协议模式，让 useSerialPort 知道用哪种解析器
+    const protocol: SensorProtocol = sensorProduct === '32x32' ? '32x32' : '16x16';
+    setSensorProtocol(protocol);
     const ok = await sensorSerial.connect(baudRate);
-    if (ok) toast.success(`传感器已连接，波特率 ${baudRate.toLocaleString()}`);
+    if (ok) {
+      const productLabel = sensorProduct === '32x32' ? '32×32高密度传感器' : '16×16触觉传感器';
+      toast.success(`${productLabel}已连接，波特率 ${baudRate.toLocaleString()}`);
+    }
     return ok;
   }, [sensorSerial]);
 
@@ -238,6 +254,7 @@ export default function Home() {
   const handleSensorDisconnect = useCallback(async () => {
     await sensorSerial.disconnect();
     setSensorDeviceType(null);
+    setSensorProtocol('16x16'); // 重置为默认
   }, [sensorSerial]);
 
   const isForceConnected = forceSerial.state.status === 'connected';
@@ -252,7 +269,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}
