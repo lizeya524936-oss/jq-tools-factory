@@ -36,8 +36,10 @@ export interface SerialDataContext {
   /** 传感器设备类型，如 'LH'/'RH'/'LF'/'RF'/'WB'，未识别时为 null */
   sensorDeviceType: string | null;
   latestAdcValuesRef?: React.MutableRefObject<number[] | null>; // Ref 中的最新数据
-  /** 向力学仪器发送命令（如 CMD_RESET 归零指令） */
+  /** 向力学仪器/机械手发送命令 */
   sendForceCommand?: (data: Uint8Array) => Promise<boolean>;
+  /** 右上角检测设备的模式：'pressure' | 'robot'，未连接时为 null */
+  forceDeviceMode?: 'pressure' | 'robot' | null;
 }
 
 export const SerialCtx = createContext<SerialDataContext>({
@@ -49,6 +51,7 @@ export const SerialCtx = createContext<SerialDataContext>({
   isSensorConnected: false,
   sensorDeviceType: null,
   sendForceCommand: async () => false,
+  forceDeviceMode: null,
 });
 
 export function useSerialData() {
@@ -90,6 +93,7 @@ export default function Home() {
   const [latestAdcValues, setLatestAdcValues] = useState<number[] | null>(null);
   const [latestRawFrame, setLatestRawFrame] = useState<string | null>(null);
   const [sensorDeviceType, setSensorDeviceType] = useState<string | null>(null);
+  const [forceDeviceMode, setForceDeviceMode] = useState<'pressure' | 'robot' | null>(null);
   
   // 使用 Ref 来存储最新的传感器数据，避免不必要的重新渲染
   const latestAdcValuesRef = useRef<number[] | null>(null);
@@ -180,9 +184,13 @@ export default function Home() {
     }, [])
   });
 
-  const handleForceConnect = useCallback(async (baudRate: number) => {
-    const ok = await forceSerial.connect(baudRate);
-    if (ok) toast.success(`力学仪器已连接，波特率 ${baudRate.toLocaleString()}`);
+  const handleForceConnect = useCallback(async (baudRate: number, deviceMode?: 'pressure' | 'robot') => {
+    const isRobot = deviceMode === 'robot';
+    const ok = await forceSerial.connect(baudRate, isRobot); // 机械手模式跳过CL2初始化
+    if (ok) {
+      setForceDeviceMode(deviceMode || 'pressure');
+      toast.success(isRobot ? `机械手已连接，波特率 ${baudRate.toLocaleString()}` : `力学仪器已连接，波特率 ${baudRate.toLocaleString()}`);
+    }
     return ok;
   }, [forceSerial]);
 
@@ -191,6 +199,12 @@ export default function Home() {
     if (ok) toast.success(`传感器已连接，波特率 ${baudRate.toLocaleString()}`);
     return ok;
   }, [sensorSerial]);
+
+  // 力学仪器/机械手断开时清除设备模式
+  const handleForceDisconnect = useCallback(async () => {
+    await forceSerial.disconnect();
+    setForceDeviceMode(null);
+  }, [forceSerial]);
 
   // 传感器断开时清除设备类型
   const handleSensorDisconnect = useCallback(async () => {
@@ -210,7 +224,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}
@@ -269,7 +283,7 @@ export default function Home() {
               role="force"
               state={forceSerial.state}
               onConnect={handleForceConnect}
-              onDisconnect={forceSerial.disconnect}
+              onDisconnect={handleForceDisconnect}
             />
 
             {/* 分隔 */}

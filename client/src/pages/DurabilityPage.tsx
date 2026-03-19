@@ -131,7 +131,7 @@ export default function DurabilityPage() {
   const [progress, setProgress] = useState(0);
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, forceDeviceMode } = useSerialData();
 
   // ─── HandMatrix 选点状态 ───
   const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
@@ -221,7 +221,20 @@ export default function DurabilityPage() {
     });
   }, []);
 
+  // 是否复用右上角的机械手连接
+  const isReusingForcePort = isForceConnected && forceDeviceMode === 'robot';
+
   const sendOmniPacket = useCallback(async (packet: Uint8Array): Promise<boolean> => {
+    // 优先使用复用的右上角连接
+    if (isReusingForcePort && sendForceCommand) {
+      try {
+        return await sendForceCommand(packet);
+      } catch (e) {
+        addLog(`发送失败(复用): ${e instanceof Error ? e.message : String(e)}`);
+        return false;
+      }
+    }
+    // 否则使用独立的omni连接
     if (!omniWriterRef.current) return false;
     try {
       await omniWriterRef.current.write(packet);
@@ -230,7 +243,7 @@ export default function DurabilityPage() {
       addLog(`发送失败: ${e instanceof Error ? e.message : String(e)}`);
       return false;
     }
-  }, [addLog]);
+  }, [addLog, isReusingForcePort, sendForceCommand]);
 
   const readOmniResponse = useCallback(async (timeoutMs: number = 500): Promise<Uint8Array | null> => {
     if (!omniReaderRef.current) return null;
@@ -501,6 +514,28 @@ export default function DurabilityPage() {
     toast.success(`已导出 ${records.length} 条数据`);
   };
 
+  // 自动复用右上角机械手连接
+  useEffect(() => {
+    if (isReusingForcePort && !omniConnected) {
+      // 右上角已连接机械手，自动复用并发送使能命令
+      addLog('检测到右上角已连接机械手，自动复用连接...');
+      const enablePkt = buildEnablePacket(deviceId);
+      if (sendForceCommand) {
+        sendForceCommand(enablePkt).then(sent => {
+          if (sent) {
+            addLog('灵巧手使能命令已发送（复用右上角连接）');
+            setOmniConnected(true);
+            toast.success('灵巧手已通过右上角连接使能');
+          }
+        });
+      }
+    } else if (!isReusingForcePort && omniConnected && !omniPortRef.current) {
+      // 右上角断开了，且没有独立连接，重置状态
+      setOmniConnected(false);
+      addLog('右上角机械手已断开，灵巧手连接已重置');
+    }
+  }, [isReusingForcePort]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 清理
   useEffect(() => {
     return () => { testAbortRef.current = true; };
@@ -509,7 +544,7 @@ export default function DurabilityPage() {
   const testProgress = totalCycles > 0 ? (currentCycle / totalCycles) * 100 : 0;
 
   return (
-    <div className="flex gap-0" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden' }}>
+    <div className="flex gap-0" style={{ minHeight: '100%' }}>
       {/* ═══ 左侧：传感器矩阵 + 数据采集 ═══ */}
       <div
         className="flex flex-col gap-3 p-3"
@@ -517,9 +552,7 @@ export default function DurabilityPage() {
           width: '520px',
           minWidth: '280px',
           borderRight: '1px solid oklch(0.22 0.03 265)',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          minHeight: 0,
+          flexShrink: 0,
         }}
       >
         {/* 传感器矩阵 */}
@@ -635,7 +668,7 @@ export default function DurabilityPage() {
       </div>
 
       {/* ═══ 右侧：灵巧手控制面板 ═══ */}
-      <div className="flex-1 flex flex-col min-w-0 p-3 gap-3 overflow-y-auto" style={{ minHeight: 0 }}>
+      <div className="flex-1 flex flex-col min-w-0 p-3 gap-3" style={{ flexShrink: 0 }}>
         {/* 标题栏 + 连接按钮 */}
         <div
           className="flex items-center justify-between px-3 py-2 rounded"
@@ -649,20 +682,28 @@ export default function DurabilityPage() {
             {omniConnected && (
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 150)' }} />
-                <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>已连接</span>
+                <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                  {isReusingForcePort ? '已连接 (复用右上角)' : '已连接'}
+                </span>
               </div>
             )}
           </div>
           <div className="flex items-center gap-1.5">
             {omniConnected ? (
-              <button
-                onClick={handleOmniDisconnect}
-                disabled={isTesting}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
-                style={{ background: 'oklch(0.65 0.22 25 / 0.12)', border: '1px solid oklch(0.65 0.22 25 / 0.3)', color: 'oklch(0.65 0.22 25)', fontSize: '10px' }}
-              >
-                <Usb size={10} /> 断开
-              </button>
+              isReusingForcePort ? (
+                <span className="text-xs font-mono px-2.5 py-1" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '10px' }}>
+                  由右上角管理
+                </span>
+              ) : (
+                <button
+                  onClick={handleOmniDisconnect}
+                  disabled={isTesting}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
+                  style={{ background: 'oklch(0.65 0.22 25 / 0.12)', border: '1px solid oklch(0.65 0.22 25 / 0.3)', color: 'oklch(0.65 0.22 25)', fontSize: '10px' }}
+                >
+                  <Usb size={10} /> 断开
+                </button>
+              )
             ) : (
               <button
                 onClick={handleOmniConnect}

@@ -15,7 +15,7 @@ import { isWebSerialSupported, SerialPortState, SerialStatus } from '@/hooks/use
 interface SerialConnectPanelProps {
   role: 'force' | 'sensor';
   state: SerialPortState;
-  onConnect: (baudRate: number) => Promise<boolean>;
+  onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot') => Promise<boolean>;
   onDisconnect: () => Promise<void>;
   /** 传感器设备类型标识，如 'LH'/'RH'/'LF'/'RF'/'WB'（仅 sensor role 使用） */
   deviceType?: string | null;
@@ -113,12 +113,13 @@ export default function SerialConnectPanel({
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
     if (isNaN(baud) || baud <= 0) return;
-    const ok = await onConnect(baud);
+    // force role 传递当前选择的设备模式
+    const ok = await onConnect(baud, role === 'force' ? selectedDevice : undefined);
     // 连接成功后自动关闭面板
     if (ok) {
       setShowDetails(false);
     }
-  }, [baudInput, onConnect]);
+  }, [baudInput, onConnect, role, selectedDevice]);
 
   const handleDisconnect = useCallback(async () => {
     await onDisconnect();

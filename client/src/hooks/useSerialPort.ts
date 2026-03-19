@@ -441,7 +441,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
   // 当前串口写入器（用于发送初始化命令）
   const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
 
-  const connect = useCallback(async (baudRate: number): Promise<boolean> => {
+  const connect = useCallback(async (baudRate: number, skipInit?: boolean): Promise<boolean> => {
     if (!isWebSerialSupported()) {
       setState(prev => ({
         ...prev,
@@ -466,15 +466,17 @@ export function useSerialPort(options: UseSerialPortOptions) {
       if (role === 'force' && port.writable) {
         const writer = port.writable.getWriter();
         writerRef.current = writer;
-        try {
-          // 发送连接命令
-          await writer.write(CL2_CMD_CONNECT);
-          // 等待 500ms，等待压力计响应
-          await new Promise(resolve => setTimeout(resolve, 500));
-          // 发送开始采集命令
-          await writer.write(CL2_CMD_START);
-        } catch (cmdErr) {
-          console.warn('[useSerialPort] CL2 初始化命令发送失败:', cmdErr);
+        if (!skipInit) {
+          try {
+            // 发送连接命令
+            await writer.write(CL2_CMD_CONNECT);
+            // 等待 500ms，等待压力计响应
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // 发送开始采集命令
+            await writer.write(CL2_CMD_START);
+          } catch (cmdErr) {
+            console.warn('[useSerialPort] CL2 初始化命令发送失败:', cmdErr);
+          }
         }
       }
 
