@@ -29,13 +29,28 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { RefreshCw, Download, Upload, Play, Square, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle } from 'lucide-react';
-import { buildSetPositionsPacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
+import { RefreshCw, Download, Upload, Play, Square, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle, Power, Zap } from 'lucide-react';
+import { buildSetPositionsPacket, buildEnablePacket, buildDisablePacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
+import defaultActionsData from '@/lib/defaultActions.json';
 
 interface HandAction {
   name: string;
   positions: number[]; // 10 个轴的位置 (0-4096)
 }
+
+// 解析JSON动作数据为HandAction数组
+function parseActionsFromJSON(data: Array<Record<string, unknown>>): HandAction[] {
+  return data.map((item) => {
+    const positions: number[] = [];
+    for (let i = 1; i <= 10; i++) {
+      positions.push(typeof item[`pos_axis_${i}`] === 'number' ? (item[`pos_axis_${i}`] as number) : 0);
+    }
+    return { name: String(item.name || 'unknown'), positions };
+  });
+}
+
+// 默认动作库
+const DEFAULT_ACTIONS = parseActionsFromJSON(defaultActionsData as Array<Record<string, unknown>>);
 
 // ===== 默认参数 =====
 const DEFAULT_PARAMS = {
@@ -129,7 +144,7 @@ export default function DurabilityPage() {
   }, []);
 
   // ─── 灵巧手控制状态 ───
-  const [availableActions, setAvailableActions] = useState<HandAction[]>([]);
+  const [availableActions, setAvailableActions] = useState<HandAction[]>(DEFAULT_ACTIONS);
   const [sequenceActions, setSequenceActions] = useState<HandAction[]>([]);
   const [totalCycles, setTotalCycles] = useState(100);
   const [intervalMs, setIntervalMs] = useState(2000);
@@ -137,7 +152,8 @@ export default function DurabilityPage() {
   const [currentCycle, setCurrentCycle] = useState(0);
   const [currentActionName, setCurrentActionName] = useState('');
   const [logMessages, setLogMessages] = useState<string[]>([]);
-  const [jsonFileName, setJsonFileName] = useState('');
+  const [jsonFileName, setJsonFileName] = useState('okandreleasehold.json');
+  const [omniEnabled, setOmniEnabled] = useState(false);
 
   const testAbortRef = useRef(false);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -182,13 +198,7 @@ export default function DurabilityPage() {
       try {
         const text = await file.text();
         const data = JSON.parse(text) as Array<Record<string, unknown>>;
-        const actions: HandAction[] = data.map((item) => {
-          const positions: number[] = [];
-          for (let i = 1; i <= 10; i++) {
-            positions.push(typeof item[`pos_axis_${i}`] === 'number' ? (item[`pos_axis_${i}`] as number) : 0);
-          }
-          return { name: String(item.name || 'unknown'), positions };
-        });
+        const actions = parseActionsFromJSON(data);
         setAvailableActions(actions);
         setJsonFileName(file.name);
         addLog(`已加载动作文件: ${file.name} (${actions.length} 个动作: ${actions.map(a => a.name).join(', ')})`);
@@ -370,13 +380,42 @@ export default function DurabilityPage() {
     toast.success(`已导出 ${records.length} 条数据`);
   };
 
-  // 监听连接状态变化，记录日志
+  // 使能/失能切换
+  const handleToggleEnable = useCallback(async () => {
+    if (!sendForceCommand || !omniConnected) {
+      toast.error('请先连接灵巧手');
+      return;
+    }
+    if (omniEnabled) {
+      // 当前已使能，发送失能命令
+      const pkt = buildDisablePacket(OMNI_DEVICE_ID);
+      const sent = await sendForceCommand(pkt);
+      if (sent) {
+        setOmniEnabled(false);
+        addLog('灵巧手已失能');
+        toast.info('灵巧手已失能');
+      }
+    } else {
+      // 当前已失能，发送使能命令
+      const pkt = buildEnablePacket(OMNI_DEVICE_ID);
+      const sent = await sendForceCommand(pkt);
+      if (sent) {
+        setOmniEnabled(true);
+        addLog('灵巧手已使能');
+        toast.success('灵巧手已使能');
+      }
+    }
+  }, [sendForceCommand, omniConnected, omniEnabled, addLog]);
+
+  // 监听连接状态变化，记录日志并同步使能状态
   const prevOmniConnectedRef = useRef(false);
   useEffect(() => {
     if (omniConnected && !prevOmniConnectedRef.current) {
       addLog('灵巧手已通过右上角连接并使能');
+      setOmniEnabled(true); // 连接时Home.tsx已自动发送使能命令
     } else if (!omniConnected && prevOmniConnectedRef.current) {
       addLog('灵巧手已断开');
+      setOmniEnabled(false);
     }
     prevOmniConnectedRef.current = omniConnected;
   }, [omniConnected, addLog]);
@@ -514,7 +553,7 @@ export default function DurabilityPage() {
 
       {/* ═══ 右侧：灵巧手控制面板 ═══ */}
       <div className="flex-1 flex flex-col min-w-0 p-3 gap-3" style={{ flexShrink: 0, position: 'sticky', top: 0, alignSelf: 'flex-start', maxHeight: '100%', overflowY: 'auto' }}>
-        {/* 标题栏 + 连接按钮 */}
+        {/* 标题栏 + 使能按钮 */}
         <div
           className="flex items-center justify-between px-3 py-2 rounded"
           style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}
@@ -526,9 +565,9 @@ export default function DurabilityPage() {
             </span>
             {omniConnected ? (
               <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 150)' }} />
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: omniEnabled ? 'oklch(0.75 0.18 150)' : 'oklch(0.65 0.22 60)' }} />
                 <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
-                  已连接并使能
+                  {omniEnabled ? '已连接 · 已使能' : '已连接 · 已失能'}
                 </span>
               </div>
             ) : (
@@ -540,9 +579,25 @@ export default function DurabilityPage() {
               </div>
             )}
           </div>
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
-            通过右上角“选择检测设备”连接
-          </span>
+          {omniConnected ? (
+            <button
+              onClick={handleToggleEnable}
+              disabled={isTesting}
+              className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
+              style={{
+                background: omniEnabled ? 'oklch(0.65 0.22 25 / 0.12)' : 'oklch(0.75 0.15 180 / 0.12)',
+                border: `1px solid ${omniEnabled ? 'oklch(0.65 0.22 25 / 0.3)' : 'oklch(0.75 0.15 180 / 0.3)'}`,
+                color: omniEnabled ? 'oklch(0.65 0.22 25)' : 'oklch(0.75 0.15 180)',
+                fontSize: '10px',
+              }}
+            >
+              <Power size={10} /> {omniEnabled ? '失能' : '使能'}
+            </button>
+          ) : (
+            <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+              通过右上角“选择检测设备”连接
+            </span>
+          )}
         </div>
 
         {/* 未连接提示 */}
@@ -601,7 +656,35 @@ export default function DurabilityPage() {
           )}
           {availableActions.length > 0 && (
             <div className="mt-1.5 text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
-              单击添加到循环序列 · 双击手动执行
+              单击添加到循环序列
+            </div>
+          )}
+
+          {/* 快捷执行按钮 */}
+          {availableActions.length > 0 && (
+            <div className="mt-2 pt-2" style={{ borderTop: '1px solid oklch(0.25 0.03 265)' }}>
+              <div className="text-xs font-mono mb-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+                快捷执行
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {availableActions.map((action, idx) => (
+                  <button
+                    key={`exec-${action.name}-${idx}`}
+                    onClick={() => handleManualAction(action)}
+                    disabled={!omniConnected || !omniEnabled || isTesting}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-mono font-medium transition-all disabled:opacity-30"
+                    style={{
+                      background: omniConnected && omniEnabled ? 'oklch(0.75 0.15 180 / 0.10)' : 'oklch(0.20 0.025 265)',
+                      border: `1px solid ${omniConnected && omniEnabled ? 'oklch(0.75 0.15 180 / 0.25)' : 'oklch(0.28 0.03 265)'}`,
+                      color: omniConnected && omniEnabled ? 'oklch(0.75 0.15 180)' : 'oklch(0.45 0.02 240)',
+                    }}
+                    title={`点击立即执行: ${action.name}\n轴位置: ${action.positions.join(', ')}`}
+                  >
+                    <Zap size={10} />
+                    {action.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

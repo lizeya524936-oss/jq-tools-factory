@@ -1,0 +1,62 @@
+[
+    {
+        "name": "hold",
+        "pos_axis_1": 3191,
+        "pos_axis_10": 0,
+        "pos_axis_11": 0,
+        "pos_axis_12": 0,
+        "pos_axis_2": 4095,
+        "pos_axis_3": 452,
+        "pos_axis_4": 133,
+        "pos_axis_5": 0,
+        "pos_axis_6": 0,
+        "pos_axis_7": 2340,
+        "pos_axis_8": 0,
+        "pos_axis_9": 3430
+    },
+    {
+        "name": "ok",
+        "pos_axis_1": 2978,
+        "pos_axis_10": 3909,
+        "pos_axis_11": 0,
+        "pos_axis_12": 0,
+        "pos_axis_2": 1356,
+        "pos_axis_3": 931,
+        "pos_axis_4": 3457,
+        "pos_axis_5": 2446,
+        "pos_axis_6": 3537,
+        "pos_axis_7": 3297,
+        "pos_axis_8": 3882,
+        "pos_axis_9": 1915
+    },
+    {
+        "name": "release",
+        "pos_axis_1": 2686,
+        "pos_axis_10": 4095,
+        "pos_axis_11": 0,
+        "pos_axis_12": 0,
+        "pos_axis_2": 1968,
+        "pos_axis_3": 3111,
+        "pos_axis_4": 3537,
+        "pos_axis_5": 3776,
+        "pos_axis_6": 3802,
+        "pos_axis_7": 3300,
+        "pos_axis_8": 3909,
+        "pos_axis_9": 3085
+    },
+    {
+        "name": "release2",
+        "pos_axis_1": 2074,
+        "pos_axis_10": 3909,
+        "pos_axis_11": 0,
+        "pos_axis_12": 0,
+        "pos_axis_2": 3404,
+        "pos_axis_3": 3111,
+        "pos_axis_4": 3085,
+        "pos_axis_5": 3749,
+        "pos_axis_6": 3749,
+        "pos_axis_7": 3297,
+        "pos_axis_8": 3882,
+        "pos_axis_9": 1915
+    }
+]

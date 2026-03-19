@@ -38,7 +38,8 @@
  * v1.6.2  - 彻底修复耐久性页面滚动问题：外层改为items-start让左侧面板按内容高度自然展开，右侧面板sticky定位+独立滚动
  * v1.6.3  - 修复耐久性页面放大后无法滚动到底部的问题：外层容器改为height:100%+overflow-y:auto自身滚动，右侧面板maxHeight改为100%
  * v1.7.0  - 灵巧手连接整合：移除耐久性页面独立的“连接(460800)”按钮，灵巧手连接统一通过右上角“选择检测设备”的机械手模式管理；连接成功后自动发送使能命令，断开时自动发送失能命令；协议函数提取到公共模块omniHandProtocol.ts
+ * v1.7.1  - 灵巧手控制增强：添加使能/失能切换按钮；默认内嵌okandreleasehold.json动作库（连接后自动加载）；动作库下方增加快捷执行按钮行，点击直接发送动作命令
  */
-export const APP_VERSION = 'v1.7.0';
+export const APP_VERSION = 'v1.7.1';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-19';

@@ -55,6 +55,16 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.7.1（2026-03-19）
+
+**灵巧手控制增强：使能按钮 + 默认动作库 + 快捷执行**
+
+1. 标题栏添加使能/失能切换按钮，连接后默认自动使能，点击按钮可切换失能/使能状态
+2. 默认内嵌 `okandreleasehold.json` 动作库（hold/ok/release/release2），进入页面即可看到动作列表，无需手动上传；用户仍可通过“上传 JSON”替换动作库
+3. 动作库下方新增“快捷执行”按钮行，点击直接发送对应动作命令到灵巧手（需已连接并使能）
+
+修改文件：`client/src/pages/DurabilityPage.tsx`、`client/src/lib/defaultActions.json`（新增）
+
 ### v1.7.0（2026-03-19）
 
 **灵巧手连接整合到右上角“选择检测设备”**
