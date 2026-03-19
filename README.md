@@ -55,6 +55,22 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.6.2（2026-03-19）
+
+**彻底修复耐久性页面滚动问题**
+
+放大浏览器百分比时，左侧面板底部的“数据采集控制”和“开始采集”按钮被截断且页面无法滚动。根因是外层 `div.flex` 水平布局默认 `align-items: stretch` 导致左右面板被拉伸到相同高度，右侧面板的 `flex-1` 约束住了容器高度。修复方案：外层容器添加 `items-start` 让左右面板各自按内容高度展开，右侧面板改为 `position: sticky` 固定在视口顶部并支持独立滚动。
+
+修改文件：`client/src/pages/DurabilityPage.tsx`
+
+### v1.6.1（2026-03-19）
+
+**修复右上角机械手串口与灵巧手控制冲突 + 耐久性页面滚动优化**
+
+右上角选择“机械手”连接时，会发送 CL2 压力计初始化命令导致灵巧手无法正常使能，且串口被占用后耐久性页面无法独立连接。修复方案：`useSerialPort` 的 `connect` 方法增加 `skipInit` 参数，机械手模式跳过 CL2 初始化命令；通过 `SerialCtx` 传递 `forceDeviceMode` 和 `sendForceCommand`，耐久性页面检测到右上角已连接机械手时自动复用该连接发送使能/位置命令。同时修复底部版本号硬编码问题，改为引用 `APP_VERSION` 变量。
+
+修改文件：`client/src/hooks/useSerialPort.ts`、`client/src/components/SerialConnectPanel.tsx`、`client/src/pages/Home.tsx`、`client/src/pages/DurabilityPage.tsx`
+
 ### v1.6.0（2026-03-18）
 
 **修复一致性页面图表高度问题**
