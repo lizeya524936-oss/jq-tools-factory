@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.6.3（2026-03-19）
+
+**修复耐久性页面放大后无法滚动到底部的问题**
+
+浏览器放大百分比后，左侧面板底部的“数据采集控制”和“开始采集”按钮被 footer 遮挡且无法滚动。根因是外层容器使用 `minHeight: 100%` 时，容器高度被子项擑开但父层 main 的 `overflow-auto` 无法感知溢出。修复方案：外层容器改为 `height: 100%` + `overflow-y: auto`，让 DurabilityPage 自身成为滚动容器；右侧面板 `maxHeight` 从 `calc(100vh - 72px)` 改为 `100%`，相对于滚动容器的可视区域定位。
+
+修改文件：`client/src/pages/DurabilityPage.tsx`
+
 ### v1.6.2（2026-03-19）
 
 **彻底修复耐久性页面滚动问题**

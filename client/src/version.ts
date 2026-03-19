@@ -36,7 +36,8 @@
  * v1.6.0  - 修复一致性页面图表高度问题：文件列表区域限制最大高度100px可滚动，图表区域设置最小高度500px确保Y轴充分显示
  * v1.6.1  - 修复耐久性页面滚动问题；修复右上角机械手串口与灵巧手控制冲突：右上角选择机械手连接时跳过CL2初始化，耐久性页面自动复用右上角连接发送使能/位置命令
  * v1.6.2  - 彻底修复耐久性页面滚动问题：外层改为items-start让左侧面板按内容高度自然展开，右侧面板sticky定位+独立滚动
+ * v1.6.3  - 修复耐久性页面放大后无法滚动到底部的问题：外层容器改为height:100%+overflow-y:auto自身滚动，右侧面板maxHeight改为100%
  */
-export const APP_VERSION = 'v1.6.2';
+export const APP_VERSION = 'v1.6.3';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-03-19';
