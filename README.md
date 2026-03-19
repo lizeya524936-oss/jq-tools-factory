@@ -55,6 +55,14 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.7.0（2026-03-19）
+
+**灵巧手连接整合到右上角“选择检测设备”**
+
+移除耐久性页面右侧面板中独立的“连接 (460800)”按钮和独立串口管理逻辑，灵巧手连接统一通过右上角“选择检测设备”的机械手模式管理。连接成功后自动发送使能命令，断开时自动发送失能命令。协议函数（CRC16-CCITT、buildPacket、buildEnablePacket、buildSetPositionsPacket 等）从 DurabilityPage 提取到公共模块 `omniHandProtocol.ts`。
+
+修改文件：`client/src/lib/omniHandProtocol.ts`（新增）、`client/src/pages/Home.tsx`、`client/src/pages/DurabilityPage.tsx`
+
 ### v1.6.3（2026-03-19）
 
 **修复耐久性页面放大后无法滚动到底部的问题**

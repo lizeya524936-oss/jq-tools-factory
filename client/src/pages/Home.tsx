@@ -22,6 +22,7 @@ import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { APP_VERSION } from '@/version';
+import { buildEnablePacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
 
 // 全局串口数据上下文，供子页面消费
 export interface SerialDataContext {
@@ -189,7 +190,24 @@ export default function Home() {
     const ok = await forceSerial.connect(baudRate, isRobot); // 机械手模式跳过CL2初始化
     if (ok) {
       setForceDeviceMode(deviceMode || 'pressure');
-      toast.success(isRobot ? `机械手已连接，波特率 ${baudRate.toLocaleString()}` : `力学仪器已连接，波特率 ${baudRate.toLocaleString()}`);
+      if (isRobot) {
+        // 机械手模式：连接成功后自动发送灵巧手使能命令
+        toast.success(`机械手已连接，波特率 ${baudRate.toLocaleString()}，正在使能...`);
+        try {
+          const enablePkt = buildEnablePacket(OMNI_DEVICE_ID);
+          const sent = await forceSerial.sendCommand(enablePkt);
+          if (sent) {
+            toast.success('灵巧手已使能');
+          } else {
+            toast.warning('使能命令发送失败，请检查连接');
+          }
+        } catch (e) {
+          console.warn('[Home] 灵巧手使能命令发送异常:', e);
+          toast.warning('使能命令发送异常');
+        }
+      } else {
+        toast.success(`力学仪器已连接，波特率 ${baudRate.toLocaleString()}`);
+      }
     }
     return ok;
   }, [forceSerial]);
@@ -202,9 +220,19 @@ export default function Home() {
 
   // 力学仪器/机械手断开时清除设备模式
   const handleForceDisconnect = useCallback(async () => {
+    // 机械手模式：断开前发送灵巧手失能命令
+    if (forceDeviceMode === 'robot') {
+      try {
+        const { buildDisablePacket } = await import('@/lib/omniHandProtocol');
+        await forceSerial.sendCommand(buildDisablePacket(OMNI_DEVICE_ID));
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) {
+        console.warn('[Home] 灵巧手失能命令发送异常:', e);
+      }
+    }
     await forceSerial.disconnect();
     setForceDeviceMode(null);
-  }, [forceSerial]);
+  }, [forceSerial, forceDeviceMode]);
 
   // 传感器断开时清除设备类型
   const handleSensorDisconnect = useCallback(async () => {

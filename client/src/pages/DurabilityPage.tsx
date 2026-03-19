@@ -29,71 +29,12 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { RefreshCw, Download, Upload, Play, Square, Usb, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle } from 'lucide-react';
+import { RefreshCw, Download, Upload, Play, Square, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle } from 'lucide-react';
+import { buildSetPositionsPacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
 
-// ===== 灵巧手通信协议 =====
 interface HandAction {
   name: string;
   positions: number[]; // 10 个轴的位置 (0-4096)
-}
-
-function crc16CCITT(data: Uint8Array): number {
-  let crc = 0x0000;
-  const poly = 0x1021;
-  for (let i = 0; i < data.length; i++) {
-    crc ^= (data[i] << 8);
-    for (let j = 0; j < 8; j++) {
-      if (crc & 0x8000) {
-        crc = ((crc << 1) ^ poly) & 0xFFFF;
-      } else {
-        crc = (crc << 1) & 0xFFFF;
-      }
-    }
-  }
-  return crc & 0xFFFF;
-}
-
-function buildPacket(deviceId: number, cmd: number, data: Uint8Array = new Uint8Array(0)): Uint8Array {
-  const header = new Uint8Array([0xEE, 0xAA]);
-  const idBytes = new Uint8Array(2);
-  idBytes[0] = deviceId & 0xFF;
-  idBytes[1] = (deviceId >> 8) & 0xFF;
-  const dataSegment = new Uint8Array(1 + data.length);
-  dataSegment[0] = cmd;
-  dataSegment.set(data, 1);
-  const dataLength = dataSegment.length;
-  const crcInput = new Uint8Array(header.length + idBytes.length + 1 + dataSegment.length);
-  let offset = 0;
-  crcInput.set(header, offset); offset += header.length;
-  crcInput.set(idBytes, offset); offset += idBytes.length;
-  crcInput[offset] = dataLength; offset += 1;
-  crcInput.set(dataSegment, offset);
-  const crc = crc16CCITT(crcInput);
-  const crcBytes = new Uint8Array(2);
-  crcBytes[0] = crc & 0xFF;
-  crcBytes[1] = (crc >> 8) & 0xFF;
-  const packet = new Uint8Array(crcInput.length + 2);
-  packet.set(crcInput, 0);
-  packet.set(crcBytes, crcInput.length);
-  return packet;
-}
-
-function buildEnablePacket(deviceId: number): Uint8Array {
-  return buildPacket(deviceId, 0x01, new Uint8Array([0x01]));
-}
-
-function buildDisablePacket(deviceId: number): Uint8Array {
-  return buildPacket(deviceId, 0x01, new Uint8Array([0x00]));
-}
-
-function buildSetPositionsPacket(deviceId: number, positions: number[]): Uint8Array {
-  const data = new Uint8Array(20);
-  for (let i = 0; i < 10; i++) {
-    const pos = Math.max(0, Math.min(4096, positions[i] || 0));
-    data[i * 2] = pos & 0xFF;
-    data[i * 2 + 1] = (pos >> 8) & 0xFF;
-  }
-  return buildPacket(deviceId, 0x08, data);
 }
 
 // ===== 默认参数 =====
@@ -188,9 +129,6 @@ export default function DurabilityPage() {
   }, []);
 
   // ─── 灵巧手控制状态 ───
-  const [omniConnected, setOmniConnected] = useState(false);
-  const [omniConnecting, setOmniConnecting] = useState(false);
-  const [omniError, setOmniError] = useState('');
   const [availableActions, setAvailableActions] = useState<HandAction[]>([]);
   const [sequenceActions, setSequenceActions] = useState<HandAction[]>([]);
   const [totalCycles, setTotalCycles] = useState(100);
@@ -201,12 +139,11 @@ export default function DurabilityPage() {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [jsonFileName, setJsonFileName] = useState('');
 
-  const omniPortRef = useRef<SerialPort | null>(null);
-  const omniWriterRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
-  const omniReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const testAbortRef = useRef(false);
   const logEndRef = useRef<HTMLDivElement>(null);
-  const deviceId = 1;
+
+  // 灵巧手连接状态：完全依赖右上角“选择检测设备”的机械手模式
+  const omniConnected = isForceConnected && forceDeviceMode === 'robot';
 
   // 自动滚动日志到底部
   useEffect(() => {
@@ -221,99 +158,18 @@ export default function DurabilityPage() {
     });
   }, []);
 
-  // 是否复用右上角的机械手连接
-  const isReusingForcePort = isForceConnected && forceDeviceMode === 'robot';
-
   const sendOmniPacket = useCallback(async (packet: Uint8Array): Promise<boolean> => {
-    // 优先使用复用的右上角连接
-    if (isReusingForcePort && sendForceCommand) {
-      try {
-        return await sendForceCommand(packet);
-      } catch (e) {
-        addLog(`发送失败(复用): ${e instanceof Error ? e.message : String(e)}`);
-        return false;
-      }
+    if (!sendForceCommand) {
+      addLog('发送失败: 请先通过右上角“选择检测设备”连接机械手');
+      return false;
     }
-    // 否则使用独立的omni连接
-    if (!omniWriterRef.current) return false;
     try {
-      await omniWriterRef.current.write(packet);
-      return true;
+      return await sendForceCommand(packet);
     } catch (e) {
       addLog(`发送失败: ${e instanceof Error ? e.message : String(e)}`);
       return false;
     }
-  }, [addLog, isReusingForcePort, sendForceCommand]);
-
-  const readOmniResponse = useCallback(async (timeoutMs: number = 500): Promise<Uint8Array | null> => {
-    if (!omniReaderRef.current) return null;
-    try {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
-      const readPromise = omniReaderRef.current.read().then(({ value }) => value || null);
-      return await Promise.race([readPromise, timeoutPromise]);
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // 连接灵巧手
-  const handleOmniConnect = useCallback(async () => {
-    if (!('serial' in navigator)) {
-      setOmniError('浏览器不支持 Web Serial API');
-      return;
-    }
-    setOmniConnecting(true);
-    setOmniError('');
-    addLog('正在选择灵巧手串口...');
-
-    try {
-      const port = await navigator.serial.requestPort();
-      await port.open({ baudRate: 460800, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
-      omniPortRef.current = port;
-      omniWriterRef.current = port.writable!.getWriter();
-      omniReaderRef.current = port.readable!.getReader();
-
-      addLog('串口已连接 (460800 baud)');
-      addLog('发送使能命令...');
-      const enablePkt = buildEnablePacket(deviceId);
-      const sent = await sendOmniPacket(enablePkt);
-      if (sent) {
-        const resp = await readOmniResponse(1000);
-        if (resp && resp.length >= 7) {
-          addLog(`使能成功 (响应: ${Array.from(resp).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')})`);
-        } else {
-          addLog('使能命令已发送（未收到明确响应，继续操作）');
-        }
-      }
-      setOmniConnected(true);
-      toast.success('灵巧手已连接并使能');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setOmniError(`连接失败: ${msg}`);
-      addLog(`连接失败: ${msg}`);
-    } finally {
-      setOmniConnecting(false);
-    }
-  }, [addLog, sendOmniPacket, readOmniResponse]);
-
-  // 断开灵巧手
-  const handleOmniDisconnect = useCallback(async () => {
-    try {
-      if (omniWriterRef.current) {
-        addLog('发送失能命令...');
-        await sendOmniPacket(buildDisablePacket(deviceId));
-        await new Promise(r => setTimeout(r, 200));
-      }
-      if (omniReaderRef.current) { await omniReaderRef.current.cancel().catch(() => {}); omniReaderRef.current = null; }
-      if (omniWriterRef.current) { await omniWriterRef.current.close().catch(() => {}); omniWriterRef.current = null; }
-      if (omniPortRef.current) { await omniPortRef.current.close().catch(() => {}); omniPortRef.current = null; }
-      setOmniConnected(false);
-      addLog('已断开连接');
-      toast.info('灵巧手已断开');
-    } catch (e) {
-      addLog(`断开失败: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }, [addLog, sendOmniPacket]);
+  }, [addLog, sendForceCommand]);
 
   // 上传 JSON 动作文件
   const handleLoadJSON = useCallback(() => {
@@ -374,7 +230,7 @@ export default function DurabilityPage() {
   // 执行单个动作
   const executeAction = useCallback(async (action: HandAction): Promise<boolean> => {
     setCurrentActionName(action.name);
-    const pkt = buildSetPositionsPacket(deviceId, action.positions);
+    const pkt = buildSetPositionsPacket(OMNI_DEVICE_ID, action.positions);
     return await sendOmniPacket(pkt);
   }, [sendOmniPacket]);
 
@@ -396,7 +252,7 @@ export default function DurabilityPage() {
   // 开始循环测试
   const handleStartTest = useCallback(async () => {
     if (!omniConnected) {
-      toast.error('请先连接灵巧手');
+      toast.error('请先通过右上角“选择检测设备”连接机械手');
       return;
     }
     if (sequenceActions.length === 0) {
@@ -460,7 +316,7 @@ export default function DurabilityPage() {
   // 手动执行单个动作
   const handleManualAction = useCallback(async (action: HandAction) => {
     if (!omniConnected) {
-      toast.error('请先连接灵巧手');
+      toast.error('请先通过右上角“选择检测设备”连接机械手');
       return;
     }
     const sent = await executeAction(action);
@@ -514,27 +370,16 @@ export default function DurabilityPage() {
     toast.success(`已导出 ${records.length} 条数据`);
   };
 
-  // 自动复用右上角机械手连接
+  // 监听连接状态变化，记录日志
+  const prevOmniConnectedRef = useRef(false);
   useEffect(() => {
-    if (isReusingForcePort && !omniConnected) {
-      // 右上角已连接机械手，自动复用并发送使能命令
-      addLog('检测到右上角已连接机械手，自动复用连接...');
-      const enablePkt = buildEnablePacket(deviceId);
-      if (sendForceCommand) {
-        sendForceCommand(enablePkt).then(sent => {
-          if (sent) {
-            addLog('灵巧手使能命令已发送（复用右上角连接）');
-            setOmniConnected(true);
-            toast.success('灵巧手已通过右上角连接使能');
-          }
-        });
-      }
-    } else if (!isReusingForcePort && omniConnected && !omniPortRef.current) {
-      // 右上角断开了，且没有独立连接，重置状态
-      setOmniConnected(false);
-      addLog('右上角机械手已断开，灵巧手连接已重置');
+    if (omniConnected && !prevOmniConnectedRef.current) {
+      addLog('灵巧手已通过右上角连接并使能');
+    } else if (!omniConnected && prevOmniConnectedRef.current) {
+      addLog('灵巧手已断开');
     }
-  }, [isReusingForcePort]); // eslint-disable-line react-hooks/exhaustive-deps
+    prevOmniConnectedRef.current = omniConnected;
+  }, [omniConnected, addLog]);
 
   // 清理
   useEffect(() => {
@@ -679,49 +524,34 @@ export default function DurabilityPage() {
             <span className="text-xs font-mono font-semibold" style={{ color: 'oklch(0.75 0.15 180)' }}>
               灵巧手控制
             </span>
-            {omniConnected && (
+            {omniConnected ? (
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 150)' }} />
                 <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
-                  {isReusingForcePort ? '已连接 (复用右上角)' : '已连接'}
+                  已连接并使能
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.40 0.02 240)' }} />
+                <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                  未连接
                 </span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {omniConnected ? (
-              isReusingForcePort ? (
-                <span className="text-xs font-mono px-2.5 py-1" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '10px' }}>
-                  由右上角管理
-                </span>
-              ) : (
-                <button
-                  onClick={handleOmniDisconnect}
-                  disabled={isTesting}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
-                  style={{ background: 'oklch(0.65 0.22 25 / 0.12)', border: '1px solid oklch(0.65 0.22 25 / 0.3)', color: 'oklch(0.65 0.22 25)', fontSize: '10px' }}
-                >
-                  <Usb size={10} /> 断开
-                </button>
-              )
-            ) : (
-              <button
-                onClick={handleOmniConnect}
-                disabled={omniConnecting}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
-                style={{ background: 'oklch(0.75 0.15 180 / 0.12)', border: '1px solid oklch(0.75 0.15 180 / 0.3)', color: 'oklch(0.75 0.15 180)', fontSize: '10px' }}
-              >
-                <Usb size={10} /> {omniConnecting ? '连接中...' : '连接 (460800)'}
-              </button>
-            )}
-          </div>
+          <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+            通过右上角“选择检测设备”连接
+          </span>
         </div>
 
-        {/* 错误提示 */}
-        {omniError && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded text-xs" style={{ background: 'oklch(0.65 0.22 25 / 0.08)', border: '1px solid oklch(0.65 0.22 25 / 0.2)', flexShrink: 0 }}>
-            <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
-            <span style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px' }}>{omniError}</span>
+        {/* 未连接提示 */}
+        {!omniConnected && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded text-xs" style={{ background: 'oklch(0.58 0.22 265 / 0.08)', border: '1px solid oklch(0.58 0.22 265 / 0.2)', flexShrink: 0 }}>
+            <AlertCircle size={12} style={{ color: 'oklch(0.58 0.22 265)', flexShrink: 0, marginTop: '1px' }} />
+            <span style={{ color: 'oklch(0.65 0.05 265)', fontSize: '10px' }}>
+              请在右上角“选择检测设备”中选择“机械手”并连接，连接成功后将自动发送使能命令
+            </span>
           </div>
         )}
 
