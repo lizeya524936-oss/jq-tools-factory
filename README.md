@@ -55,6 +55,16 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.8.1（2026-03-31）
+
+**测试页面统一使用标准矩阵显示**
+
+1. 移除 HandMatrix 手形状可视化组件，连接手套（LH/RH，921600波特率）后不再显示手形状布局
+2. 统一使用 SensorMatrix 标准16×16矩阵显示所有传感器数据
+3. 简化 CSV 导出逻辑，移除 HandMatrix 选点的特殊处理
+
+修改文件：`client/src/pages/TestPage.tsx`
+
 ### v1.8.0（2026-03-19）
 
 **支持32×32高密度手部压力传感器（JQGY-YL-09）**

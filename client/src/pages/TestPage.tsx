@@ -16,8 +16,7 @@ import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
 import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download } from 'lucide-react';
-import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
-import type { HandSide } from '@/components/HandMatrix';
+// HandMatrix removed - always use SensorMatrix for all sensor types
 
 interface DataRecord {
   timestamp: number;
@@ -51,33 +50,7 @@ export default function TestPage() {
   });
   const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize } = useSerialData();
 
-  // LH/RH 时切换手形矩阵
-  const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
 
-  // HandMatrix 选点状态（基于数组编号）
-  const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
-    try {
-      const saved = localStorage.getItem('handSelectedIndices');
-      if (saved) return new Set<number>(JSON.parse(saved));
-    } catch {}
-    return new Set<number>();
-  });
-
-  useEffect(() => {
-    localStorage.setItem('handSelectedIndices', JSON.stringify([...handSelectedIndices]));
-  }, [handSelectedIndices]);
-
-  const handleHandToggleSelect = useCallback((arrayIndex: number) => {
-    setHandSelectedIndices(prev => {
-      const next = new Set(prev);
-      if (next.has(arrayIndex)) {
-        next.delete(arrayIndex);
-      } else {
-        next.add(arrayIndex);
-      }
-      return next;
-    });
-  }, []);
 
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
@@ -131,10 +104,10 @@ export default function TestPage() {
   // 使用 Ref 保存 sensors 和 matrixCols 的最新值，供 exportCSV 使用
   const sensorsRef = useRef(sensors);
   const matrixColsRef = useRef(matrixCols);
-  const handSelectedIndicesRef = useRef(handSelectedIndices);
+
   useEffect(() => { sensorsRef.current = sensors; }, [sensors]);
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
-  useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
+
   
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
     if (dataToExport.length === 0) {
@@ -142,18 +115,10 @@ export default function TestPage() {
       return;
     }
 
-    const handIndices = handSelectedIndicesRef.current;
-    const hasHandSelection = handIndices && handIndices.size > 0;
-    let selectedIndices: number[];
-    if (hasHandSelection) {
-      // HandMatrix 模式：数组编号即为索引（从1开始）
-      selectedIndices = [...handIndices].sort((a, b) => a - b);
-    } else {
-      const currentSensors = sensorsRef.current;
-      const currentMatrixCols = matrixColsRef.current;
-      const selectedSensors = currentSensors.filter(s => s.selected);
-      selectedIndices = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
-    }
+    const currentSensors = sensorsRef.current;
+    const currentMatrixCols = matrixColsRef.current;
+    const selectedSensors = currentSensors.filter(s => s.selected);
+    const selectedIndices: number[] = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
 
     // 时间戳格式化函数：将 Date.now() 毫秒时间戳转为 xxh.xxm.xxs.xxxms
     const formatTimestamp = (ts: number) => {
@@ -447,26 +412,16 @@ export default function TestPage() {
 
           {/* 传感器矩阵 */}
           <div className="flex-1 min-h-0 overflow-auto">
-            {handSide ? (
-              <HandMatrix
-                side={handSide}
-                adcValues={latestAdcValues}
-                showIndex={true}
-                selectedIndices={handSelectedIndices}
-                onToggleSelect={handleHandToggleSelect}
+            <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
+              <SensorMatrix
+                sensors={sensors}
+                onSelectionChange={handleSensorChange}
+                rows={matrixRows}
+                cols={matrixCols}
+                realtimeMatrix={latestSensorMatrix ?? undefined}
+                isConnected={isSensorConnected}
               />
-            ) : (
-              <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
-                <SensorMatrix
-                  sensors={sensors}
-                  onSelectionChange={handleSensorChange}
-                  rows={matrixRows}
-                  cols={matrixCols}
-                  realtimeMatrix={latestSensorMatrix ?? undefined}
-                  isConnected={isSensorConnected}
-                />
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
