@@ -41,7 +41,8 @@
  * v1.7.1  - 灵巧手控制增强：添加使能/失能切换按钮；默认内嵌okandreleasehold.json动作库（连接后自动加载）；动作库下方增加快捷执行按钮行，点击直接发送动作命令
  * v1.8.0  - 支持32×32高密度手部压力传感器（JQGY-YL-09）：新增1000000bps波特率选项，单帧1028字节协议解析（帧头0xAA 0x55 0x03 0x99 + 1024字节数据域），32×32矩阵映射表，传感器产品选择器（16×16/32×32），各页面自动切换矩阵尺寸
  * v1.8.1  - 测试页面移除手形状可视化（HandMatrix），连接手套后统一使用标准16×16矩阵显示（SensorMatrix）
+ * v1.8.2  - 三个页面（测试/一致性/耐久性）添加手掌布局/矩阵显示切换开关，连接手套(LH/RH)时用户可自由选择显示模式，偏好保存到localStorage
  */
-export const APP_VERSION = 'v1.8.1';
+export const APP_VERSION = 'v1.8.2';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-03-19';
+export const BUILD_DATE = '2026-04-01';

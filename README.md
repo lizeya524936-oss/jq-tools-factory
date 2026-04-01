@@ -55,6 +55,20 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.8.2（2026-04-01）
+
+**三个页面添加手掌布局/矩阵显示切换开关**
+
+连接手套设备（LH/RH）时，测试页面、一致性检测页面、耐久性检测页面均会显示一个切换按钮，用户可自由选择“手掌布局”（HandMatrix）或“矩阵显示”（SensorMatrix）。
+
+1. 切换按钮仅在连接手套设备（LH/RH）时显示，其他传感器类型不受影响
+2. 用户的显示模式偏好保存到 localStorage，下次打开自动恢复
+3. 测试页面默认“矩阵显示”，一致性/耐久性页面默认“手掌布局”
+4. 手掌布局模式下显示全选/取消按钮，矩阵模式下显示矩阵尺寸调整
+5. 数据采集和 CSV 导出根据当前显示模式自动切换选点逻辑
+
+修改文件：`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/DurabilityPage.tsx`、`client/src/version.ts`
+
 ### v1.8.1（2026-03-31）
 
 **测试页面统一使用标准矩阵显示**

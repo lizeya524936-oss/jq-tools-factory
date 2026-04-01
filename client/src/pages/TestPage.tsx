@@ -7,16 +7,19 @@
  * 1. 优先从 SensorDataStreamV2 全局单例获取传感器数据（零延迟，不经过React）
  * 2. 备用从 Context 的 latestSensorMatrix 获取（通过 Ref 同步）
  * 3. 压力数据通过 Ref 同步（更新频率低，useEffect 足够）
+ * 
+ * v1.8.2 新增：手掌布局/矩阵显示切换开关，连接手套(LH/RH)时可自由选择显示模式
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import SensorMatrix from '@/components/SensorMatrix';
+import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
+import type { HandSide } from '@/components/HandMatrix';
 import PressureChart from '@/components/PressureChart';
 import { useSerialData } from './Home';
 import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
-import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download } from 'lucide-react';
-// HandMatrix removed - always use SensorMatrix for all sensor types
+import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download, Hand, Grid3x3 } from 'lucide-react';
 
 interface DataRecord {
   timestamp: number;
@@ -50,7 +53,48 @@ export default function TestPage() {
   });
   const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize } = useSerialData();
 
+  // ===== 手掌布局/矩阵显示切换 =====
+  const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
+  
+  // 从 localStorage 恢复显示模式偏好（true=手掌布局, false=矩阵显示）
+  const [useHandLayout, setUseHandLayout] = useState(() => {
+    const saved = localStorage.getItem('testPage_useHandLayout');
+    return saved !== null ? saved === 'true' : false; // 默认矩阵显示
+  });
 
+  // 保存显示模式到 localStorage
+  const toggleHandLayout = useCallback(() => {
+    setUseHandLayout(prev => {
+      const next = !prev;
+      localStorage.setItem('testPage_useHandLayout', String(next));
+      return next;
+    });
+  }, []);
+
+  // HandMatrix 选点状态
+  const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('testPage_handSelectedIndices');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set();
+  });
+
+  const handleHandToggleSelect = useCallback((arrayIndex: number) => {
+    setHandSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(arrayIndex)) {
+        next.delete(arrayIndex);
+      } else {
+        next.add(arrayIndex);
+      }
+      localStorage.setItem('testPage_handSelectedIndices', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  // 实际是否显示手掌布局：需要同时满足 handSide 存在 且 用户选择了手掌布局
+  const showHandLayout = handSide !== null && useHandLayout;
 
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
@@ -58,6 +102,13 @@ export default function TestPage() {
       handleMatrixSizeChange(sensorMatrixSize, sensorMatrixSize);
     }
   }, [sensorMatrixSize]);
+
+  // LH/RH 时自动切换为 16×16 矩阵
+  useEffect(() => {
+    if (handSide && (matrixRows !== 16 || matrixCols !== 16)) {
+      handleMatrixSizeChange(16, 16);
+    }
+  }, [handSide]);
 
   // 数据采集状态
   const [isRecording, setIsRecording] = useState(false);
@@ -104,9 +155,13 @@ export default function TestPage() {
   // 使用 Ref 保存 sensors 和 matrixCols 的最新值，供 exportCSV 使用
   const sensorsRef = useRef(sensors);
   const matrixColsRef = useRef(matrixCols);
+  const handSelectedIndicesRef = useRef(handSelectedIndices);
+  const showHandLayoutRef = useRef(showHandLayout);
 
   useEffect(() => { sensorsRef.current = sensors; }, [sensors]);
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
+  useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
+  useEffect(() => { showHandLayoutRef.current = showHandLayout; }, [showHandLayout]);
 
   
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
@@ -115,10 +170,18 @@ export default function TestPage() {
       return;
     }
 
-    const currentSensors = sensorsRef.current;
-    const currentMatrixCols = matrixColsRef.current;
-    const selectedSensors = currentSensors.filter(s => s.selected);
-    const selectedIndices: number[] = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
+    // 根据当前显示模式选择不同的选点索引
+    let selectedIndices: number[];
+    if (showHandLayoutRef.current) {
+      // 手掌布局模式：使用 handSelectedIndices（数组编号从1开始）
+      selectedIndices = [...handSelectedIndicesRef.current];
+    } else {
+      // 矩阵模式：使用 SensorMatrix 的选点
+      const currentSensors = sensorsRef.current;
+      const currentMatrixCols = matrixColsRef.current;
+      const selectedSensors = currentSensors.filter(s => s.selected);
+      selectedIndices = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
+    }
 
     // 时间戳格式化函数：将 Date.now() 毫秒时间戳转为 xxh.xxm.xxs.xxxms
     const formatTimestamp = (ts: number) => {
@@ -238,7 +301,7 @@ export default function TestPage() {
     };
   }, []);
 
-  const selectedCount = sensors.filter(s => s.selected).length;
+  const selectedCount = showHandLayout ? handSelectedIndices.size : sensors.filter(s => s.selected).length;
   const adcSum = latestAdcValues ? latestAdcValues.reduce((a, b) => a + b, 0) : 0;
   const recordCount = recordedData.length;
 
@@ -372,56 +435,130 @@ export default function TestPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+              {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
+              {handSide && (
+                <>
+                  <button
+                    onClick={toggleHandLayout}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded transition-all"
+                    style={{
+                      background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.15)' : 'oklch(0.72 0.20 145 / 0.15)',
+                      border: `1px solid ${useHandLayout ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.72 0.20 145 / 0.3)'}`,
+                      color: useHandLayout ? 'oklch(0.58 0.22 265)' : 'oklch(0.72 0.20 145)',
+                    }}
+                    title={useHandLayout ? '切换为矩阵显示' : '切换为手掌布局'}
+                  >
+                    {useHandLayout ? <Hand size={12} /> : <Grid3x3 size={12} />}
+                    <span>{useHandLayout ? '手掌布局' : '矩阵显示'}</span>
+                  </button>
+                  <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
+                </>
+              )}
               <span>矩阵: {matrixRows}×{matrixCols}</span>
               <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
               <span>已选: {selectedCount}</span>
             </div>
           </div>
 
-          {/* 矩阵尺寸调整 */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>矩阵尺寸:</span>
-            <input
-              type="number"
-              min={1}
-              max={16}
-              value={matrixRows}
-              onChange={e => handleMatrixSizeChange(parseInt(e.target.value), matrixCols)}
-              className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
-              style={{
-                background: 'oklch(0.12 0.02 265)',
-                border: '1px solid oklch(0.25 0.03 265)',
-                color: 'oklch(0.82 0.01 220)',
-              }}
-            />
-            <span style={{ color: 'oklch(0.50 0.02 240)' }}>×</span>
-            <input
-              type="number"
-              min={1}
-              max={16}
-              value={matrixCols}
-              onChange={e => handleMatrixSizeChange(matrixRows, parseInt(e.target.value))}
-              className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
-              style={{
-                background: 'oklch(0.12 0.02 265)',
-                border: '1px solid oklch(0.25 0.03 265)',
-                color: 'oklch(0.82 0.01 220)',
-              }}
-            />
-          </div>
-
-          {/* 传感器矩阵 */}
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
-              <SensorMatrix
-                sensors={sensors}
-                onSelectionChange={handleSensorChange}
-                rows={matrixRows}
-                cols={matrixCols}
-                realtimeMatrix={latestSensorMatrix ?? undefined}
-                isConnected={isSensorConnected}
+          {/* 矩阵尺寸调整 - 仅在矩阵模式下显示 */}
+          {!showHandLayout && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>矩阵尺寸:</span>
+              <input
+                type="number"
+                min={1}
+                max={16}
+                value={matrixRows}
+                onChange={e => handleMatrixSizeChange(parseInt(e.target.value), matrixCols)}
+                className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
+                style={{
+                  background: 'oklch(0.12 0.02 265)',
+                  border: '1px solid oklch(0.25 0.03 265)',
+                  color: 'oklch(0.82 0.01 220)',
+                }}
+              />
+              <span style={{ color: 'oklch(0.50 0.02 240)' }}>×</span>
+              <input
+                type="number"
+                min={1}
+                max={16}
+                value={matrixCols}
+                onChange={e => handleMatrixSizeChange(matrixRows, parseInt(e.target.value))}
+                className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
+                style={{
+                  background: 'oklch(0.12 0.02 265)',
+                  border: '1px solid oklch(0.25 0.03 265)',
+                  color: 'oklch(0.82 0.01 220)',
+                }}
               />
             </div>
+          )}
+
+          {/* 手掌布局模式下的全选按钮 */}
+          {showHandLayout && handSide && (
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => {
+                  const allIndices = getHandIndices(handSide);
+                  const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                  if (allSelected) {
+                    setHandSelectedIndices(new Set());
+                    localStorage.setItem('testPage_handSelectedIndices', '[]');
+                  } else {
+                    const newSet = new Set(allIndices);
+                    setHandSelectedIndices(newSet);
+                    localStorage.setItem('testPage_handSelectedIndices', JSON.stringify(allIndices));
+                  }
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-all"
+                style={{
+                  background: (() => {
+                    const allIndices = getHandIndices(handSide);
+                    const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                    return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                  })(),
+                  border: (() => {
+                    const allIndices = getHandIndices(handSide);
+                    const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                    return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                  })(),
+                  color: (() => {
+                    const allIndices = getHandIndices(handSide);
+                    const allSelected = allIndices.every(i => handSelectedIndices.has(i));
+                    return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                  })(),
+                }}
+              >
+                {(() => {
+                  const allIndices = getHandIndices(handSide);
+                  return allIndices.every(i => handSelectedIndices.has(i)) ? '全部取消' : '全选';
+                })()}
+              </button>
+            </div>
+          )}
+
+          {/* 传感器矩阵 / 手掌布局 */}
+          <div className="flex-1 min-h-0 overflow-auto">
+            {showHandLayout && handSide ? (
+              <HandMatrix
+                side={handSide}
+                adcValues={latestAdcValues}
+                showIndex={true}
+                selectedIndices={handSelectedIndices}
+                onToggleSelect={handleHandToggleSelect}
+              />
+            ) : (
+              <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
+                <SensorMatrix
+                  sensors={sensors}
+                  onSelectionChange={handleSensorChange}
+                  rows={matrixRows}
+                  cols={matrixCols}
+                  realtimeMatrix={latestSensorMatrix ?? undefined}
+                  isConnected={isSensorConnected}
+                />
+              </div>
+            )}
           </div>
         </div>
 

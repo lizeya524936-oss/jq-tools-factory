@@ -29,7 +29,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { RefreshCw, Download, Upload, Play, Square, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle, Power, Zap } from 'lucide-react';
+import { RefreshCw, Download, Upload, Play, Square, Trash2, Plus, GripVertical, ChevronUp, ChevronDown, Hand, AlertCircle, Power, Zap, Grid3x3 } from 'lucide-react';
 import { buildSetPositionsPacket, buildEnablePacket, buildDisablePacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
 import defaultActionsData from '@/lib/defaultActions.json';
 
@@ -112,6 +112,20 @@ export default function DurabilityPage() {
   }, []);
 
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
+
+  // ===== 手掌布局/矩阵显示切换 =====
+  const [useHandLayout, setUseHandLayout] = useState(() => {
+    const saved = localStorage.getItem('durabilityPage_useHandLayout');
+    return saved !== null ? saved === 'true' : true; // 耐久性页面默认手掌布局
+  });
+  const toggleHandLayout = useCallback(() => {
+    setUseHandLayout(prev => {
+      const next = !prev;
+      localStorage.setItem('durabilityPage_useHandLayout', String(next));
+      return next;
+    });
+  }, []);
+  const showHandLayout = handSide !== null && useHandLayout;
 
   useEffect(() => {
     if (handSide && (matrixRows !== 16 || matrixCols !== 16)) {
@@ -342,7 +356,7 @@ export default function DurabilityPage() {
 
   // ─── 传感器采集相关 ───
   const handleStart = useCallback(async () => {
-    const hasSelection = handSide ? handSelectedIndices.size > 0 : selectedSensors.length > 0;
+    const hasSelection = showHandLayout ? handSelectedIndices.size > 0 : selectedSensors.length > 0;
     if (!hasSelection) {
       toast.error('请先选择至少一个传感器点');
       return;
@@ -366,7 +380,7 @@ export default function DurabilityPage() {
     } else {
       toast.error(`耐久性检测未通过，ADC衰减 ${(testResult.maxError ?? 0).toFixed(2)}% 超出阈值 ±${params.threshold}%`);
     }
-  }, [selectedSensors, params, handSide, handSelectedIndices]);
+  }, [selectedSensors, params, showHandLayout, handSelectedIndices]);
 
   const handleReset = async () => {
     if (isForceConnected && sendForceCommand) {
@@ -448,7 +462,25 @@ export default function DurabilityPage() {
       >
         {/* 传感器矩阵 */}
         <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
-          {handSide ? (
+          {/* 手掌布局/矩阵显示切换开关 */}
+          {handSide && (
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={toggleHandLayout}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-all"
+                style={{
+                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.15)' : 'oklch(0.72 0.20 145 / 0.15)',
+                  border: `1px solid ${useHandLayout ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.72 0.20 145 / 0.3)'}`,
+                  color: useHandLayout ? 'oklch(0.58 0.22 265)' : 'oklch(0.72 0.20 145)',
+                }}
+                title={useHandLayout ? '切换为矩阵显示' : '切换为手掌布局'}
+              >
+                {useHandLayout ? <Hand size={12} /> : <Grid3x3 size={12} />}
+                <span>{useHandLayout ? '手掌布局' : '矩阵显示'}</span>
+              </button>
+            </div>
+          )}
+          {showHandLayout && handSide ? (
             <HandMatrix
               side={handSide}
               adcValues={latestAdcValues}
@@ -469,7 +501,7 @@ export default function DurabilityPage() {
 
         {/* 操作按钮 */}
         <div className="flex gap-2" style={{ flexShrink: 0 }}>
-          {handSide && (
+          {showHandLayout && handSide && (
             <button
               onClick={() => {
                 const allIndices = getHandIndices(handSide);
@@ -481,19 +513,16 @@ export default function DurabilityPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
               style={{
                 background: (() => {
-                  if (!handSide) return 'oklch(0.22 0.03 265)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
                 })(),
                 border: (() => {
-                  if (!handSide) return '1px solid oklch(0.30 0.03 265)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
                 })(),
                 color: (() => {
-                  if (!handSide) return 'oklch(0.60 0.02 240)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
@@ -501,7 +530,6 @@ export default function DurabilityPage() {
               }}
             >
               {(() => {
-                if (!handSide) return '全选';
                 const allIndices = getHandIndices(handSide);
                 return allIndices.every(i => handSelectedIndices.has(i)) ? '全部取消' : '全选';
               })()}
@@ -554,7 +582,7 @@ export default function DurabilityPage() {
           latestAdcValues={latestAdcValues}
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
-          handSelectedIndices={handSide ? handSelectedIndices : undefined}
+          handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
         />
       </div>
 

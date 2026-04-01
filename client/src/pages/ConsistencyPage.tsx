@@ -23,7 +23,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { RefreshCw, Download, Upload } from 'lucide-react';
+import { RefreshCw, Download, Upload, Hand, Grid3x3 } from 'lucide-react';
 import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 
@@ -106,6 +106,21 @@ export default function ConsistencyPage() {
   // LH/RH 时自动切换为 16×16 矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
 
+  // ===== 手掌布局/矩阵显示切换 =====
+  const [useHandLayout, setUseHandLayout] = useState(() => {
+    const saved = localStorage.getItem('consistencyPage_useHandLayout');
+    return saved !== null ? saved === 'true' : true; // 一致性页面默认手掌布局
+  });
+  const toggleHandLayout = useCallback(() => {
+    setUseHandLayout(prev => {
+      const next = !prev;
+      localStorage.setItem('consistencyPage_useHandLayout', String(next));
+      return next;
+    });
+  }, []);
+  // 实际是否显示手掌布局
+  const showHandLayout = handSide !== null && useHandLayout;
+
   useEffect(() => {
     if (handSide && (matrixRows !== 16 || matrixCols !== 16)) {
       handleMatrixResize(16, 16);
@@ -162,8 +177,8 @@ export default function ConsistencyPage() {
   }, []);
 
   const handleStart = useCallback(async () => {
-    // 检查是否有选点：HandMatrix 模式用 handSelectedIndices，普通模式用 selectedSensors
-    const hasSelection = handSide
+    // 检查是否有选点：手掌布局模式用 handSelectedIndices，矩阵模式用 selectedSensors
+    const hasSelection = showHandLayout
       ? handSelectedIndices.size > 0
       : selectedSensors.length > 0;
     if (!hasSelection) {
@@ -199,8 +214,8 @@ export default function ConsistencyPage() {
         // 只有当同时有压力和传感器数据时才记录
         if (snapshot.forceN !== null && currentAdcValues && currentAdcValues.length > 0) {
           let adcValues: number[];
-          if (handSide && handIndicesSnapshot.length > 0) {
-            // HandMatrix 模式：按数组编号取值（编号从1开始，数组索引从0开始）
+          if (showHandLayout && handIndicesSnapshot.length > 0) {
+            // 手掌布局模式：按数组编号取值（编号从1开始，数组索引从0开始）
             adcValues = handIndicesSnapshot.map(idx => currentAdcValues![idx - 1] ?? 0);
           } else {
             // 普通矩阵模式：按行列坐标取值
@@ -258,7 +273,7 @@ export default function ConsistencyPage() {
       console.error(error);
       setIsRunning(false);
     }
-  }, [selectedSensors, params, matrixCols, handSide, handSelectedIndices]);
+  }, [selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
 
   const handleReset = useCallback(async () => {
     // 向压力计发送 CMD_RESET 归零指令
@@ -477,7 +492,25 @@ export default function ConsistencyPage() {
       <div className="flex flex-col gap-3" style={{ width: '520px', flexShrink: 0 }}>
         {/* 传感器矩阵 - 放大区域 */}
         <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
-          {handSide ? (
+          {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
+          {handSide && (
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={toggleHandLayout}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-all"
+                style={{
+                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.15)' : 'oklch(0.72 0.20 145 / 0.15)',
+                  border: `1px solid ${useHandLayout ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.72 0.20 145 / 0.3)'}`,
+                  color: useHandLayout ? 'oklch(0.58 0.22 265)' : 'oklch(0.72 0.20 145)',
+                }}
+                title={useHandLayout ? '切换为矩阵显示' : '切换为手掌布局'}
+              >
+                {useHandLayout ? <Hand size={12} /> : <Grid3x3 size={12} />}
+                <span>{useHandLayout ? '手掌布局' : '矩阵显示'}</span>
+              </button>
+            </div>
+          )}
+          {showHandLayout && handSide ? (
             /* 手形矩阵（LH/RH 专用） */
             <HandMatrix
               side={handSide}
@@ -500,16 +533,14 @@ export default function ConsistencyPage() {
 
         {/* 操作按钮：全选/取消 + 导出 + 重置 */}
         <div className="flex gap-2">
-          {handSide && (
+          {showHandLayout && handSide && (
             <button
               onClick={() => {
                 const allIndices = getHandIndices(handSide);
                 const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                 if (allSelected) {
-                  // 全部取消
                   setHandSelectedIndices(new Set());
                 } else {
-                  // 全选
                   setHandSelectedIndices(new Set(allIndices));
                 }
               }}
@@ -517,19 +548,16 @@ export default function ConsistencyPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
               style={{
                 background: (() => {
-                  if (!handSide) return 'oklch(0.22 0.03 265)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
                 })(),
                 border: (() => {
-                  if (!handSide) return '1px solid oklch(0.30 0.03 265)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
                 })(),
                 color: (() => {
-                  if (!handSide) return 'oklch(0.60 0.02 240)';
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
                   return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
@@ -537,10 +565,8 @@ export default function ConsistencyPage() {
               }}
             >
               {(() => {
-                if (!handSide) return '全选';
                 const allIndices = getHandIndices(handSide);
-                const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                return allSelected ? '全部取消' : '全选';
+                return allIndices.every(i => handSelectedIndices.has(i)) ? '全部取消' : '全选';
               })()}
             </button>
           )}
@@ -591,7 +617,7 @@ export default function ConsistencyPage() {
           latestAdcValues={latestAdcValues}
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
-          handSelectedIndices={handSide ? handSelectedIndices : undefined}
+          handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
         />
       </div>
 
@@ -610,7 +636,7 @@ export default function ConsistencyPage() {
           <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
           <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法A：高频采样力学数据 + 多个压力传感点ADC求和</span>
           <div className="ml-auto flex items-center gap-2">
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{handSide ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
+            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{showHandLayout ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
             <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
             <span style={{ color: 'oklch(0.45 0.02 240)' }}>矩阵 {matrixRows}×{matrixCols}</span>
           </div>
