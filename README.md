@@ -33,7 +33,10 @@
 
 ## 在线访问
 
-**永久地址：** [https://jq-tools-factory.pages.dev](https://jq-tools-factory.pages.dev)
+| 环境 | 地址 | 说明 |
+|------|------|------|
+| 正式环境 | [https://jq-tools-factory.pages.dev](https://jq-tools-factory.pages.dev) | 客户使用，确认无误后才更新 |
+| 测试环境 | [https://jq-tools-factory-test.pages.dev](https://jq-tools-factory-test.pages.dev) | 开发预览，每次修改先发布到这里 |
 
 > Web Serial API 需要 Chrome/Edge 89+ 浏览器，串口连接功能需在本地环境中使用。
 
@@ -46,14 +49,33 @@ pnpm dev
 
 ## 部署
 
+项目采用双环境部署策略，修改先发布到测试环境验证，确认无误后再更新正式环境。
+
 ```bash
-pnpm build
-npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch master --commit-dirty=true
+# 部署到测试环境（日常开发使用）
+pnpm deploy:test
+
+# 部署到正式环境（确认无误后更新给客户）
+pnpm deploy:prod
 ```
+
+> **工作流程：** 修改代码 → `pnpm deploy:test` → 在测试环境验证 → 确认OK → `pnpm deploy:prod` → 客户使用正式环境
 
 ---
 
 ## 版本变动记录
+
+### v1.8.4（2026-04-01）
+
+**双环境部署：测试环境 + 正式环境分离**
+
+新增 Cloudflare Pages 测试项目 `jq-tools-factory-test`，实现开发预览与客户使用的环境分离：
+
+1. 测试环境：`jq-tools-factory-test.pages.dev`，每次修改先发布到这里验证
+2. 正式环境：`jq-tools-factory.pages.dev`，确认无误后才更新给客户
+3. 新增 `pnpm deploy:test` 和 `pnpm deploy:prod` 一键部署命令
+
+修改文件：`package.json`、`README.md`
 
 ### v1.8.3（2026-04-01）
 

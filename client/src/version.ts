@@ -43,7 +43,8 @@
  * v1.8.1  - 测试页面移除手形状可视化（HandMatrix），连接手套后统一使用标准16×16矩阵显示（SensorMatrix）
  * v1.8.2  - 三个页面（测试/一致性/耐久性）添加手掌布局/矩阵显示切换开关，连接手套(LH/RH)时用户可自由选择显示模式，偏好保存到localStorage
  * v1.8.3  - 切换按钮改为醒目的Tab切换样式，放在矩阵上方单独一行，图标放大至16px，选中项高亮显示
+ * v1.8.4  - 双环境部署：新增测试环境(jq-tools-factory-test)，添加deploy:test和deploy:prod一键部署命令
  */
-export const APP_VERSION = 'v1.8.3';
+export const APP_VERSION = 'v1.8.4';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-04-01';

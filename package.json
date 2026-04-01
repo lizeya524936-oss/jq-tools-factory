@@ -9,7 +9,9 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:test": "pnpm run build && npx wrangler pages deploy dist/public --project-name=jq-tools-factory-test --branch=main",
+    "deploy:prod": "pnpm run build && npx wrangler pages deploy dist/public --project-name=jq-tools-factory --branch=main"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
