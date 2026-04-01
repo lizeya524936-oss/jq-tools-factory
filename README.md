@@ -55,6 +55,19 @@ npx wrangler pages deploy dist/public --project-name jq-tools-factory --branch m
 
 ## 版本变动记录
 
+### v1.8.3（2026-04-01）
+
+**切换按钮改为醒目的 Tab 切换样式**
+
+v1.8.2 的切换按钮太小太淡，用户连接手套后难以发现。本版重新设计为并排的 Tab 切换样式：
+
+1. 两个选项（手掌布局 / 矩阵显示）并排显示在矩阵上方，占满宽度
+2. 当前选中项高亮显示（手掌布局=蓝色高亮，矩阵显示=绿色高亮），未选中项灰色
+3. 图标放大至 16px，文字放大至 text-sm，整体更容易点击
+4. 三个页面（测试/一致性/耐久性）统一采用相同样式
+
+修改文件：`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/DurabilityPage.tsx`、`client/src/version.ts`
+
 ### v1.8.2（2026-04-01）
 
 **三个页面添加手掌布局/矩阵显示切换开关**
