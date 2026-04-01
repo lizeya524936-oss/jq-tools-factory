@@ -494,19 +494,30 @@ export default function ConsistencyPage() {
         <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
           {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
           {handSide && (
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
               <button
-                onClick={toggleHandLayout}
-                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-all"
+                onClick={() => { if (!useHandLayout) toggleHandLayout(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.15)' : 'oklch(0.72 0.20 145 / 0.15)',
-                  border: `1px solid ${useHandLayout ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.72 0.20 145 / 0.3)'}`,
-                  color: useHandLayout ? 'oklch(0.58 0.22 265)' : 'oklch(0.72 0.20 145)',
+                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.25)' : 'transparent',
+                  border: useHandLayout ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid transparent',
+                  color: useHandLayout ? 'oklch(0.80 0.15 265)' : 'oklch(0.45 0.02 240)',
                 }}
-                title={useHandLayout ? '切换为矩阵显示' : '切换为手掌布局'}
               >
-                {useHandLayout ? <Hand size={12} /> : <Grid3x3 size={12} />}
-                <span>{useHandLayout ? '手掌布局' : '矩阵显示'}</span>
+                <Hand size={16} />
+                <span>手掌布局</span>
+              </button>
+              <button
+                onClick={() => { if (useHandLayout) toggleHandLayout(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
+                style={{
+                  background: !useHandLayout ? 'oklch(0.72 0.20 145 / 0.25)' : 'transparent',
+                  border: !useHandLayout ? '1px solid oklch(0.72 0.20 145 / 0.5)' : '1px solid transparent',
+                  color: !useHandLayout ? 'oklch(0.82 0.15 145)' : 'oklch(0.45 0.02 240)',
+                }}
+              >
+                <Grid3x3 size={16} />
+                <span>矩阵显示</span>
               </button>
             </div>
           )}

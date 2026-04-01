@@ -435,30 +435,41 @@ export default function TestPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-              {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
-              {handSide && (
-                <>
-                  <button
-                    onClick={toggleHandLayout}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded transition-all"
-                    style={{
-                      background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.15)' : 'oklch(0.72 0.20 145 / 0.15)',
-                      border: `1px solid ${useHandLayout ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.72 0.20 145 / 0.3)'}`,
-                      color: useHandLayout ? 'oklch(0.58 0.22 265)' : 'oklch(0.72 0.20 145)',
-                    }}
-                    title={useHandLayout ? '切换为矩阵显示' : '切换为手掌布局'}
-                  >
-                    {useHandLayout ? <Hand size={12} /> : <Grid3x3 size={12} />}
-                    <span>{useHandLayout ? '手掌布局' : '矩阵显示'}</span>
-                  </button>
-                  <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
-                </>
-              )}
               <span>矩阵: {matrixRows}×{matrixCols}</span>
               <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
               <span>已选: {selectedCount}</span>
             </div>
           </div>
+
+          {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
+          {handSide && (
+            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+              <button
+                onClick={() => { if (!useHandLayout) toggleHandLayout(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
+                style={{
+                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.25)' : 'transparent',
+                  border: useHandLayout ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid transparent',
+                  color: useHandLayout ? 'oklch(0.80 0.15 265)' : 'oklch(0.45 0.02 240)',
+                }}
+              >
+                <Hand size={16} />
+                <span>手掌布局</span>
+              </button>
+              <button
+                onClick={() => { if (useHandLayout) toggleHandLayout(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
+                style={{
+                  background: !useHandLayout ? 'oklch(0.72 0.20 145 / 0.25)' : 'transparent',
+                  border: !useHandLayout ? '1px solid oklch(0.72 0.20 145 / 0.5)' : '1px solid transparent',
+                  color: !useHandLayout ? 'oklch(0.82 0.15 145)' : 'oklch(0.45 0.02 240)',
+                }}
+              >
+                <Grid3x3 size={16} />
+                <span>矩阵显示</span>
+              </button>
+            </div>
+          )}
 
           {/* 矩阵尺寸调整 - 仅在矩阵模式下显示 */}
           {!showHandLayout && (
