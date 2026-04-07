@@ -199,18 +199,14 @@ export default function ConsistencyPage() {
       let collectionCount = 0;
       const targetSamples = params.productCount * params.samplesPerProduct;
 
-      // ===== 基于检测频率的自适应采集 =====
+      // ===== 纯事件驱动采集 =====
       const detectedFps = pipeline.getSensorFps();
-      const targetFps = detectedFps > 0 ? detectedFps : 50;
-      const sampleInterval = Math.max(Math.floor(1000 / targetFps), 5);
+      console.log(`[一致性采集] 事件驱动模式启动, 检测帧率: ${detectedFps}Hz, 目标: ${targetSamples}样本`);
       
-      console.log(`[一致性采集] 检测帧率: ${detectedFps}Hz, 采集间隔: ${sampleInterval}ms, 目标: ${targetSamples}样本`);
-      
-      let lastSensorSeq = pipeline.getSensorFrameSeq();
-      
-      const intervalId = setInterval(() => {
+      // 订阅传感器新帧事件，每收到一帧就记录一条数据
+      const unsub = pipeline.subscribeSensorFrame((_snapshot) => {
         if (collectionCount >= targetSamples) {
-          clearInterval(intervalId);
+          unsub();
           
           // 评估一致性
           const testResult = evaluateConsistency(
@@ -222,13 +218,9 @@ export default function ConsistencyPage() {
           );
           setResult(testResult);
           setIsRunning(false);
-          toast.success(`一致性检测完成，采集 ${collectionCount} 个数据点 @${targetFps}Hz`);
+          toast.success(`一致性检测完成，采集 ${collectionCount} 个数据点 @${detectedFps}Hz`);
           return;
         }
-        
-        const currentSeq = pipeline.getSensorFrameSeq();
-        if (currentSeq === lastSensorSeq) return; // 没有新帧，跳过
-        lastSensorSeq = currentSeq;
         
         const currentAdcValues = pipeline.getLatestAdcValues();
         const forceN = pipeline.getLatestForce();
@@ -260,11 +252,11 @@ export default function ConsistencyPage() {
           collectionCount++;
           setRecords([...newRecords]);
         }
-      }, sampleInterval);
+      });
 
       // 设置超时，防止无限采集
       setTimeout(() => {
-        clearInterval(intervalId);
+        unsub();
         if (collectionCount < targetSamples) {
           setIsRunning(false);
           toast.warning(`采集超时，仅采集 ${collectionCount} 个数据点`);

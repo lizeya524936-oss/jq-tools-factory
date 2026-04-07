@@ -65,6 +65,19 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.8.7（2026-04-07）
+
+**彻底改用纯事件驱动采集：抛弃 setInterval 定时器，采集频率 100% 匹配传感器实际发送频率**
+
+v1.8.6 的基于检测帧率的定时器方案在实际测试中仍然产生 10ms 间隔的重复数据。本版彻底抛弃 `setInterval` 轮询模式，改用纯事件驱动：
+
+1. **subscribeSensorFrame 订阅新帧事件**：采集时通过 `pipeline.subscribeSensorFrame()` 订阅传感器新帧事件，每当传感器有新数据到达时回调函数被触发，记录一条数据
+2. **零重复零丢失**：每收到一帧就记录一条，不会重复采样，也不会遗漏任何帧
+3. **完全自适应**：无论传感器发送频率是 12Hz、37Hz、73Hz 还是 200Hz，采集频率都自动匹配
+4. **停止采集时自动取消订阅**：通过 `unsubscribe()` 函数清理，无内存泄漏
+
+修改文件：`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/version.ts`
+
 ### v1.8.6（2026-04-07）
 
 **修复采集频率：基于检测帧率的定时器 + 帧序号去重，采集按钮不再强制要求压力计**

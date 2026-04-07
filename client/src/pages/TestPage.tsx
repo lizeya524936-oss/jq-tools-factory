@@ -112,22 +112,9 @@ export default function TestPage() {
   // 数据采集状态
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
-  const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
-  // ===== 使用 Ref 保存最新数据，避免 setInterval 闭包捕获旧值 =====
-  const latestForceNRef = useRef<number | null>(null);
-  const latestSensorMatrixRef = useRef<number[][] | null>(null);
-  
-  // 每次数据更新时同步到 Ref（这些 useEffect 在每次 render 后执行）
-  useEffect(() => {
-    latestForceNRef.current = latestForceN;
-  }, [latestForceN]);
-  
-  useEffect(() => {
-    if (latestSensorMatrix) {
-      latestSensorMatrixRef.current = latestSensorMatrix;
-    }
-  }, [latestSensorMatrix]);
+  // 事件驱动采集：使用 subscribeSensorFrame 取消订阅函数
+  const unsubSensorFrameRef = useRef<(() => void) | null>(null);
+  const isRecordingRef = useRef(false); // 用于在回调中判断是否正在采集
 
   // 更新矩阵尺寸并保存到 localStorage
   const handleMatrixSizeChange = (rows: number, cols: number) => {
@@ -238,32 +225,19 @@ export default function TestPage() {
     recordBufferRef.current = [];
     setRecordedData([]);
     setIsRecording(true);
+    isRecordingRef.current = true;
     
-    // 获取全局单例引用（零延迟，不经过 React State/Props/useEffect）
+    // 获取全局单例引用
     const dataPipeline = getRealtimeDataPipeline();
-    
-    // ===== 基于检测频率的自适应采集 =====
-    // 读取当前传感器帧率，计算采集间隔
     const detectedFps = dataPipeline.getSensorFps();
-    // 如果帧率未检测到（刚连接），使用 50Hz 作为默认值
-    const targetFps = detectedFps > 0 ? detectedFps : 50;
-    // 采集间隔 = 1000ms / 帧率，最小 5ms 防止过快
-    const sampleInterval = Math.max(Math.floor(1000 / targetFps), 5);
+    console.log(`[采集] 事件驱动模式启动, 当前检测帧率: ${detectedFps}Hz`);
     
-    console.log(`[采集] 检测帧率: ${detectedFps}Hz, 目标帧率: ${targetFps}Hz, 采集间隔: ${sampleInterval}ms`);
-    
-    // 使用帧序号去重：只有传感器有新帧时才记录数据
-    let lastSensorSeq = dataPipeline.getSensorFrameSeq();
-    
-    recordIntervalRef.current = setInterval(() => {
-      const currentSeq = dataPipeline.getSensorFrameSeq();
-      if (currentSeq === lastSensorSeq) {
-        // 没有新帧，跳过（避免重复采样）
-        return;
-      }
-      lastSensorSeq = currentSeq;
+    // ===== 纯事件驱动采集 =====
+    // 订阅传感器新帧事件，每收到一帧就记录一条数据
+    // 不使用 setInterval，完全由传感器数据到达事件触发
+    const unsub = dataPipeline.subscribeSensorFrame((_snapshot) => {
+      if (!isRecordingRef.current) return;
       
-      // 有新帧，采集数据
       const pressure = dataPipeline.getLatestForce();
       const currentAdcValues = dataPipeline.getLatestAdcValues();
       
@@ -272,15 +246,18 @@ export default function TestPage() {
         pressure,
         adcValues: currentAdcValues ? [...currentAdcValues] : [],
       });
-    }, sampleInterval);
+    });
+    
+    unsubSensorFrameRef.current = unsub;
   }, []);
 
   // 停止采集（停止后自动导出）
   const handleStopRecording = useCallback(() => {
-    // 停止定时器
-    if (recordIntervalRef.current) {
-      clearInterval(recordIntervalRef.current);
-      recordIntervalRef.current = null;
+    // 取消订阅传感器新帧事件
+    isRecordingRef.current = false;
+    if (unsubSensorFrameRef.current) {
+      unsubSensorFrameRef.current();
+      unsubSensorFrameRef.current = null;
     }
     setIsRecording(false);
     
@@ -300,8 +277,10 @@ export default function TestPage() {
   // 清理
   useEffect(() => {
     return () => {
-      if (recordIntervalRef.current) {
-        clearInterval(recordIntervalRef.current);
+      isRecordingRef.current = false;
+      if (unsubSensorFrameRef.current) {
+        unsubSensorFrameRef.current();
+        unsubSensorFrameRef.current = null;
       }
     };
   }, []);

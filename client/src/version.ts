@@ -46,7 +46,8 @@
  * v1.8.4  - 双环境部署：新增测试环境(jq-tools-factory-test)，添加deploy:test和deploy:prod一键部署命令
  * v1.8.5  - 自适应采样频率：自动检测传感器/压力计实际发送频率，采集改为新帧事件驱动（每帧只采集一次），底部状态栏和测试页显示实时帧率
  * v1.8.6  - 修复采集频率：改为基于检测帧率的定时器+帧序号去重，确保采集频率精确匹配传感器上报频率；采集按钮不再强制要求连接压力计
+ * v1.8.7  - 彻底改用纯事件驱动采集：抛弃setInterval定时器，改用subscribeSensorFrame订阅新帧事件，每收到一帧传感器数据就记录一条，采集频率100%匹配传感器实际发送频率
  */
-export const APP_VERSION = 'v1.8.6';
+export const APP_VERSION = 'v1.8.7';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-04-07';
