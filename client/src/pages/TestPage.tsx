@@ -16,7 +16,6 @@ import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 import PressureChart from '@/components/PressureChart';
 import { useSerialData } from './Home';
-import { getSensorDataStreamV2 } from '@/lib/sensorDataStreamV2';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
 import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download, Hand, Grid3x3 } from 'lucide-react';
@@ -114,7 +113,6 @@ export default function TestPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
   const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const unsubSensorFrameRef = useRef<(() => void) | null>(null);
   
   // ===== 使用 Ref 保存最新数据，避免 setInterval 闭包捕获旧值 =====
   const latestForceNRef = useRef<number | null>(null);
@@ -242,46 +240,47 @@ export default function TestPage() {
     setIsRecording(true);
     
     // 获取全局单例引用（零延迟，不经过 React State/Props/useEffect）
-    const sensorStream = getSensorDataStreamV2();
     const dataPipeline = getRealtimeDataPipeline();
     
-    // ===== 自适应采样：订阅传感器新帧事件，每帧只采集一次，避免重复采样 =====
+    // ===== 基于检测频率的自适应采集 =====
+    // 读取当前传感器帧率，计算采集间隔
+    const detectedFps = dataPipeline.getSensorFps();
+    // 如果帧率未检测到（刚连接），使用 50Hz 作为默认值
+    const targetFps = detectedFps > 0 ? detectedFps : 50;
+    // 采集间隔 = 1000ms / 帧率，最小 5ms 防止过快
+    const sampleInterval = Math.max(Math.floor(1000 / targetFps), 5);
+    
+    console.log(`[采集] 检测帧率: ${detectedFps}Hz, 目标帧率: ${targetFps}Hz, 采集间隔: ${sampleInterval}ms`);
+    
+    // 使用帧序号去重：只有传感器有新帧时才记录数据
     let lastSensorSeq = dataPipeline.getSensorFrameSeq();
     
-    // 方案A：订阅传感器新帧回调（主要采集通道）
-    unsubSensorFrameRef.current = dataPipeline.subscribeSensorFrame((snapshot) => {
-      const pressure = dataPipeline.getLatestForce();
-      const currentAdcValues = snapshot.adcValues ? [...snapshot.adcValues] : [];
-      
-      recordBufferRef.current.push({
-        timestamp: Date.now(),
-        pressure,
-        adcValues: currentAdcValues,
-      });
-    });
-    
-    // 方案B（备用）：如果传感器帧率极低或无帧事件，用低频轮询保底
     recordIntervalRef.current = setInterval(() => {
       const currentSeq = dataPipeline.getSensorFrameSeq();
       if (currentSeq === lastSensorSeq) {
         // 没有新帧，跳过（避免重复采样）
         return;
       }
-      // 如果订阅回调已经处理了，这里不会重复（因为 seq 已更新）
       lastSensorSeq = currentSeq;
-    }, 200); // 200ms 低频保底检查
+      
+      // 有新帧，采集数据
+      const pressure = dataPipeline.getLatestForce();
+      const currentAdcValues = dataPipeline.getLatestAdcValues();
+      
+      recordBufferRef.current.push({
+        timestamp: Date.now(),
+        pressure,
+        adcValues: currentAdcValues ? [...currentAdcValues] : [],
+      });
+    }, sampleInterval);
   }, []);
 
   // 停止采集（停止后自动导出）
   const handleStopRecording = useCallback(() => {
-    // 停止定时器和取消订阅
+    // 停止定时器
     if (recordIntervalRef.current) {
       clearInterval(recordIntervalRef.current);
       recordIntervalRef.current = null;
-    }
-    if (unsubSensorFrameRef.current) {
-      unsubSensorFrameRef.current();
-      unsubSensorFrameRef.current = null;
     }
     setIsRecording(false);
     
@@ -304,9 +303,6 @@ export default function TestPage() {
       if (recordIntervalRef.current) {
         clearInterval(recordIntervalRef.current);
       }
-      if (unsubSensorFrameRef.current) {
-        unsubSensorFrameRef.current();
-      }
     };
   }, []);
 
@@ -321,12 +317,12 @@ export default function TestPage() {
         {!isRecording ? (
           <button
             onClick={handleStartRecording}
-            disabled={!isForceConnected || !isSensorConnected}
+            disabled={!isSensorConnected}
             className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors disabled:opacity-50"
             style={{
-              background: (isForceConnected && isSensorConnected) ? 'oklch(0.72 0.20 145 / 0.15)' : 'oklch(0.20 0.025 265)',
-              border: `1px solid ${(isForceConnected && isSensorConnected) ? 'oklch(0.72 0.20 145 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
-              color: (isForceConnected && isSensorConnected) ? 'oklch(0.72 0.20 145)' : 'oklch(0.45 0.02 240)',
+              background: isSensorConnected ? 'oklch(0.72 0.20 145 / 0.15)' : 'oklch(0.20 0.025 265)',
+              border: `1px solid ${isSensorConnected ? 'oklch(0.72 0.20 145 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
+              color: isSensorConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.45 0.02 240)',
             }}
             title="开始采集数据"
           >
@@ -379,7 +375,7 @@ export default function TestPage() {
           )}
           {isRecording && (
             <span className="text-xs font-mono px-2 py-1 rounded animate-pulse" style={{ background: 'oklch(0.65 0.22 25 / 0.15)', color: 'oklch(0.65 0.22 25)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}>
-              自适应采集中… {recordBufferRef.current.length} 帧
+              采集中 @{sensorFps || '?'}Hz… {recordBufferRef.current.length} 帧
             </span>
           )}
           {recordCount > 0 && !isRecording && (

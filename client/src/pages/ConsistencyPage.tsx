@@ -199,46 +199,18 @@ export default function ConsistencyPage() {
       let collectionCount = 0;
       const targetSamples = params.productCount * params.samplesPerProduct;
 
-      // ===== 自适应采样：订阅传感器新帧事件，每帧只采集一次 =====
-      const unsubscribe = pipeline.subscribeSensorFrame((snapshot) => {
-        if (collectionCount >= targetSamples) return;
-        
-        const currentAdcValues = snapshot.adcValues;
-        
-        // 只有当同时有压力和传感器数据时才记录
-        if (snapshot.forceN !== null && currentAdcValues && currentAdcValues.length > 0) {
-          let adcValues: number[];
-          if (showHandLayout && handIndicesSnapshot.length > 0) {
-            // 手掌布局模式：按数组编号取值（编号从1开始，数组索引从0开始）
-            adcValues = handIndicesSnapshot.map(idx => currentAdcValues![idx - 1] ?? 0);
-          } else {
-            // 普通矩阵模式：按行列坐标取值
-            adcValues = selectedSensors.map(sensor => 
-              currentAdcValues![sensor.row * matrixCols + sensor.col] ?? 0
-            );
-          }
-          const adcSum = adcValues.reduce((a, b) => a + b, 0);
-          
-          const record: DataRecord = {
-            id: `record-${collectionCount}`,
-            timestamp: snapshot.timestamp || Date.now(),
-            time: new Date(snapshot.timestamp || Date.now()).toLocaleTimeString(),
-            pressure: snapshot.forceN || 0,
-            adcValues: adcValues,
-            adcSum: adcSum,
-            adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
-            testMode: 'consistency',
-            sampleIndex: collectionCount,
-            productIndex: Math.floor(collectionCount / params.samplesPerProduct),
-          };
-          newRecords.push(record);
-          collectionCount++;
-          setRecords([...newRecords]); // 实时更新显示
-        }
-
-        // 采集足够的数据后停止
+      // ===== 基于检测频率的自适应采集 =====
+      const detectedFps = pipeline.getSensorFps();
+      const targetFps = detectedFps > 0 ? detectedFps : 50;
+      const sampleInterval = Math.max(Math.floor(1000 / targetFps), 5);
+      
+      console.log(`[一致性采集] 检测帧率: ${detectedFps}Hz, 采集间隔: ${sampleInterval}ms, 目标: ${targetSamples}样本`);
+      
+      let lastSensorSeq = pipeline.getSensorFrameSeq();
+      
+      const intervalId = setInterval(() => {
         if (collectionCount >= targetSamples) {
-          unsubscribe();
+          clearInterval(intervalId);
           
           // 评估一致性
           const testResult = evaluateConsistency(
@@ -250,13 +222,49 @@ export default function ConsistencyPage() {
           );
           setResult(testResult);
           setIsRunning(false);
-          toast.success(`一致性检测完成，自适应采集 ${collectionCount} 个数据点`);
+          toast.success(`一致性检测完成，采集 ${collectionCount} 个数据点 @${targetFps}Hz`);
+          return;
         }
-      });
+        
+        const currentSeq = pipeline.getSensorFrameSeq();
+        if (currentSeq === lastSensorSeq) return; // 没有新帧，跳过
+        lastSensorSeq = currentSeq;
+        
+        const currentAdcValues = pipeline.getLatestAdcValues();
+        const forceN = pipeline.getLatestForce();
+        
+        if (currentAdcValues && currentAdcValues.length > 0) {
+          let adcValues: number[];
+          if (showHandLayout && handIndicesSnapshot.length > 0) {
+            adcValues = handIndicesSnapshot.map(idx => currentAdcValues[idx - 1] ?? 0);
+          } else {
+            adcValues = selectedSensors.map(sensor => 
+              currentAdcValues[sensor.row * matrixCols + sensor.col] ?? 0
+            );
+          }
+          const adcSum = adcValues.reduce((a, b) => a + b, 0);
+          
+          const record: DataRecord = {
+            id: `record-${collectionCount}`,
+            timestamp: Date.now(),
+            time: new Date().toLocaleTimeString(),
+            pressure: forceN ?? 0,
+            adcValues: adcValues,
+            adcSum: adcSum,
+            adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+            testMode: 'consistency',
+            sampleIndex: collectionCount,
+            productIndex: Math.floor(collectionCount / params.samplesPerProduct),
+          };
+          newRecords.push(record);
+          collectionCount++;
+          setRecords([...newRecords]);
+        }
+      }, sampleInterval);
 
       // 设置超时，防止无限采集
       setTimeout(() => {
-        unsubscribe();
+        clearInterval(intervalId);
         if (collectionCount < targetSamples) {
           setIsRunning(false);
           toast.warning(`采集超时，仅采集 ${collectionCount} 个数据点`);
