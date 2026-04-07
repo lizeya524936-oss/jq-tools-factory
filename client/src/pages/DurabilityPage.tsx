@@ -87,7 +87,7 @@ export default function DurabilityPage() {
   const [progress, setProgress] = useState(0);
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, forceDeviceMode, sensorMatrixSize } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, forceDeviceMode, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
 
   // ─── HandMatrix 选点状态 ───
   const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {

@@ -65,7 +65,7 @@ export default function RepeatabilityPage() {
   const [activeView, setActiveView] = useState<'timeline' | 'scatter' | 'table'>('timeline');
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorMatrixSize } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
 
   // 实时将串口ADC数据按行列坐标精确注入传感器矩阵
   useEffect(() => {

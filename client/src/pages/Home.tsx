@@ -46,6 +46,10 @@ export interface SerialDataContext {
   sensorProtocol?: SensorProtocol;
   /** 当前传感器矩阵尺寸 */
   sensorMatrixSize?: number;
+  /** 传感器实时帧率 (Hz) */
+  sensorFps?: number;
+  /** 压力计实时帧率 (Hz) */
+  forceFps?: number;
 }
 
 export const SerialCtx = createContext<SerialDataContext>({
@@ -60,6 +64,8 @@ export const SerialCtx = createContext<SerialDataContext>({
   forceDeviceMode: null,
   sensorProtocol: '16x16' as SensorProtocol,
   sensorMatrixSize: 16,
+  sensorFps: 0,
+  forceFps: 0,
 });
 
 export function useSerialData() {
@@ -104,6 +110,8 @@ export default function Home() {
   const [forceDeviceMode, setForceDeviceMode] = useState<'pressure' | 'robot' | null>(null);
   const [sensorProtocol, setSensorProtocol] = useState<SensorProtocol>('16x16');
   const sensorMatrixSize = sensorProtocol === '32x32' ? 32 : 16;
+  const [sensorFps, setSensorFps] = useState<number>(0);
+  const [forceFps, setForceFps] = useState<number>(0);
   
   // 使用 Ref 来存储最新的传感器数据，避免不必要的重新渲染
   const latestAdcValuesRef = useRef<number[] | null>(null);
@@ -143,6 +151,10 @@ export default function Home() {
         setLatestRawFrame(pendingRawRef.current);
         pendingRawRef.current = null;
       }
+      // 帧率更新（每次 UI 刷新时从 pipeline 读取）
+      const pipeline = getRealtimeDataPipeline();
+      setSensorFps(pipeline.getSensorFps());
+      setForceFps(pipeline.getForceFps());
     }, 100); // 100ms UI刷新率，人眼无感知，但大幅减少主线程占用
     
     return () => {
@@ -269,7 +281,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize, sensorFps, forceFps }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}
@@ -467,6 +479,14 @@ export default function Home() {
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               传感器: {isSensorConnected ? `${sensorSerial.state.portInfo} @ ${sensorSerial.state.baudRate}${sensorDeviceType ? ` · ${sensorDeviceType}` : ''}` : '未连接'}
             </span>
+            {(isForceConnected || isSensorConnected) && (
+              <>
+                <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
+                <span style={{ color: 'oklch(0.58 0.18 200)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                  {isForceConnected && `F:${forceFps}Hz`}{isForceConnected && isSensorConnected && ' '}{isSensorConnected && `S:${sensorFps}Hz`}
+                </span>
+              </>
+            )}
             <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
             <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               {currentTime.toLocaleString('zh-CN', { hour12: false })}

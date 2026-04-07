@@ -65,6 +65,19 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.8.5（2026-04-07）
+
+**自适应采样频率：自动检测传感器实际发送频率，采集改为新帧事件驱动**
+
+之前采集逻辑使用固定 10ms 定时器轮询，对于 12Hz 等低频传感器会产生大量重复采样。本版改为自适应模式：
+
+1. **帧率自动检测**：RealtimeDataPipeline 统计传感器和压力计的实际帧间隔，计算实时 Hz
+2. **新帧事件驱动采集**：采集改为订阅传感器新帧回调（subscribeSensorFrame），每帧只采集一次，避免重复采样
+3. **帧率显示**：底部状态栏显示 `F:xxxHz S:xxxHz`，测试页采集按钮旁显示实时帧率标签
+4. **兼容所有频率**：无论传感器是 12Hz、50Hz 还是 200Hz，都能精确采集每一帧数据
+
+修改文件：`client/src/lib/realtimeDataPipeline.ts`、`client/src/pages/Home.tsx`、`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/pages/DurabilityPage.tsx`、`client/src/pages/RepeatabilityPage.tsx`、`client/src/version.ts`
+
 ### v1.8.4（2026-04-01）
 
 **双环境部署：测试环境 + 正式环境分离**

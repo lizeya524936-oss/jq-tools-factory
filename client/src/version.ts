@@ -44,7 +44,8 @@
  * v1.8.2  - 三个页面（测试/一致性/耐久性）添加手掌布局/矩阵显示切换开关，连接手套(LH/RH)时用户可自由选择显示模式，偏好保存到localStorage
  * v1.8.3  - 切换按钮改为醒目的Tab切换样式，放在矩阵上方单独一行，图标放大至16px，选中项高亮显示
  * v1.8.4  - 双环境部署：新增测试环境(jq-tools-factory-test)，添加deploy:test和deploy:prod一键部署命令
+ * v1.8.5  - 自适应采样频率：自动检测传感器/压力计实际发送频率，采集改为新帧事件驱动（每帧只采集一次），底部状态栏和测试页显示实时帧率
  */
-export const APP_VERSION = 'v1.8.4';
+export const APP_VERSION = 'v1.8.5';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-04-01';
+export const BUILD_DATE = '2026-04-07';

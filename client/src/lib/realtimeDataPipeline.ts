@@ -6,9 +6,7 @@
  * 2. 使用 Ref 和回调直接处理数据流
  * 3. 只在必要时（如数据采集、导出）才访问数据
  * 4. 支持多个订阅者，但不阻塞数据流
- * 
- * 数据流：
- * 串口 → useSerialPort → RealtimeDataPipeline → 订阅者（采集、显示、导出）
+ * 5. v1.8.5: 自适应帧率检测 — 自动统计传感器和压力计的实际发送频率
  */
 
 export interface DataSnapshot {
@@ -20,6 +18,80 @@ export interface DataSnapshot {
 
 export interface DataSubscriber {
   onData: (snapshot: DataSnapshot) => void;
+}
+
+/**
+ * 帧率统计器 — 通过滑动窗口计算实际帧率
+ */
+class FrameRateTracker {
+  private timestamps: number[] = [];
+  private windowSize: number; // 滑动窗口大小（帧数）
+  private _fps: number = 0;
+  private _frameInterval: number = 0; // 帧间隔（ms）
+  private lastUpdateTime: number = 0;
+  private recalcInterval: number = 500; // 每500ms重新计算一次帧率
+
+  constructor(windowSize: number = 30) {
+    this.windowSize = windowSize;
+  }
+
+  /** 记录一帧到达 */
+  tick(): void {
+    const now = performance.now();
+    this.timestamps.push(now);
+
+    // 保持窗口大小
+    while (this.timestamps.length > this.windowSize) {
+      this.timestamps.shift();
+    }
+
+    // 每 recalcInterval 重新计算帧率，避免每帧都计算
+    if (now - this.lastUpdateTime >= this.recalcInterval) {
+      this.recalculate();
+      this.lastUpdateTime = now;
+    }
+  }
+
+  /** 重新计算帧率 */
+  private recalculate(): void {
+    if (this.timestamps.length < 2) {
+      this._fps = 0;
+      this._frameInterval = 0;
+      return;
+    }
+
+    const first = this.timestamps[0];
+    const last = this.timestamps[this.timestamps.length - 1];
+    const elapsed = last - first; // ms
+
+    if (elapsed <= 0) {
+      this._fps = 0;
+      this._frameInterval = 0;
+      return;
+    }
+
+    const frameCount = this.timestamps.length - 1;
+    this._fps = Math.round((frameCount / elapsed) * 1000 * 10) / 10; // 保留1位小数
+    this._frameInterval = Math.round(elapsed / frameCount); // ms
+  }
+
+  /** 获取当前帧率 (Hz) */
+  get fps(): number {
+    return this._fps;
+  }
+
+  /** 获取帧间隔 (ms) */
+  get frameInterval(): number {
+    return this._frameInterval;
+  }
+
+  /** 重置统计 */
+  reset(): void {
+    this.timestamps = [];
+    this._fps = 0;
+    this._frameInterval = 0;
+    this.lastUpdateTime = 0;
+  }
 }
 
 class RealtimeDataPipeline {
@@ -35,6 +107,17 @@ class RealtimeDataPipeline {
   private lastUpdateTime: number = 0;
   private updateCount: number = 0;
 
+  // ===== 帧率统计 =====
+  private sensorFrameRate = new FrameRateTracker(60);
+  private forceFrameRate = new FrameRateTracker(60);
+
+  // ===== 新帧通知（用于自适应采集） =====
+  private sensorFrameCallbacks: Set<(snapshot: DataSnapshot) => void> = new Set();
+  private forceFrameCallbacks: Set<(forceN: number) => void> = new Set();
+
+  // ===== 传感器帧序号（用于去重） =====
+  private sensorFrameSeq: number = 0;
+
   /**
    * 更新压力数据
    * 直接更新，不触发 React 重新渲染
@@ -43,6 +126,8 @@ class RealtimeDataPipeline {
     this.currentData.forceN = forceN;
     this.currentData.timestamp = Date.now();
     this.updateCount++;
+    this.forceFrameRate.tick();
+
     // 直接通知专用的 force 回调（零开销，不创建 snapshot 对象）
     this.forceCallbacks.forEach(cb => {
       try {
@@ -51,6 +136,16 @@ class RealtimeDataPipeline {
         console.error('Force callback error:', error);
       }
     });
+
+    // 通知新帧回调（自适应采集用）
+    this.forceFrameCallbacks.forEach(cb => {
+      try {
+        cb(forceN);
+      } catch (error) {
+        console.error('Force frame callback error:', error);
+      }
+    });
+
     this.notifySubscribers();
   }
 
@@ -63,6 +158,19 @@ class RealtimeDataPipeline {
     this.currentData.adcValues = matrix.flat();
     this.currentData.timestamp = Date.now();
     this.updateCount++;
+    this.sensorFrameSeq++;
+    this.sensorFrameRate.tick();
+
+    // 通知新帧回调（自适应采集用）
+    const snapshot = { ...this.currentData };
+    this.sensorFrameCallbacks.forEach(cb => {
+      try {
+        cb(snapshot);
+      } catch (error) {
+        console.error('Sensor frame callback error:', error);
+      }
+    });
+
     this.notifySubscribers();
   }
 
@@ -73,6 +181,19 @@ class RealtimeDataPipeline {
     this.currentData.adcValues = adcValues;
     this.currentData.timestamp = Date.now();
     this.updateCount++;
+    this.sensorFrameSeq++;
+    this.sensorFrameRate.tick();
+
+    // 通知新帧回调
+    const snapshot = { ...this.currentData };
+    this.sensorFrameCallbacks.forEach(cb => {
+      try {
+        cb(snapshot);
+      } catch (error) {
+        console.error('Sensor frame callback error:', error);
+      }
+    });
+
     this.notifySubscribers();
   }
 
@@ -106,6 +227,37 @@ class RealtimeDataPipeline {
   }
 
   /**
+   * 获取传感器帧序号（用于去重判断）
+   */
+  getSensorFrameSeq(): number {
+    return this.sensorFrameSeq;
+  }
+
+  // ===== 帧率查询接口 =====
+
+  /** 获取传感器帧率 (Hz) */
+  getSensorFps(): number {
+    return this.sensorFrameRate.fps;
+  }
+
+  /** 获取传感器帧间隔 (ms) */
+  getSensorFrameInterval(): number {
+    return this.sensorFrameRate.frameInterval;
+  }
+
+  /** 获取压力计帧率 (Hz) */
+  getForceFps(): number {
+    return this.forceFrameRate.fps;
+  }
+
+  /** 获取压力计帧间隔 (ms) */
+  getForceFrameInterval(): number {
+    return this.forceFrameRate.frameInterval;
+  }
+
+  // ===== 订阅接口 =====
+
+  /**
    * 订阅数据更新
    * 返回取消订阅函数
    */
@@ -125,6 +277,30 @@ class RealtimeDataPipeline {
     this.forceCallbacks.add(callback);
     return () => {
       this.forceCallbacks.delete(callback);
+    };
+  }
+
+  /**
+   * 订阅传感器新帧到达（自适应采集用）
+   * 每当传感器有新帧数据时触发，频率等于传感器实际发送频率
+   * 返回取消订阅函数
+   */
+  subscribeSensorFrame(callback: (snapshot: DataSnapshot) => void): () => void {
+    this.sensorFrameCallbacks.add(callback);
+    return () => {
+      this.sensorFrameCallbacks.delete(callback);
+    };
+  }
+
+  /**
+   * 订阅压力计新帧到达（自适应采集用）
+   * 每当压力计有新数据时触发
+   * 返回取消订阅函数
+   */
+  subscribeForceFrame(callback: (forceN: number) => void): () => void {
+    this.forceFrameCallbacks.add(callback);
+    return () => {
+      this.forceFrameCallbacks.delete(callback);
     };
   }
 
@@ -150,11 +326,19 @@ class RealtimeDataPipeline {
     updateCount: number;
     lastUpdateTime: number;
     subscriberCount: number;
+    sensorFps: number;
+    forceFps: number;
+    sensorFrameInterval: number;
+    forceFrameInterval: number;
   } {
     return {
       updateCount: this.updateCount,
       lastUpdateTime: this.lastUpdateTime,
       subscriberCount: this.subscribers.size,
+      sensorFps: this.sensorFrameRate.fps,
+      forceFps: this.forceFrameRate.fps,
+      sensorFrameInterval: this.sensorFrameRate.frameInterval,
+      forceFrameInterval: this.forceFrameRate.frameInterval,
     };
   }
 
@@ -164,6 +348,8 @@ class RealtimeDataPipeline {
   resetStats(): void {
     this.updateCount = 0;
     this.lastUpdateTime = 0;
+    this.sensorFrameRate.reset();
+    this.forceFrameRate.reset();
   }
 
   /**
@@ -177,6 +363,11 @@ class RealtimeDataPipeline {
       adcValues: null,
     };
     this.subscribers.clear();
+    this.sensorFrameCallbacks.clear();
+    this.forceFrameCallbacks.clear();
+    this.sensorFrameRate.reset();
+    this.forceFrameRate.reset();
+    this.sensorFrameSeq = 0;
   }
 }
 

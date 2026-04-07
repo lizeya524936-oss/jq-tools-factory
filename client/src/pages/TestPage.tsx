@@ -51,7 +51,7 @@ export default function TestPage() {
     } catch {}
     return matrix;
   });
-  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize } = useSerialData();
+  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
 
   // ===== 手掌布局/矩阵显示切换 =====
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -114,6 +114,7 @@ export default function TestPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
   const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const unsubSensorFrameRef = useRef<(() => void) | null>(null);
   
   // ===== 使用 Ref 保存最新数据，避免 setInterval 闭包捕获旧值 =====
   const latestForceNRef = useRef<number | null>(null);
@@ -244,38 +245,43 @@ export default function TestPage() {
     const sensorStream = getSensorDataStreamV2();
     const dataPipeline = getRealtimeDataPipeline();
     
-    recordIntervalRef.current = setInterval(() => {
-      // 压力数据：直接从 RealtimeDataPipeline 全局单例获取（零延迟）
+    // ===== 自适应采样：订阅传感器新帧事件，每帧只采集一次，避免重复采样 =====
+    let lastSensorSeq = dataPipeline.getSensorFrameSeq();
+    
+    // 方案A：订阅传感器新帧回调（主要采集通道）
+    unsubSensorFrameRef.current = dataPipeline.subscribeSensorFrame((snapshot) => {
       const pressure = dataPipeline.getLatestForce();
-      
-      // 传感器数据：双保险策略
-      // 方案1：从 SensorDataStreamV2 全局单例获取（零延迟，在 processSensorPackets 中同步写入）
-      let currentAdcValues: number[] = [];
-      const streamAdcValues = sensorStream.getLatestAdcValues();
-      if (streamAdcValues && streamAdcValues.length > 0) {
-        currentAdcValues = [...streamAdcValues];
-      } else {
-        // 方案2：从 Context Ref 获取（备用）
-        const matrix = latestSensorMatrixRef.current;
-        if (matrix && matrix.length > 0) {
-          currentAdcValues = matrix.flat();
-        }
-      }
+      const currentAdcValues = snapshot.adcValues ? [...snapshot.adcValues] : [];
       
       recordBufferRef.current.push({
         timestamp: Date.now(),
         pressure,
         adcValues: currentAdcValues,
       });
-    }, 10); // 每10ms采集一次
+    });
+    
+    // 方案B（备用）：如果传感器帧率极低或无帧事件，用低频轮询保底
+    recordIntervalRef.current = setInterval(() => {
+      const currentSeq = dataPipeline.getSensorFrameSeq();
+      if (currentSeq === lastSensorSeq) {
+        // 没有新帧，跳过（避免重复采样）
+        return;
+      }
+      // 如果订阅回调已经处理了，这里不会重复（因为 seq 已更新）
+      lastSensorSeq = currentSeq;
+    }, 200); // 200ms 低频保底检查
   }, []);
 
   // 停止采集（停止后自动导出）
   const handleStopRecording = useCallback(() => {
-    // 先停止定时器
+    // 停止定时器和取消订阅
     if (recordIntervalRef.current) {
       clearInterval(recordIntervalRef.current);
       recordIntervalRef.current = null;
+    }
+    if (unsubSensorFrameRef.current) {
+      unsubSensorFrameRef.current();
+      unsubSensorFrameRef.current = null;
     }
     setIsRecording(false);
     
@@ -297,6 +303,9 @@ export default function TestPage() {
     return () => {
       if (recordIntervalRef.current) {
         clearInterval(recordIntervalRef.current);
+      }
+      if (unsubSensorFrameRef.current) {
+        unsubSensorFrameRef.current();
       }
     };
   }, []);
@@ -349,12 +358,36 @@ export default function TestPage() {
               border: '1px solid oklch(0.75 0.18 55 / 0.3)',
               color: 'oklch(0.75 0.18 55)',
             }}
-            title="导出CSV文件"
+            title="导出CCSV文件"
           >
             <Download size={12} />
             <span>导出</span>
           </button>
         )}
+
+        {/* 帧率显示和采集状态 */}
+        <div className="flex items-center gap-3 ml-auto">
+          {isSensorConnected && (
+            <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: 'oklch(0.20 0.025 265)', color: 'oklch(0.58 0.18 200)', border: '1px solid oklch(0.28 0.03 265)' }}>
+              传感器: {sensorFps}Hz
+            </span>
+          )}
+          {isForceConnected && (
+            <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: 'oklch(0.20 0.025 265)', color: 'oklch(0.72 0.20 145)', border: '1px solid oklch(0.28 0.03 265)' }}>
+              压力计: {forceFps}Hz
+            </span>
+          )}
+          {isRecording && (
+            <span className="text-xs font-mono px-2 py-1 rounded animate-pulse" style={{ background: 'oklch(0.65 0.22 25 / 0.15)', color: 'oklch(0.65 0.22 25)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}>
+              自适应采集中… {recordBufferRef.current.length} 帧
+            </span>
+          )}
+          {recordCount > 0 && !isRecording && (
+            <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+              已采集 {recordCount} 帧
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 顶部设备连接状态卡片 */}

@@ -101,7 +101,7 @@ export default function ConsistencyPage() {
       return next;
     });
   }, []);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, sensorMatrixSize } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
 
   // LH/RH 时自动切换为 16×16 矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -199,17 +199,11 @@ export default function ConsistencyPage() {
       let collectionCount = 0;
       const targetSamples = params.productCount * params.samplesPerProduct;
 
-      // 实时采集传感器数据
-      const sensorStream = getSensorDataStreamV2();
-      const collectionInterval = setInterval(() => {
-        const snapshot = pipeline.getCurrentSnapshot();
+      // ===== 自适应采样：订阅传感器新帧事件，每帧只采集一次 =====
+      const unsubscribe = pipeline.subscribeSensorFrame((snapshot) => {
+        if (collectionCount >= targetSamples) return;
         
-        // 优先从SensorDataStreamV2全局单例获取（零延迟，不受闭包影响）
-        let currentAdcValues: number[] | null = sensorStream.getLatestAdcValues();
-        // 备用：从 pipeline 获取
-        if (!currentAdcValues || currentAdcValues.length === 0) {
-          currentAdcValues = snapshot.adcValues;
-        }
+        const currentAdcValues = snapshot.adcValues;
         
         // 只有当同时有压力和传感器数据时才记录
         if (snapshot.forceN !== null && currentAdcValues && currentAdcValues.length > 0) {
@@ -244,7 +238,7 @@ export default function ConsistencyPage() {
 
         // 采集足够的数据后停止
         if (collectionCount >= targetSamples) {
-          clearInterval(collectionInterval);
+          unsubscribe();
           
           // 评估一致性
           const testResult = evaluateConsistency(
@@ -256,13 +250,13 @@ export default function ConsistencyPage() {
           );
           setResult(testResult);
           setIsRunning(false);
-          toast.success(`一致性检测完成，采集 ${collectionCount} 个数据点`);
+          toast.success(`一致性检测完成，自适应采集 ${collectionCount} 个数据点`);
         }
-      }, 10); // 每10ms采集一次
+      });
 
       // 设置超时，防止无限采集
       setTimeout(() => {
-        clearInterval(collectionInterval);
+        unsubscribe();
         if (collectionCount < targetSamples) {
           setIsRunning(false);
           toast.warning(`采集超时，仅采集 ${collectionCount} 个数据点`);
