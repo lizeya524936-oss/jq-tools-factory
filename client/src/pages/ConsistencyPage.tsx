@@ -199,11 +199,15 @@ export default function ConsistencyPage() {
       let collectionCount = 0;
       const targetSamples = params.productCount * params.samplesPerProduct;
 
-      // ===== 纯事件驱动采集 =====
+      // ===== 纯事件驱动采集（v1.8.8: pipeline 层已做帧去重） =====
       const detectedFps = pipeline.getSensorFps();
-      console.log(`[一致性采集] 事件驱动模式启动, 检测帧率: ${detectedFps}Hz, 目标: ${targetSamples}样本`);
+      console.log(`[一致性采集] 事件驱动模式启动(v1.8.8帧去重), 检测帧率: ${detectedFps}Hz, 目标: ${targetSamples}样本`);
       
-      // 订阅传感器新帧事件，每收到一帧就记录一条数据
+      // 采集频率统计
+      let collectCount = 0;
+      let collectStartTime = performance.now();
+      
+      // 订阅传感器新帧事件（只在数据真正变化时触发，不会收到重复帧）
       const unsub = pipeline.subscribeSensorFrame((_snapshot) => {
         if (collectionCount >= targetSamples) {
           unsub();
@@ -251,6 +255,16 @@ export default function ConsistencyPage() {
           newRecords.push(record);
           collectionCount++;
           setRecords([...newRecords]);
+          
+          // 每2秒输出一次采集频率统计
+          collectCount++;
+          const elapsed = performance.now() - collectStartTime;
+          if (elapsed >= 2000) {
+            const actualHz = Math.round((collectCount / elapsed) * 1000 * 10) / 10;
+            console.log(`[一致性采集统计] ${collectCount}帧/2s, 实际采集频率: ${actualHz}Hz, 已采集: ${collectionCount}/${targetSamples}`);
+            collectCount = 0;
+            collectStartTime = performance.now();
+          }
         }
       });
 

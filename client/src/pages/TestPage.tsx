@@ -230,11 +230,14 @@ export default function TestPage() {
     // 获取全局单例引用
     const dataPipeline = getRealtimeDataPipeline();
     const detectedFps = dataPipeline.getSensorFps();
-    console.log(`[采集] 事件驱动模式启动, 当前检测帧率: ${detectedFps}Hz`);
+    console.log(`[采集] 事件驱动模式启动(v1.8.8帧去重), 当前检测帧率: ${detectedFps}Hz`);
     
-    // ===== 纯事件驱动采集 =====
-    // 订阅传感器新帧事件，每收到一帧就记录一条数据
-    // 不使用 setInterval，完全由传感器数据到达事件触发
+    // 采集频率统计
+    let collectCount = 0;
+    let collectStartTime = performance.now();
+    
+    // ===== 纯事件驱动采集（v1.8.8: pipeline 层已做帧去重，此处只记录新帧） =====
+    // subscribeSensorFrame 只在数据真正变化时触发，不会收到重复帧
     const unsub = dataPipeline.subscribeSensorFrame((_snapshot) => {
       if (!isRecordingRef.current) return;
       
@@ -246,6 +249,16 @@ export default function TestPage() {
         pressure,
         adcValues: currentAdcValues ? [...currentAdcValues] : [],
       });
+      
+      // 每2秒输出一次采集频率统计
+      collectCount++;
+      const elapsed = performance.now() - collectStartTime;
+      if (elapsed >= 2000) {
+        const actualHz = Math.round((collectCount / elapsed) * 1000 * 10) / 10;
+        console.log(`[采集统计] ${collectCount}帧/2s, 实际采集频率: ${actualHz}Hz`);
+        collectCount = 0;
+        collectStartTime = performance.now();
+      }
     });
     
     unsubSensorFrameRef.current = unsub;

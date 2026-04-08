@@ -65,6 +65,19 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.8.8（2026-04-08）
+
+**帧去重机制：彻底消除重复数据采集，确保采集频率精确匹配传感器实际帧率**
+
+v1.8.7 的纯事件驱动采集在实际测试中仍然产生 62.5% 重复数据行（100Hz 采集，实际传感器只有 ~37.5Hz）。根因分析发现两个问题：
+
+1. **updateAdcData 不再触发帧通知**：之前 `onSensorMatrix` 和 `onSensorData` 回调分别调用 `updateSensorData()` 和 `updateAdcData()`，后者也会触发帧率统计和帧通知，导致每帧被计数 2 次。现在 `updateAdcData()` 只更新数据，不触发帧通知和帧率统计
+2. **数据变化检测（帧去重）**：`updateSensorData()` 现在会计算矩阵数据的快速签名（采样关键位置的值），如果与上一帧相同则跳过帧通知。这确保 `subscribeSensorFrame` 只在数据真正变化时触发，彻底消除重复采集
+3. **采集频率统计日志**：采集过程中每 2 秒在控制台输出实际采集频率，方便确认帧去重是否生效
+4. **Pipeline 调试日志**：每 2 秒输出 `updateSensorData` 的调用次数、新帧数、重复帧数，帮助诊断数据流问题
+
+修改文件：`client/src/lib/realtimeDataPipeline.ts`、`client/src/pages/TestPage.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/version.ts`
+
 ### v1.8.7（2026-04-07）
 
 **彻底改用纯事件驱动采集：抛弃 setInterval 定时器，采集频率 100% 匹配传感器实际发送频率**
