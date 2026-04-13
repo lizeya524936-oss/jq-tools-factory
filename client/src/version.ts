@@ -48,7 +48,8 @@
  * v1.8.6  - 修复采集频率：改为基于检测帧率的定时器+帧序号去重，确保采集频率精确匹配传感器上报频率；采集按钮不再强制要求连接压力计
  * v1.8.7  - 彻底改用纯事件驱动采集：抛弃setInterval定时器，改用subscribeSensorFrame订阅新帧事件，每收到一帧传感器数据就记录一条，采集频率100%匹配传感器实际发送频率
  * v1.8.8  - 帧去重机制：(1)updateAdcData不再触发帧通知和帧率统计；(2)updateSensorData添加数据变化检测，重复数据不触发subscribeSensorFrame；(3)采集页面添加实时频率统计日志
+ * v1.9.0  - Hill方程拟合：一致性/重复性页面的压力&ADC Sum综合曲线自动拟合Hill方程，显示拟合曲线、拟合方程、系数(a,b,n)、R²/RMSE、ADC→N反推公式和在线计算器
  */
-export const APP_VERSION = 'v1.8.8';
+export const APP_VERSION = 'v1.9.0';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-04-08';
+export const BUILD_DATE = '2026-04-13';

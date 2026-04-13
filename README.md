@@ -65,6 +65,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.0（2026-04-13）
+
+**Hill 方程拟合：压力 & ADC Sum 综合曲线自动拟合，显示拟合方程、系数和 ADC→N 反推公式**
+
+基于 Python hill_core 库移植的 TypeScript 版 Hill 方程拟合引擎，在一致性和重复性页面的「压力 & ADC Sum 综合曲线」图表中集成 Hill 方程拟合功能：
+
+1. **Hill 方程拟合引擎**（`client/src/lib/hillFit.ts`）：纯 TypeScript 实现，无外部依赖，包含 Levenberg-Marquardt 非线性最小二乘法
+2. **拟合策略**：先尝试完整 3 参数 Hill 拟合 `ADC = a × P^n / (b^n + P^n)`，若 R² < 0.9 则降级为双曲线拟合 (n=1)，取 R² 更高的结果
+3. **拟合曲线显示**：在图表中以金黄色虚线叠加显示拟合曲线，可通过按钮显示/隐藏
+4. **拟合参数面板**：图表下方显示拟合方程、系数 (a=饱和值, b=半饱和压力, n=Hill系数)、R² 和 RMSE
+5. **ADC→N 反推公式**：显示 `P(N) = b × (ADC / (a - ADC))^(1/n)` 反向计算公式
+6. **在线计算器**：输入 ADC 值即可实时反推对应的压力值 (N)
+
+修改文件：
+- 新增 `client/src/lib/hillFit.ts` — Hill 方程拟合引擎
+- 修改 `client/src/components/DataChart.tsx` — 集成拟合曲线和参数面板
+- 修改 `client/src/pages/RepeatabilityPage.tsx` — 散点图视图改用 DataChart 组件
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.0
+
 ### v1.8.8（2026-04-08）
 
 **帧去重机制：彻底消除重复数据采集，确保采集频率精确匹配传感器实际帧率**

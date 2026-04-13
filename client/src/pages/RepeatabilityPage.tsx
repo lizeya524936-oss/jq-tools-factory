@@ -21,15 +21,6 @@ import {
   exportToCSV,
 } from '@/lib/sensorData';
 import { Play, RefreshCw, Download } from 'lucide-react';
-import {
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 
 const DEFAULT_PARAMS = {
   threshold: 8,
@@ -149,7 +140,6 @@ export default function RepeatabilityPage() {
     toast.success(`已导出 ${records.length} 条数据`);
   };
 
-  const scatterData = records.map(r => ({ x: r.pressure, y: r.adcSum }));
 
   return (
     <div className="flex h-full gap-0">
@@ -330,60 +320,10 @@ export default function RepeatabilityPage() {
           )}
 
           {activeView === 'scatter' && (
-            <div
-              className="p-3 h-full flex flex-col rounded"
-              style={{ background: 'oklch(0.15 0.025 265)', border: '1px solid oklch(0.22 0.03 265)' }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
-                  压力 vs ADC Sum 散点图
-                </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-                  {records.length} 个数据点
-                </span>
-              </div>
-              {records.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-sm font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>暂无数据</div>
-                </div>
-              ) : (
-                <div className="flex-1" style={{ minHeight: 0 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.03 265)" strokeOpacity={0.5} />
-                      <XAxis
-                        dataKey="x"
-                        name="压力"
-                        unit=" N"
-                        tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                        axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                        tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                        label={{ value: '压力 (N)', position: 'insideBottom', offset: -10, fill: 'oklch(0.50 0.02 240)', fontSize: 10 }}
-                      />
-                      <YAxis
-                        dataKey="y"
-                        name="ADC Sum"
-                        tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                        axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                        tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                        label={{ value: 'ADC Sum', angle: -90, position: 'insideLeft', fill: 'oklch(0.70 0.18 200)', fontSize: 10 }}
-                      />
-                      <Tooltip
-                        cursor={{ strokeDasharray: '3 3', stroke: 'oklch(0.40 0.03 265)' }}
-                        contentStyle={{
-                          background: 'oklch(0.17 0.025 265)',
-                          border: '1px solid oklch(0.35 0.04 265)',
-                          fontFamily: "'IBM Plex Mono', monospace",
-                          fontSize: '11px',
-                          color: 'oklch(0.85 0.01 220)',
-                        }}
-                      />
-                      <Scatter data={scatterData} fill="oklch(0.70 0.18 200)" fillOpacity={0.7} r={3} />
-                    </ScatterChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
+            <DataChart
+              records={records}
+              title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
+            />
           )}
 
           {activeView === 'table' && (
