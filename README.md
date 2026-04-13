@@ -65,6 +65,19 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.1（2026-04-13）
+
+**拟合曲线修复：独立于数据系列可见性 + Legend 颜色修正**
+
+1. **拟合基于全部数据**：拟合计算使用所有已导入的数据（包含取消勾选的系列），取消勾选数据系列后拟合曲线仍然保留显示
+2. **拟合曲线加入文件勾选列表**：在文件列表的第一个位置增加「Hill 拟合」独立 checkbox，用户可以单独控制拟合曲线的显示/隐藏，带虚线图标和金黄色标识
+3. **修正 Legend 颜色**：自定义 Legend 渲染器，拟合曲线显示虚线图标 + 金黄色，数据系列显示圆点 + 实线图标，颜色与实际曲线完全一致
+
+修改文件：
+- 修改 `client/src/components/DataChart.tsx` — 拟合独立于可见性、自定义 Legend、支持外部控制拟合显示
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 添加 Hill 拟合 checkbox、传入 allSeriesForFit
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.1
+
 ### v1.9.0（2026-04-13）
 
 **Hill 方程拟合：压力 & ADC Sum 综合曲线自动拟合，显示拟合方程、系数和 ADC→N 反推公式**

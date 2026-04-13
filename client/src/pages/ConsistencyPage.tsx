@@ -482,6 +482,9 @@ export default function ConsistencyPage() {
     setUploadedSeries([]);
   }, []);
 
+  // 拟合曲线显示状态
+  const [showFitCurve, setShowFitCurve] = useState(true);
+
   // 构建图表系列：实时采集 + 上传文件
   const chartSeries: DataSeries[] = [
     ...(records.length > 0 ? [{
@@ -492,6 +495,18 @@ export default function ConsistencyPage() {
       visible: true,
     }] : []),
     ...uploadedSeries,
+  ];
+
+  // 全部系列（含不可见的），用于拟合计算
+  const allSeriesForFit: DataSeries[] = [
+    ...(records.length > 0 ? [{
+      id: 'realtime',
+      name: '实时采集',
+      records,
+      color: SERIES_COLORS[0],
+      visible: true,
+    }] : []),
+    ...uploadedSeries.map(s => ({ ...s, visible: true })),
   ];
 
   return (
@@ -742,12 +757,32 @@ export default function ConsistencyPage() {
               </div>
             </div>
 
-            {/* 文件列表 - checkbox 控制显示/隐藏 */}
-            {uploadedSeries.length > 0 && (
+            {/* 文件列表 - checkbox 控制显示/隐藏 + Hill 拟合曲线 checkbox */}
+            {(uploadedSeries.length > 0 || records.length > 0) && (
               <div
                 className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 mb-1 rounded overflow-y-auto"
                 style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)', maxHeight: '100px' }}
               >
+                {/* Hill 拟合曲线 checkbox */}
+                <label
+                  className="flex items-center gap-1.5 cursor-pointer"
+                  style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showFitCurve}
+                    onChange={() => setShowFitCurve(v => !v)}
+                    className="w-3 h-3 rounded cursor-pointer"
+                    style={{ accentColor: '#f0a030' }}
+                  />
+                  <svg width="14" height="10" style={{ flexShrink: 0 }}>
+                    <line x1="0" y1="5" x2="14" y2="5" stroke="#f0a030" strokeWidth="2" strokeDasharray="3 2" />
+                  </svg>
+                  <span style={{ color: showFitCurve ? '#f0a030' : 'oklch(0.40 0.02 240)' }}>
+                    Hill 拟合
+                  </span>
+                </label>
+                {/* 数据系列 checkbox */}
                 {uploadedSeries.map((s) => (
                   <label
                     key={s.id}
@@ -797,6 +832,9 @@ export default function ConsistencyPage() {
             <div style={{ minHeight: '500px' }}>
               <DataChart
                 series={chartSeries}
+                allSeriesForFit={allSeriesForFit}
+                showFitCurve={showFitCurve}
+                onFitCurveToggle={setShowFitCurve}
               />
             </div>
           </div>

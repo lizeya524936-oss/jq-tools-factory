@@ -3,6 +3,7 @@
  * 支持多系列数据（多CSV文件），每个系列用不同颜色绘制
  * 快捷按钮切换X轴范围：20N / 30N / 50N / 70N / 100N(复位)
  * v1.9.0: 集成 Hill 方程拟合 — 自动拟合压力-ADC曲线，显示拟合方程、系数和 ADC→N 反推公式
+ * v1.9.1: 修复拟合曲线独立性 — 拟合基于全部数据(含不可见)，取消勾选数据后拟合曲线保留；修正 Legend 颜色
  * 显示形式：
  *   横坐标：串口数据上报的力学数据，以N为单位
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
@@ -18,8 +19,6 @@ import {
   Legend,
   ResponsiveContainer,
   ZAxis,
-  Line,
-  ComposedChart,
 } from 'recharts';
 import { DataRecord, toHex } from '@/lib/sensorData';
 import {
@@ -44,10 +43,18 @@ interface DataChartProps {
   records?: DataRecord[];
   /** 多系列模式 */
   series?: DataSeries[];
+  /** 全部系列（含不可见的），用于拟合计算 */
+  allSeriesForFit?: DataSeries[];
   title?: string;
   showBrush?: boolean;
   /** 是否启用 Hill 拟合（默认 true） */
   enableFit?: boolean;
+  /** 拟合曲线显示状态（外部控制） */
+  showFitCurve?: boolean;
+  /** 拟合曲线显示状态变更回调 */
+  onFitCurveToggle?: (show: boolean) => void;
+  /** 拟合结果回调（通知父组件拟合结果） */
+  onFitResult?: (result: HillFitResult | null) => void;
 }
 
 interface ChartDataPoint {
@@ -58,13 +65,6 @@ interface ChartDataPoint {
   index: number;
   seriesName?: string;
   seriesColor?: string;
-}
-
-interface ComposedDataPoint {
-  pressure: number;
-  adcSum?: number;
-  fitAdcSum?: number;
-  [key: string]: number | string | undefined;
 }
 
 // X轴范围预设
@@ -94,19 +94,17 @@ export const SERIES_COLORS = [
   'oklch(0.75 0.15 190)',  // 浅青
 ];
 
-// 拟合曲线颜色
-const FIT_CURVE_COLOR = 'oklch(0.85 0.22 60)'; // 明亮金黄色
+// 拟合曲线颜色（使用标准 CSS 颜色确保 Legend 正确渲染）
+const FIT_CURVE_COLOR = '#f0a030';
+const FIT_CURVE_COLOR_OKLCH = 'oklch(0.85 0.22 60)';
 
 const MultiSeriesTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
-    // 找到散点数据（非拟合曲线的数据）
-    const scatterPayload = payload.find((p: any) => p.dataKey !== 'fitAdcSum');
-    const fitPayload = payload.find((p: any) => p.dataKey === 'fitAdcSum');
-    const data = scatterPayload?.payload as ChartDataPoint | undefined;
+    const data = payload[0]?.payload as ChartDataPoint | undefined;
+    if (!data) return null;
 
-    if (!data && fitPayload) {
-      // 只有拟合曲线的 tooltip
-      const fitData = fitPayload.payload;
+    // 判断是否为拟合曲线数据点
+    if (data.seriesName === 'Hill 拟合') {
       return (
         <div
           className="rounded p-2.5"
@@ -123,11 +121,11 @@ const MultiSeriesTooltip = ({ active, payload }: any) => {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
             <span style={{ color: 'oklch(0.72 0.20 145)' }}>压力:</span>
-            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{fitData?.pressure?.toFixed(2)} N</span>
+            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{data?.pressure?.toFixed(2)} N</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
             <span style={{ color: FIT_CURVE_COLOR }}>ADC (拟合):</span>
-            <span style={{ color: FIT_CURVE_COLOR, fontWeight: 600 }}>{fitData?.fitAdcSum?.toFixed(1)}</span>
+            <span style={{ color: FIT_CURVE_COLOR, fontWeight: 600 }}>{data?.adcSum?.toFixed(1)}</span>
           </div>
         </div>
       );
@@ -178,8 +176,39 @@ const formatAdcTick = (value: number) => {
   return `${value}`;
 };
 
+/** 自定义 Legend 渲染器，为拟合曲线使用虚线样式 */
+const CustomLegend = ({ payload }: any) => {
+  if (!payload || payload.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 py-1">
+      {payload.map((entry: any, index: number) => {
+        const isFit = entry.value === 'Hill 拟合';
+        return (
+          <div key={`legend-${index}`} className="flex items-center gap-1.5" style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            {isFit ? (
+              // 拟合曲线用虚线图标
+              <svg width="20" height="10">
+                <line x1="0" y1="5" x2="20" y2="5" stroke={FIT_CURVE_COLOR} strokeWidth="2" strokeDasharray="4 2" />
+              </svg>
+            ) : (
+              // 普通系列用圆点 + 实线
+              <svg width="20" height="10">
+                <line x1="0" y1="5" x2="20" y2="5" stroke={entry.color} strokeWidth="1.5" />
+                <circle cx="10" cy="5" r="3" fill={entry.color} />
+              </svg>
+            )}
+            <span style={{ color: entry.color || 'oklch(0.60 0.02 240)' }}>
+              {entry.value}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /** Hill 拟合参数面板 */
-function HillFitPanel({ fit, showFit, onToggle }: { fit: HillFitResult; showFit: boolean; onToggle: () => void }) {
+function HillFitPanel({ fit }: { fit: HillFitResult }) {
   const [adcInput, setAdcInput] = useState('');
   const [inverseResult, setInverseResult] = useState<string | null>(null);
 
@@ -209,55 +238,41 @@ function HillFitPanel({ fit, showFit, onToggle }: { fit: HillFitResult; showFit:
         border: `1px solid oklch(0.25 0.03 265)`,
       }}
     >
-      {/* 标题行 + 开关 */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-semibold" style={{ color: FIT_CURVE_COLOR }}>
-            Hill 方程拟合
-          </span>
-          <span
-            className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{
-              background: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145 / 0.15)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80 / 0.15)' : 'oklch(0.65 0.22 25 / 0.15)',
-              color: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80)' : 'oklch(0.65 0.22 25)',
-              fontSize: '9px',
-            }}
-          >
-            R² = {fit.r2.toFixed(6)}
-          </span>
-          <span
-            className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{
-              background: 'oklch(0.20 0.02 265)',
-              color: 'oklch(0.55 0.02 240)',
-              fontSize: '9px',
-            }}
-          >
-            RMSE = {fit.rmse.toFixed(4)}
-          </span>
-          <span
-            className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{
-              background: 'oklch(0.20 0.02 265)',
-              color: 'oklch(0.55 0.02 240)',
-              fontSize: '9px',
-            }}
-          >
-            {fit.method === 'hill' ? 'Hill 3参数' : fit.method === 'hyperbolic' ? '双曲线 (n=1)' : '兜底估计'}
-          </span>
-        </div>
-        <button
-          onClick={onToggle}
-          className="px-2 py-0.5 rounded text-xs font-mono transition-all"
+      {/* 标题行 */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-mono font-semibold" style={{ color: FIT_CURVE_COLOR }}>
+          Hill 方程拟合
+        </span>
+        <span
+          className="px-1.5 py-0.5 rounded text-xs font-mono"
           style={{
-            background: showFit ? 'oklch(0.85 0.22 60 / 0.2)' : 'oklch(0.20 0.02 265)',
-            border: `1px solid ${showFit ? 'oklch(0.85 0.22 60 / 0.5)' : 'oklch(0.30 0.03 265)'}`,
-            color: showFit ? FIT_CURVE_COLOR : 'oklch(0.55 0.02 240)',
-            fontSize: '10px',
+            background: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145 / 0.15)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80 / 0.15)' : 'oklch(0.65 0.22 25 / 0.15)',
+            color: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80)' : 'oklch(0.65 0.22 25)',
+            fontSize: '9px',
           }}
         >
-          {showFit ? '隐藏拟合曲线' : '显示拟合曲线'}
-        </button>
+          R² = {fit.r2.toFixed(6)}
+        </span>
+        <span
+          className="px-1.5 py-0.5 rounded text-xs font-mono"
+          style={{
+            background: 'oklch(0.20 0.02 265)',
+            color: 'oklch(0.55 0.02 240)',
+            fontSize: '9px',
+          }}
+        >
+          RMSE = {fit.rmse.toFixed(4)}
+        </span>
+        <span
+          className="px-1.5 py-0.5 rounded text-xs font-mono"
+          style={{
+            background: 'oklch(0.20 0.02 265)',
+            color: 'oklch(0.55 0.02 240)',
+            fontSize: '9px',
+          }}
+        >
+          {fit.method === 'hill' ? 'Hill 3参数' : fit.method === 'hyperbolic' ? '双曲线 (n=1)' : '兜底估计'}
+        </span>
       </div>
 
       {/* 拟合方程和系数 — 两列布局 */}
@@ -290,9 +305,9 @@ function HillFitPanel({ fit, showFit, onToggle }: { fit: HillFitResult; showFit:
             </span>
             <div className="flex items-center gap-2">
               {[
-                { label: 'a (饱和值)', value: fit.a.toFixed(6), desc: 'ADC 最大值' },
-                { label: 'b (半饱和压力)', value: fit.b.toFixed(6), desc: 'P=b 时 ADC=a/2' },
-                { label: 'n (Hill系数)', value: fit.n.toFixed(6), desc: '曲线陡峭度' },
+                { label: 'a (饱和值)', value: fit.a.toFixed(6) },
+                { label: 'b (半饱和压力)', value: fit.b.toFixed(6) },
+                { label: 'n (Hill系数)', value: fit.n.toFixed(6) },
               ].map(({ label, value }) => (
                 <span
                   key={label}
@@ -381,14 +396,33 @@ function HillFitPanel({ fit, showFit, onToggle }: { fit: HillFitResult; showFit:
   );
 }
 
-export default function DataChart({ records, series, title, enableFit = true }: DataChartProps) {
+export default function DataChart({
+  records,
+  series,
+  allSeriesForFit,
+  title,
+  enableFit = true,
+  showFitCurve: externalShowFit,
+  onFitCurveToggle,
+  onFitResult,
+}: DataChartProps) {
   // X轴范围状态
   const [xMax, setXMax] = useState<number>(100);
-  // 是否显示拟合曲线
-  const [showFit, setShowFit] = useState<boolean>(true);
+  // 内部拟合曲线显示状态（当外部不控制时使用）
+  const [internalShowFit, setInternalShowFit] = useState<boolean>(true);
 
-  // 构建多系列数据
-  const allSeries = useMemo(() => {
+  // 最终的 showFit 状态：优先使用外部控制
+  const showFit = externalShowFit !== undefined ? externalShowFit : internalShowFit;
+  const toggleShowFit = useCallback(() => {
+    if (onFitCurveToggle) {
+      onFitCurveToggle(!showFit);
+    } else {
+      setInternalShowFit(v => !v);
+    }
+  }, [showFit, onFitCurveToggle]);
+
+  // 构建可见系列数据（用于图表绘制）
+  const visibleSeries = useMemo(() => {
     const result: { name: string; color: string; data: ChartDataPoint[] }[] = [];
 
     if (series && series.length > 0) {
@@ -420,41 +454,61 @@ export default function DataChart({ records, series, title, enableFit = true }: 
     return result;
   }, [series, records]);
 
-  // Hill 拟合（合并所有可见系列的数据进行拟合）
+  // Hill 拟合 — 基于全部数据（包括不可见的系列），确保取消勾选后拟合曲线仍保留
   const hillFitResult = useMemo<HillFitResult | null>(() => {
     if (!enableFit) return null;
 
-    // 收集所有可见系列中有 pressure 的数据
     const allPressures: number[] = [];
     const allAdcValues: number[] = [];
 
-    allSeries.forEach(s => {
-      s.data.forEach(d => {
-        if (d.pressure != null && d.adcSum != null && d.pressure > 0) {
-          allPressures.push(d.pressure);
-          allAdcValues.push(d.adcSum);
+    // 优先使用 allSeriesForFit（含不可见系列），否则使用 series/records
+    const fitSource = allSeriesForFit || series;
+
+    if (fitSource && fitSource.length > 0) {
+      fitSource.forEach(s => {
+        // 使用全部系列数据进行拟合，不管 visible 状态
+        s.records.forEach(r => {
+          if (r.pressure != null && r.adcSum != null && r.pressure > 0) {
+            allPressures.push(r.pressure);
+            allAdcValues.push(r.adcSum);
+          }
+        });
+      });
+    } else if (records && records.length > 0) {
+      records.forEach(r => {
+        if (r.pressure != null && r.adcSum != null && r.pressure > 0) {
+          allPressures.push(r.pressure);
+          allAdcValues.push(r.adcSum);
         }
       });
-    });
+    }
 
     if (allPressures.length < 5) return null;
 
     try {
-      return fitHill(allPressures, allAdcValues);
+      const result = fitHill(allPressures, allAdcValues);
+      return result;
     } catch (e) {
       console.error('[Hill Fit] 拟合失败:', e);
       return null;
     }
-  }, [allSeries, enableFit]);
+  }, [allSeriesForFit, series, records, enableFit]);
+
+  // 通知父组件拟合结果
+  useMemo(() => {
+    onFitResult?.(hillFitResult);
+  }, [hillFitResult, onFitResult]);
 
   // 生成拟合曲线数据
   const fitCurveData = useMemo(() => {
     if (!hillFitResult || !showFit) return [];
-    // 根据当前 X 轴范围生成拟合曲线
     return generateFitCurve(hillFitResult, 0, xMax, 150);
   }, [hillFitResult, showFit, xMax]);
 
-  const hasData = allSeries.some(s => s.data.length > 0);
+  // 判断是否有数据可显示（可见系列有数据，或者拟合曲线有数据）
+  const hasVisibleData = visibleSeries.some(s => s.data.length > 0);
+  const hasFitData = fitCurveData.length > 0;
+  const hasData = hasVisibleData || hasFitData;
 
   return (
     <div className="chart-container p-3 flex flex-col" style={{ minHeight: '480px', height: '100%' }}>
@@ -464,7 +518,7 @@ export default function DataChart({ records, series, title, enableFit = true }: 
             {title}
           </span>
           <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-            {allSeries.length} 个系列 · {allSeries.reduce((sum, s) => sum + s.data.length, 0)} 个数据点
+            {visibleSeries.length} 个系列 · {visibleSeries.reduce((sum, s) => sum + s.data.length, 0)} 个数据点
           </span>
         </div>
       )}
@@ -553,14 +607,8 @@ export default function DataChart({ records, series, title, enableFit = true }: 
                 />
                 <ZAxis range={[20, 20]} />
                 <Tooltip content={<MultiSeriesTooltip />} />
-                <Legend
-                  wrapperStyle={{
-                    fontSize: '10px',
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    color: 'oklch(0.60 0.02 240)',
-                  }}
-                />
-                {/* 拟合曲线（放在散点下面，作为背景） */}
+                <Legend content={<CustomLegend />} />
+                {/* 拟合曲线 — 使用 Scatter + line，fill 设为拟合颜色确保 Legend 正确 */}
                 {showFit && fitCurveData.length > 0 && (
                   <Scatter
                     name="Hill 拟合"
@@ -573,14 +621,15 @@ export default function DataChart({ records, series, title, enableFit = true }: 
                       index: 0,
                       adcSumHex: '',
                     }))}
-                    fill="none"
+                    fill={FIT_CURVE_COLOR}
                     line={{ stroke: FIT_CURVE_COLOR, strokeWidth: 2, strokeDasharray: '6 3' }}
                     lineType="joint"
                     shape={() => null}
+                    legendType="line"
                   />
                 )}
                 {/* 多系列散点 */}
-                {allSeries.map((s, idx) => (
+                {visibleSeries.map((s, idx) => (
                   <Scatter
                     key={s.name + idx}
                     name={s.name}
@@ -597,11 +646,7 @@ export default function DataChart({ records, series, title, enableFit = true }: 
 
           {/* Hill 拟合参数面板 */}
           {hillFitResult && (
-            <HillFitPanel
-              fit={hillFitResult}
-              showFit={showFit}
-              onToggle={() => setShowFit(v => !v)}
-            />
+            <HillFitPanel fit={hillFitResult} />
           )}
         </div>
       )}
