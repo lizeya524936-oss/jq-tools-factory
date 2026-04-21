@@ -51,7 +51,8 @@
  * v1.9.0  - Hill方程拟合：一致性/重复性页面的压力&ADC Sum综合曲线自动拟合Hill方程，显示拟合曲线、拟合方程、系数(a,b,n)、R²/RMSE、ADC→N反推公式和在线计算器
  * v1.9.1  - 拟合曲线修复：(1)拟合基于全部数据（含不可见系列），取消勾选后拟合曲线保留；(2)拟合曲线加入文件勾选列表作为独立 checkbox；(3)修正Legend颜色与实际曲线一致，自定义Legend渲染器显示虚线图标
  * v1.9.2  - 性能优化：(1)chartSeries/allSeriesForFit改为useMemo避免每次渲染创建新引用；(2)Hill拟合结果缓存（数据签名比较）避免重复计算；(3)大数据集降采样后拟合；(4)Scatter组件关闭动画减少渲染开销
+ * v1.9.3  - 彻底修复卡顿：(1)散点降采样显示（每系列最多200点）大幅减少SVG DOM节点；(2)React.memo包裹DataChart组件阻止父组件无关状态变化导致重渲染；(3)拟合曲线点数从150减少到100
  */
-export const APP_VERSION = 'v1.9.2';
+export const APP_VERSION = 'v1.9.3';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-04-21';

@@ -5,11 +5,12 @@
  * v1.9.0: 集成 Hill 方程拟合 — 自动拟合压力-ADC曲线，显示拟合方程、系数和 ADC→N 反推公式
  * v1.9.1: 修复拟合曲线独立性 — 拟合基于全部数据(含不可见)，取消勾选后拟合曲线保留；修正 Legend 颜色
  * v1.9.2: 性能优化 — 拟合结果缓存（数据签名比较），大数据集降采样，避免重复计算
+ * v1.9.3: 彻底修复卡顿 — 散点降采样显示（每系列最多200点），React.memo 防止无关重渲染
  * 显示形式：
  *   横坐标：串口数据上报的力学数据，以N为单位
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
  */
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import {
   ScatterChart,
   Scatter,
@@ -25,7 +26,6 @@ import { DataRecord, toHex } from '@/lib/sensorData';
 import {
   fitHill,
   generateFitCurve,
-  hillFunc,
   inverseHill,
   type HillFitResult,
 } from '@/lib/hillFit';
@@ -71,6 +71,9 @@ interface ChartDataPoint {
 // X轴范围预设
 const X_RANGE_PRESETS = [20, 30, 50, 70, 100] as const;
 
+// 每个系列在图表中最多显示的散点数量
+const MAX_DISPLAY_POINTS_PER_SERIES = 200;
+
 // 20 种区分度高的颜色
 export const SERIES_COLORS = [
   'oklch(0.70 0.18 200)',  // 蓝
@@ -97,7 +100,27 @@ export const SERIES_COLORS = [
 
 // 拟合曲线颜色（使用标准 CSS 颜色确保 Legend 正确渲染）
 const FIT_CURVE_COLOR = '#f0a030';
-const FIT_CURVE_COLOR_OKLCH = 'oklch(0.85 0.22 60)';
+
+/**
+ * 对数据点数组进行降采样，保留曲线形状特征
+ * 策略：按压力值排序后均匀采样，始终保留首尾点和极值点
+ */
+function downsampleForDisplay(data: ChartDataPoint[], maxPoints: number): ChartDataPoint[] {
+  if (data.length <= maxPoints) return data;
+
+  // 按压力值排序
+  const sorted = [...data].sort((a, b) => a.pressure - b.pressure);
+
+  // 均匀采样
+  const result: ChartDataPoint[] = [];
+  const step = (sorted.length - 1) / (maxPoints - 1);
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = Math.min(Math.round(i * step), sorted.length - 1);
+    result.push(sorted[idx]);
+  }
+
+  return result;
+}
 
 const MultiSeriesTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -295,35 +318,22 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
                 lineHeight: '18px',
               }}
             >
-              ADC = {fit.a.toFixed(2)} &times; P<sup>{fit.n.toFixed(4)}</sup> / ({fit.b.toFixed(2)}<sup>{fit.n.toFixed(4)}</sup> + P<sup>{fit.n.toFixed(4)}</sup>)
+              ADC = {fit.a.toFixed(2)} &times; P<sup>{fit.n.toFixed(4)}</sup> / ({fit.b.toFixed(4)}<sup>{fit.n.toFixed(4)}</sup> + P<sup>{fit.n.toFixed(4)}</sup>)
             </code>
           </div>
 
-          {/* 系数表 */}
+          {/* 系数 */}
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono shrink-0" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
-              拟合系数:
-            </span>
-            <div className="flex items-center gap-2">
-              {[
-                { label: 'a (饱和值)', value: fit.a.toFixed(6) },
-                { label: 'b (半饱和压力)', value: fit.b.toFixed(6) },
-                { label: 'n (Hill系数)', value: fit.n.toFixed(6) },
-              ].map(({ label, value }) => (
-                <span
-                  key={label}
-                  className="px-2 py-0.5 rounded text-xs font-mono"
-                  style={{
-                    background: 'oklch(0.11 0.015 265)',
-                    border: '1px solid oklch(0.22 0.03 265)',
-                    fontSize: '10px',
-                  }}
-                >
-                  <span style={{ color: 'oklch(0.55 0.02 240)' }}>{label} = </span>
-                  <span style={{ color: 'oklch(0.80 0.18 145)', fontWeight: 600 }}>{value}</span>
-                </span>
-              ))}
-            </div>
+            <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>系数:</span>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.75 0.18 80)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
+              a = {fit.a.toFixed(4)}
+            </code>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.72 0.20 145)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
+              b = {fit.b.toFixed(4)}
+            </code>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.68 0.20 300)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
+              n = {fit.n.toFixed(4)}
+            </code>
           </div>
 
           {/* 反推公式 */}
@@ -335,51 +345,52 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
               className="text-xs font-mono px-2 py-0.5 rounded"
               style={{
                 background: 'oklch(0.11 0.015 265)',
-                color: 'oklch(0.80 0.15 60)',
+                color: 'oklch(0.72 0.20 145)',
                 fontSize: '10px',
                 border: '1px solid oklch(0.22 0.03 265)',
                 lineHeight: '18px',
               }}
             >
-              P(N) = {fit.b.toFixed(2)} &times; (ADC / ({fit.a.toFixed(2)} - ADC))<sup>1/{fit.n.toFixed(4)}</sup>
+              P(N) = {fit.b.toFixed(4)} &times; (ADC / ({fit.a.toFixed(2)} - ADC))<sup>1/{fit.n.toFixed(4)}</sup>
             </code>
           </div>
         </div>
 
-        {/* 右列：ADC→N 在线计算器 */}
+        {/* 右列：在线计算器 */}
         <div
-          className="flex flex-col gap-1 px-2 py-1.5 rounded shrink-0"
+          className="flex flex-col gap-1.5 px-3 py-2 rounded"
           style={{
             background: 'oklch(0.11 0.015 265)',
             border: '1px solid oklch(0.22 0.03 265)',
-            width: '200px',
+            minWidth: '180px',
           }}
         >
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px' }}>
+          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
             ADC → N 在线计算
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <input
               type="number"
               value={adcInput}
-              onChange={e => { setAdcInput(e.target.value); setInverseResult(null); }}
-              onKeyDown={e => { if (e.key === 'Enter') handleInverse(); }}
+              onChange={(e) => setAdcInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleInverse()}
               placeholder="输入 ADC 值"
-              className="flex-1 px-2 py-1 rounded text-xs font-mono outline-none"
+              className="flex-1 px-2 py-1 rounded text-xs font-mono"
               style={{
                 background: 'oklch(0.17 0.025 265)',
                 border: '1px solid oklch(0.30 0.03 265)',
-                color: 'oklch(0.85 0.05 200)',
+                color: 'oklch(0.85 0.12 200)',
                 fontSize: '10px',
+                outline: 'none',
               }}
             />
             <button
               onClick={handleInverse}
-              className="px-2 py-1 rounded text-xs font-mono transition-all"
+              className="px-2 py-1 rounded text-xs font-mono"
               style={{
-                background: 'oklch(0.85 0.22 60 / 0.15)',
-                border: '1px solid oklch(0.85 0.22 60 / 0.3)',
-                color: FIT_CURVE_COLOR,
+                background: 'oklch(0.70 0.18 200 / 0.2)',
+                border: '1px solid oklch(0.70 0.18 200 / 0.4)',
+                color: 'oklch(0.85 0.12 200)',
                 fontSize: '10px',
               }}
             >
@@ -387,9 +398,9 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
             </button>
           </div>
           {inverseResult && (
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.80 0.15 145)', fontSize: '10px' }}>
+            <div className="text-xs font-mono" style={{ color: 'oklch(0.72 0.20 145)', fontSize: '10px' }}>
               {inverseResult}
-            </span>
+            </div>
           )}
         </div>
       </div>
@@ -414,7 +425,10 @@ function computeDataSignature(allPressures: number[], allAdcValues: number[]): s
   return parts.join('|');
 }
 
-export default function DataChart({
+/**
+ * DataChart 组件 — 使用 React.memo 避免父组件无关状态变化导致重渲染
+ */
+const DataChart = memo(function DataChart({
   records,
   series,
   allSeriesForFit,
@@ -440,20 +454,19 @@ export default function DataChart({
   }, [showFit, onFitCurveToggle]);
 
   // ─── 拟合结果缓存 ───
-  // 使用 ref 缓存上一次的拟合结果和数据签名，避免数据不变时重复计算
   const fitCacheRef = useRef<{
     signature: string;
     result: HillFitResult | null;
   }>({ signature: '', result: null });
 
-  // 构建可见系列数据（用于图表绘制）
+  // 构建可见系列数据（用于图表绘制），并进行降采样
   const visibleSeries = useMemo(() => {
-    const result: { name: string; color: string; data: ChartDataPoint[] }[] = [];
+    const result: { name: string; color: string; data: ChartDataPoint[]; totalCount: number }[] = [];
 
     if (series && series.length > 0) {
       series.forEach(s => {
         if (!s.visible) return;
-        const data = s.records.map((r, i) => ({
+        const allData = s.records.map((r, i) => ({
           pressure: r.pressure,
           adcSum: r.adcSum,
           adcSumHex: r.adcSumHex || toHex(r.adcSum),
@@ -462,10 +475,12 @@ export default function DataChart({
           seriesName: s.name,
           seriesColor: s.color,
         }));
-        result.push({ name: s.name, color: s.color, data });
+        // 降采样：每个系列最多显示 MAX_DISPLAY_POINTS_PER_SERIES 个点
+        const displayData = downsampleForDisplay(allData, MAX_DISPLAY_POINTS_PER_SERIES);
+        result.push({ name: s.name, color: s.color, data: displayData, totalCount: allData.length });
       });
     } else if (records && records.length > 0) {
-      const data = records.map((r, i) => ({
+      const allData = records.map((r, i) => ({
         pressure: r.pressure,
         adcSum: r.adcSum,
         adcSumHex: r.adcSumHex || toHex(r.adcSum),
@@ -474,7 +489,8 @@ export default function DataChart({
         seriesName: '实时采集',
         seriesColor: SERIES_COLORS[0],
       }));
-      result.push({ name: '实时采集', color: SERIES_COLORS[0], data });
+      const displayData = downsampleForDisplay(allData, MAX_DISPLAY_POINTS_PER_SERIES);
+      result.push({ name: '实时采集', color: SERIES_COLORS[0], data: displayData, totalCount: allData.length });
     }
     return result;
   }, [series, records]);
@@ -533,16 +549,20 @@ export default function DataChart({
     onFitResult?.(hillFitResult);
   }, [hillFitResult, onFitResult]);
 
-  // 生成拟合曲线数据
+  // 生成拟合曲线数据（只需要少量点即可画出平滑曲线）
   const fitCurveData = useMemo(() => {
     if (!hillFitResult || !showFit) return [];
-    return generateFitCurve(hillFitResult, 0, xMax, 150);
+    return generateFitCurve(hillFitResult, 0, xMax, 100);
   }, [hillFitResult, showFit, xMax]);
 
   // 判断是否有数据可显示（可见系列有数据，或者拟合曲线有数据）
   const hasVisibleData = visibleSeries.some(s => s.data.length > 0);
   const hasFitData = fitCurveData.length > 0;
   const hasData = hasVisibleData || hasFitData;
+
+  // 统计总数据点数
+  const totalDisplayPoints = visibleSeries.reduce((sum, s) => sum + s.data.length, 0);
+  const totalRawPoints = visibleSeries.reduce((sum, s) => sum + s.totalCount, 0);
 
   return (
     <div className="chart-container p-3 flex flex-col" style={{ minHeight: '480px', height: '100%' }}>
@@ -552,7 +572,10 @@ export default function DataChart({
             {title}
           </span>
           <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-            {visibleSeries.length} 个系列 · {visibleSeries.reduce((sum, s) => sum + s.data.length, 0)} 个数据点
+            {visibleSeries.length} 个系列 · {totalDisplayPoints} 个显示点
+            {totalRawPoints > totalDisplayPoints && (
+              <span style={{ color: 'oklch(0.40 0.02 240)' }}> (原始 {totalRawPoints})</span>
+            )}
           </span>
         </div>
       )}
@@ -591,6 +614,12 @@ export default function DataChart({
                 {val === 100 ? '100N (全部)' : `${val}N`}
               </button>
             ))}
+            {/* 降采样提示 */}
+            {totalRawPoints > totalDisplayPoints && (
+              <span className="ml-2 text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+                已降采样显示 ({totalDisplayPoints}/{totalRawPoints} 点)
+              </span>
+            )}
           </div>
 
           <div className="flex-1" style={{ minHeight: '400px' }}>
@@ -639,10 +668,10 @@ export default function DataChart({
                   }}
                   domain={['auto', 'auto']}
                 />
-                <ZAxis range={[20, 20]} />
+                <ZAxis range={[15, 15]} />
                 <Tooltip content={<MultiSeriesTooltip />} />
                 <Legend content={<CustomLegend />} />
-                {/* 拟合曲线 — 使用 Scatter + line，fill 设为拟合颜色确保 Legend 正确 */}
+                {/* 拟合曲线 — 使用 Scatter + line */}
                 {showFit && fitCurveData.length > 0 && (
                   <Scatter
                     name="Hill 拟合"
@@ -663,7 +692,7 @@ export default function DataChart({
                     isAnimationActive={false}
                   />
                 )}
-                {/* 多系列散点 */}
+                {/* 多系列散点（已降采样） */}
                 {visibleSeries.map((s, idx) => (
                   <Scatter
                     key={s.name + idx}
@@ -688,4 +717,6 @@ export default function DataChart({
       )}
     </div>
   );
-}
+});
+
+export default DataChart;
