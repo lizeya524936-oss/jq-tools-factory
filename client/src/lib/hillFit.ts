@@ -300,6 +300,36 @@ function solveLinear(A: number[][], b: number[]): number[] | null {
  * @param adcValues ADC Sum 数组
  * @returns HillFitResult
  */
+/**
+ * 对大数据集进行降采样，保留曲线特征同时减少计算量
+ * 策略：按压力值均匀分桶，每个桶取中位数
+ */
+function downsampleForFit(
+  ps: number[],
+  vs: number[],
+  maxPoints: number = 500,
+): { ps: number[]; vs: number[] } {
+  if (ps.length <= maxPoints) return { ps, vs };
+
+  // 按压力值排序
+  const indices = ps.map((_, i) => i).sort((a, b) => ps[a] - ps[b]);
+  const sortedPs = indices.map(i => ps[i]);
+  const sortedVs = indices.map(i => vs[i]);
+
+  const bucketSize = Math.ceil(sortedPs.length / maxPoints);
+  const sampledPs: number[] = [];
+  const sampledVs: number[] = [];
+
+  for (let i = 0; i < sortedPs.length; i += bucketSize) {
+    const end = Math.min(i + bucketSize, sortedPs.length);
+    const mid = Math.floor((i + end) / 2);
+    sampledPs.push(sortedPs[mid]);
+    sampledVs.push(sortedVs[mid]);
+  }
+
+  return { ps: sampledPs, vs: sampledVs };
+}
+
 export function fitHill(pressures: number[], adcValues: number[]): HillFitResult | null {
   if (pressures.length < 3 || adcValues.length < 3) return null;
   if (pressures.length !== adcValues.length) return null;
@@ -315,8 +345,16 @@ export function fitHill(pressures: number[], adcValues: number[]): HillFitResult
   }
   if (validPairs.length < 3) return null;
 
-  const ps = validPairs.map(d => d.p);
-  const vs = validPairs.map(d => d.v);
+  // 降采样：大数据集只用部分点拟合，大幅减少 LM 计算量
+  const rawPs = validPairs.map(d => d.p);
+  const rawVs = validPairs.map(d => d.v);
+  const { ps: fitPs, vs: fitVs } = downsampleForFit(rawPs, rawVs, 500);
+
+  // 拟合用降采样数据，评估用全量数据
+  const ps = fitPs;
+  const vs = fitVs;
+  const evalPs = rawPs;
+  const evalVs = rawVs;
 
   // 初始估计
   const maxV = Math.max(...vs);
@@ -336,8 +374,9 @@ export function fitHill(pressures: number[], adcValues: number[]): HillFitResult
       5000,
     );
     const [a, b, n] = hillParams;
-    const predicted = ps.map(p => hillFunc(p, a, b, n));
-    const { rmse, r2 } = computeMetrics(vs, predicted);
+    // 用全量数据评估拟合质量
+    const predicted = evalPs.map(p => hillFunc(p, a, b, n));
+    const { rmse, r2 } = computeMetrics(evalVs, predicted);
     hillResult = { a, b, n, rmse, r2, method: 'hill' };
   } catch {
     // 拟合失败
@@ -354,8 +393,9 @@ export function fitHill(pressures: number[], adcValues: number[]): HillFitResult
       3000,
     );
     const [a, b] = hypParams;
-    const predicted = ps.map(p => hyperbolicFunc(p, a, b));
-    const { rmse, r2 } = computeMetrics(vs, predicted);
+    // 用全量数据评估拟合质量
+    const predicted = evalPs.map(p => hyperbolicFunc(p, a, b));
+    const { rmse, r2 } = computeMetrics(evalVs, predicted);
     hypResult = { a, b, n: 1.0, rmse, r2, method: 'hyperbolic' };
   } catch {
     // 拟合失败
@@ -368,9 +408,9 @@ export function fitHill(pressures: number[], adcValues: number[]): HillFitResult
   if (hillResult) return hillResult;
   if (hypResult) return hypResult;
 
-  // 兜底：使用初始估计
-  const predicted = ps.map(p => hillFunc(p, a0, b0, 1.0));
-  const { rmse, r2 } = computeMetrics(vs, predicted);
+  // 兆底：使用初始估计
+  const predicted = evalPs.map(p => hillFunc(p, a0, b0, 1.0));
+  const { rmse, r2 } = computeMetrics(evalVs, predicted);
   return { a: a0, b: b0, n: 1.0, rmse, r2, method: 'fallback' };
 }
 

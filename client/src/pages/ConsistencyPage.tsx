@@ -3,7 +3,7 @@
  * 检测方法A：手动垂直下压机，多个产品，剔除偏差较大数据，求均值曲线
  * 判断：forceMin-forceMax范围内，5个间隔一致数据点，误差范围±threshold%（可定义）
  */
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
 import DataChart, { DataSeries, SERIES_COLORS } from '@/components/DataChart';
@@ -485,8 +485,8 @@ export default function ConsistencyPage() {
   // 拟合曲线显示状态
   const [showFitCurve, setShowFitCurve] = useState(true);
 
-  // 构建图表系列：实时采集 + 上传文件
-  const chartSeries: DataSeries[] = [
+  // 构建图表系列：实时采集 + 上传文件（useMemo 避免每次渲染创建新引用，防止 DataChart 重复拟合）
+  const chartSeries = useMemo<DataSeries[]>(() => [
     ...(records.length > 0 ? [{
       id: 'realtime',
       name: '实时采集',
@@ -495,10 +495,10 @@ export default function ConsistencyPage() {
       visible: true,
     }] : []),
     ...uploadedSeries,
-  ];
+  ], [records, uploadedSeries]);
 
-  // 全部系列（含不可见的），用于拟合计算
-  const allSeriesForFit: DataSeries[] = [
+  // 全部系列（含不可见的），用于拟合计算（useMemo 避免重复拟合）
+  const allSeriesForFit = useMemo<DataSeries[]>(() => [
     ...(records.length > 0 ? [{
       id: 'realtime',
       name: '实时采集',
@@ -507,7 +507,7 @@ export default function ConsistencyPage() {
       visible: true,
     }] : []),
     ...uploadedSeries.map(s => ({ ...s, visible: true })),
-  ];
+  ], [records, uploadedSeries]);
 
   return (
     <div className="flex gap-3 p-3" style={{ minHeight: '100%' }}>

@@ -3,12 +3,13 @@
  * 支持多系列数据（多CSV文件），每个系列用不同颜色绘制
  * 快捷按钮切换X轴范围：20N / 30N / 50N / 70N / 100N(复位)
  * v1.9.0: 集成 Hill 方程拟合 — 自动拟合压力-ADC曲线，显示拟合方程、系数和 ADC→N 反推公式
- * v1.9.1: 修复拟合曲线独立性 — 拟合基于全部数据(含不可见)，取消勾选数据后拟合曲线保留；修正 Legend 颜色
+ * v1.9.1: 修复拟合曲线独立性 — 拟合基于全部数据(含不可见)，取消勾选后拟合曲线保留；修正 Legend 颜色
+ * v1.9.2: 性能优化 — 拟合结果缓存（数据签名比较），大数据集降采样，避免重复计算
  * 显示形式：
  *   横坐标：串口数据上报的力学数据，以N为单位
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
  */
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   ScatterChart,
   Scatter,
@@ -396,6 +397,23 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
   );
 }
 
+/**
+ * 计算数据签名：用于快速判断拟合输入数据是否变化
+ * 采样关键位置的 pressure 和 adcSum 值，生成一个字符串签名
+ */
+function computeDataSignature(allPressures: number[], allAdcValues: number[]): string {
+  const n = allPressures.length;
+  if (n === 0) return 'empty';
+  // 采样最多 20 个关键位置（首、尾、均匀分布）
+  const sampleCount = Math.min(20, n);
+  const parts: string[] = [`n=${n}`];
+  for (let i = 0; i < sampleCount; i++) {
+    const idx = Math.floor(i * (n - 1) / Math.max(1, sampleCount - 1));
+    parts.push(`${allPressures[idx].toFixed(2)}:${allAdcValues[idx].toFixed(1)}`);
+  }
+  return parts.join('|');
+}
+
 export default function DataChart({
   records,
   series,
@@ -420,6 +438,13 @@ export default function DataChart({
       setInternalShowFit(v => !v);
     }
   }, [showFit, onFitCurveToggle]);
+
+  // ─── 拟合结果缓存 ───
+  // 使用 ref 缓存上一次的拟合结果和数据签名，避免数据不变时重复计算
+  const fitCacheRef = useRef<{
+    signature: string;
+    result: HillFitResult | null;
+  }>({ signature: '', result: null });
 
   // 构建可见系列数据（用于图表绘制）
   const visibleSeries = useMemo(() => {
@@ -454,7 +479,7 @@ export default function DataChart({
     return result;
   }, [series, records]);
 
-  // Hill 拟合 — 基于全部数据（包括不可见的系列），确保取消勾选后拟合曲线仍保留
+  // Hill 拟合 — 基于全部数据（包括不可见的系列），带缓存机制避免重复计算
   const hillFitResult = useMemo<HillFitResult | null>(() => {
     if (!enableFit) return null;
 
@@ -466,7 +491,6 @@ export default function DataChart({
 
     if (fitSource && fitSource.length > 0) {
       fitSource.forEach(s => {
-        // 使用全部系列数据进行拟合，不管 visible 状态
         s.records.forEach(r => {
           if (r.pressure != null && r.adcSum != null && r.pressure > 0) {
             allPressures.push(r.pressure);
@@ -485,11 +509,21 @@ export default function DataChart({
 
     if (allPressures.length < 5) return null;
 
+    // 计算数据签名，与缓存比较
+    const signature = computeDataSignature(allPressures, allAdcValues);
+    if (signature === fitCacheRef.current.signature) {
+      // 数据没变，直接返回缓存结果
+      return fitCacheRef.current.result;
+    }
+
+    // 数据变了，重新拟合
     try {
       const result = fitHill(allPressures, allAdcValues);
+      fitCacheRef.current = { signature, result };
       return result;
     } catch (e) {
       console.error('[Hill Fit] 拟合失败:', e);
+      fitCacheRef.current = { signature, result: null };
       return null;
     }
   }, [allSeriesForFit, series, records, enableFit]);
@@ -624,8 +658,9 @@ export default function DataChart({
                     fill={FIT_CURVE_COLOR}
                     line={{ stroke: FIT_CURVE_COLOR, strokeWidth: 2, strokeDasharray: '6 3' }}
                     lineType="joint"
-                    shape={() => null}
+                    shape={() => <></>}
                     legendType="line"
+                    isAnimationActive={false}
                   />
                 )}
                 {/* 多系列散点 */}
@@ -638,6 +673,7 @@ export default function DataChart({
                     line={{ stroke: s.color, strokeWidth: 1.5 }}
                     lineType="joint"
                     shape="circle"
+                    isAnimationActive={false}
                   />
                 ))}
               </ScatterChart>

@@ -65,6 +65,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.2（2026-04-21）
+
+**性能优化：修复拟合后页面卡顿问题**
+
+导入 CSV 数据并拟合 Hill 方程后，页面会变得非常卡顿。根因分析发现 `chartSeries` 和 `allSeriesForFit` 是普通变量（非 `useMemo`），每次 React 渲染都会创建新的数组引用，导致 DataChart 内部的 `hillFitResult` useMemo 依赖变化，每次渲染都重新执行 Levenberg-Marquardt 拟合算法（最多 8000 次迭代）。结合实时传感器数据的 100ms UI 更新定时器，每秒在主线程上执行约 10 次完整的非线性拟合，直接阻塞 UI。
+
+优化措施：
+
+1. **useMemo 缓存数据引用**：`chartSeries` 和 `allSeriesForFit` 改为 `useMemo`，仅在 `records` 或 `uploadedSeries` 变化时才创建新引用
+2. **拟合结果缓存**：在 DataChart 内部使用数据签名（采样关键位置的 pressure/adcSum 值）与上次拟合结果比较，数据未变化时直接返回缓存结果，跳过 LM 计算
+3. **大数据集降采样**：当数据点超过 500 时，按压力值均匀分桶取中位数降采样后再拟合，评估仍用全量数据计算 R²/RMSE
+4. **关闭 Scatter 动画**：所有 Scatter 组件设置 `isAnimationActive={false}`，消除 Recharts 动画帧的渲染开销
+
+修改文件：
+- 修改 `client/src/components/DataChart.tsx` — 拟合结果缓存、关闭动画
+- 修改 `client/src/lib/hillFit.ts` — 大数据集降采样、全量数据评估
+- 修改 `client/src/pages/ConsistencyPage.tsx` — chartSeries/allSeriesForFit 改为 useMemo
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.2
+
 ### v1.9.1（2026-04-13）
 
 **拟合曲线修复：独立于数据系列可见性 + Legend 颜色修正**
