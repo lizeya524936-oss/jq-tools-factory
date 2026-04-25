@@ -490,10 +490,9 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
             </div>
           </div>
 
-          {/* 下半部分：残差分布（左右两图） */}
-          <div className="flex gap-4" style={{ borderTop: '1px solid oklch(0.22 0.03 265)', paddingTop: '16px' }}>
-            {/* 左图：残差分布直方图 */}
-            <div className="flex-1 min-w-0">
+          {/* 下半部分：残差分布直方图 */}
+          <div style={{ borderTop: '1px solid oklch(0.22 0.03 265)', paddingTop: '16px' }}>
+            <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
                   残差分布直方图
@@ -556,75 +555,6 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                 <span>均值 μ = {residualMean.toFixed(2)}</span>
                 <span>标准差 σ = {residualStd.toFixed(2)}</span>
                 <span>范围: [{Math.min(...allResiduals).toFixed(1)}, {Math.max(...allResiduals).toFixed(1)}]</span>
-              </div>
-            </div>
-
-            {/* 右图：各文件残差统计柱状图 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
-                  各文件残差统计
-                </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
-                  (σ 和最大绝对残差)
-                </span>
-              </div>
-              <div style={{ height: '220px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={fileResidualData} margin={{ top: 10, right: 20, left: 10, bottom: 30 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.02 240)" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", angle: -30, textAnchor: 'end' }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      height={50}
-                    />
-                    <YAxis
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'oklch(0.15 0.025 265)',
-                        border: '1px solid oklch(0.30 0.03 265)',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontFamily: "'IBM Plex Mono', monospace",
-                        color: 'oklch(0.70 0.02 240)',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        if (name === 'std') return [value.toFixed(2), '残差 σ'];
-                        if (name === 'maxAbs') return [value.toFixed(2), '最大|残差|'];
-                        return [value, name];
-                      }}
-                      labelFormatter={(label) => {
-                        const item = fileResidualData.find(d => d.name === label);
-                        return item?.fullName || label;
-                      }}
-                    />
-                    <Bar dataKey="std" name="std" isAnimationActive={false} radius={[2, 2, 0, 0]}>
-                      {fileResidualData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} fillOpacity={0.7} />
-                      ))}
-                    </Bar>
-                    <Bar dataKey="maxAbs" name="maxAbs" isAnimationActive={false} radius={[2, 2, 0, 0]}>
-                      {fileResidualData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} fillOpacity={0.35} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              {/* 图例说明 */}
-              <div className="mt-2 flex gap-4 text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
-                <div className="flex items-center gap-1">
-                  <span className="w-3 h-2 rounded-sm" style={{ background: 'oklch(0.58 0.18 265 / 0.7)' }} />
-                  <span>残差 σ</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-3 h-2 rounded-sm" style={{ background: 'oklch(0.58 0.18 265 / 0.35)' }} />
-                  <span>最大 |残差|</span>
-                </div>
               </div>
             </div>
           </div>
