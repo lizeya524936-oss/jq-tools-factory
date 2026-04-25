@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
 import DataChart, { DataSeries, SERIES_COLORS } from '@/components/DataChart';
+import ConsistencyAnalysis from '@/components/ConsistencyAnalysis';
 import TestResultCard from '@/components/TestResultCard';
 import ParameterPanel from '@/components/ParameterPanel';
 import SerialMonitor from '@/components/SerialMonitor';
@@ -836,6 +837,11 @@ export default function ConsistencyPage() {
                 showFitCurve={showFitCurve}
                 onFitCurveToggle={setShowFitCurve}
               />
+            </div>
+
+            {/* 一致性评估：CV 分析 + 残差分布 */}
+            <div className="mt-3">
+              <ConsistencyAnalysis allSeries={allSeriesForFit} />
             </div>
           </div>
         </div>

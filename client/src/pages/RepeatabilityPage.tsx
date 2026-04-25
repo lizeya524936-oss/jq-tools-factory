@@ -2,10 +2,11 @@
  * RepeatabilityPage - 重复性检测页面
  * 检测方法B：PLC可编程垂直下压机，间隔1分钟采样，两类数据误差范围±threshold%（可定义）
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import SensorMatrix from '@/components/SensorMatrix';
-import DataChart from '@/components/DataChart';
+import DataChart, { DataSeries, SERIES_COLORS } from '@/components/DataChart';
+import ConsistencyAnalysis from '@/components/ConsistencyAnalysis';
 import TestResultCard from '@/components/TestResultCard';
 import ParameterPanel from '@/components/ParameterPanel';
 import DataTable from '@/components/DataTable';
@@ -20,7 +21,7 @@ import {
   TestResult,
   exportToCSV,
 } from '@/lib/sensorData';
-import { Play, RefreshCw, Download } from 'lucide-react';
+import { Play, RefreshCw, Download, Upload } from 'lucide-react';
 
 const DEFAULT_PARAMS = {
   threshold: 8,
@@ -140,6 +141,208 @@ export default function RepeatabilityPage() {
     toast.success(`已导出 ${records.length} 条数据`);
   };
 
+  // ─── CSV 多文件上传管理 ──────────────────────────────────────────────────
+  const [uploadedSeries, setUploadedSeries] = useState<DataSeries[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** 解析 CSV 文本为 DataRecord[] */
+  const parseCSVText = useCallback((text: string): DataRecord[] => {
+    const clean = text.replace(/^\uFEFF/, '');
+    const lines = clean.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+
+    const headerLine = lines[0];
+    const parsed: DataRecord[] = [];
+    const isFormatA = headerLine.includes('传感器#') || headerLine.includes('压力(N)');
+    const isFormatB = headerLine.includes('ADC Value') || headerLine.includes('ADC Sum');
+
+    if (isFormatA) {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 2) continue;
+        const time = cols[0] || '';
+        const pressure = parseFloat(cols[1]);
+        if (isNaN(pressure) && cols[1]?.trim() === '') continue;
+        const adcValues: number[] = [];
+        for (let j = 2; j < cols.length; j++) {
+          const val = parseInt(cols[j], 10);
+          adcValues.push(isNaN(val) ? 0 : val);
+        }
+        const adcSum = adcValues.reduce((a, b) => a + b, 0);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time,
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum,
+          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+          testMode: 'repeatability',
+          sampleIndex: i - 1,
+        });
+      }
+    } else if (isFormatB) {
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^([^,]*),([^,]*),"([^"]*)",([^,]*),([^,]*),([^,]*),([^,]*),?(.*)$/);
+        if (!match) continue;
+        const [, time, pressureStr, adcValuesStr, adcSumStr, adcSumHex, testMode, sampleIndexStr, productIndexStr] = match;
+        const pressure = parseFloat(pressureStr);
+        const adcValues = adcValuesStr.split(';').map(Number);
+        const adcSum = parseInt(adcSumStr, 10);
+        const sampleIndex = parseInt(sampleIndexStr, 10);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time: time || '',
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum: isNaN(adcSum) ? adcValues.reduce((a, b) => a + b, 0) : adcSum,
+          adcSumHex: adcSumHex || '',
+          testMode: (testMode as DataRecord['testMode']) || 'repeatability',
+          sampleIndex: isNaN(sampleIndex) ? i : sampleIndex,
+          productIndex: productIndexStr ? parseInt(productIndexStr, 10) : undefined,
+        });
+      }
+    } else {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 2) continue;
+        const time = cols[0] || '';
+        const pressure = parseFloat(cols[1]);
+        const adcValues: number[] = [];
+        for (let j = 2; j < cols.length; j++) {
+          const val = parseInt(cols[j], 10);
+          if (!isNaN(val)) adcValues.push(val);
+        }
+        const adcSum = adcValues.reduce((a, b) => a + b, 0);
+        parsed.push({
+          id: `upload_${i}`,
+          timestamp: Date.now() + i,
+          time,
+          pressure: isNaN(pressure) ? 0 : pressure,
+          adcValues,
+          adcSum,
+          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+          testMode: 'repeatability',
+          sampleIndex: i - 1,
+        });
+      }
+    }
+    // 过滤：只保留压力上升阶段（0→峰值），舍弃下降阶段（峰值→0）
+    if (parsed.length <= 1) return parsed;
+    let peakIdx = 0;
+    let peakPressure = parsed[0].pressure;
+    for (let i = 1; i < parsed.length; i++) {
+      if (parsed[i].pressure >= peakPressure) {
+        peakPressure = parsed[i].pressure;
+        peakIdx = i;
+      }
+    }
+    return parsed.slice(0, peakIdx + 1);
+  }, []);
+
+  const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+
+    setUploadedSeries(prev => {
+      const remaining = 20 - prev.length;
+      if (remaining <= 0) {
+        toast.error('已达最大文件数量(20)，请先清除部分文件');
+        return prev;
+      }
+      const toProcess = fileArray.slice(0, remaining);
+      if (fileArray.length > remaining) {
+        toast.warning(`仅导入前 ${remaining} 个文件（已达上限 20）`);
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      let currentIdx = prev.length;
+
+      toProcess.forEach((file, fi) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const text = ev.target?.result as string;
+            const parsed = parseCSVText(text);
+            if (parsed.length === 0) {
+              failCount++;
+              if (successCount + failCount === toProcess.length && failCount > 0) {
+                toast.error(`${failCount} 个文件解析失败`);
+              }
+              return;
+            }
+            const colorIdx = (currentIdx + fi) % SERIES_COLORS.length;
+            const newSeries: DataSeries = {
+              id: `file_${Date.now()}_${fi}`,
+              name: file.name.replace(/\.csv$/i, ''),
+              records: parsed,
+              color: SERIES_COLORS[colorIdx],
+              visible: true,
+            };
+            setUploadedSeries(p => [...p, newSeries]);
+            successCount++;
+            if (successCount + failCount === toProcess.length) {
+              toast.success(`已导入 ${successCount} 个文件`);
+            }
+          } catch (err) {
+            failCount++;
+            console.error(err);
+            if (successCount + failCount === toProcess.length) {
+              if (successCount > 0) toast.success(`已导入 ${successCount} 个文件`);
+              if (failCount > 0) toast.error(`${failCount} 个文件解析失败`);
+            }
+          }
+        };
+        reader.readAsText(file);
+      });
+      return prev;
+    });
+    e.target.value = '';
+  }, [parseCSVText]);
+
+  const handleToggleSeriesVisible = useCallback((id: string) => {
+    setUploadedSeries(prev => prev.map(s => s.id === id ? { ...s, visible: !s.visible } : s));
+  }, []);
+
+  const handleRemoveSeries = useCallback((id: string) => {
+    setUploadedSeries(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  const handleClearAllSeries = useCallback(() => {
+    setUploadedSeries([]);
+  }, []);
+
+  // 拟合曲线显示状态
+  const [showFitCurve, setShowFitCurve] = useState(true);
+
+  // 构建图表系列（useMemo 避免每次渲染创建新引用）
+  const chartSeries = useMemo<DataSeries[]>(() => [
+    ...(records.length > 0 ? [{
+      id: 'realtime',
+      name: '实时采集',
+      records,
+      color: SERIES_COLORS[0],
+      visible: true,
+    }] : []),
+    ...uploadedSeries,
+  ], [records, uploadedSeries]);
+
+  // 全部系列（含不可见的），用于拟合计算
+  const allSeriesForFit = useMemo<DataSeries[]>(() => [
+    ...(records.length > 0 ? [{
+      id: 'realtime',
+      name: '实时采集',
+      records,
+      color: SERIES_COLORS[0],
+      visible: true,
+    }] : []),
+    ...uploadedSeries.map(s => ({ ...s, visible: true })),
+  ], [records, uploadedSeries]);
 
   return (
     <div className="flex h-full gap-0">
@@ -276,7 +479,7 @@ export default function RepeatabilityPage() {
             <span style={{ color: 'oklch(0.40 0.02 240)' }}>——编程检测重复性</span>
           </div>
           <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
-          <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法B：对传感器特定区域按照“检测方法B”测试，并进行逻辑判定</span>
+          <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法B：对传感器特定区域按照"检测方法B"测试，并进行逻辑判定</span>
           <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
           <span style={{ color: 'oklch(0.55 0.02 240)' }}>同隔{params.repeatInterval}分钟取一次压力数值和ADC求和，共{params.repeatCount}次</span>
           <div className="ml-auto flex items-center gap-2">
@@ -286,6 +489,7 @@ export default function RepeatabilityPage() {
           </div>
         </div>
 
+        {/* 视图切换 + CSV 上传 */}
         <div className="flex items-center gap-1">
           {[
             { id: 'timeline', label: '时间序列' },
@@ -305,10 +509,128 @@ export default function RepeatabilityPage() {
               {v.label}
             </button>
           ))}
-          <div className="ml-auto text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
-            检测方法B | PLC可编程垂直下压机 | 矩阵 {matrixRows}×{matrixCols}
+          <div className="ml-auto flex items-center gap-2">
+            {uploadedSeries.length > 0 && (
+              <span className="px-2 py-0.5 rounded text-xs font-mono"
+                style={{
+                  background: 'oklch(0.72 0.20 145 / 0.15)',
+                  border: '1px solid oklch(0.72 0.20 145 / 0.3)',
+                  color: 'oklch(0.72 0.20 145)',
+                  fontSize: '9px',
+                }}
+              >
+                {uploadedSeries.length} 个文件已导入
+              </span>
+            )}
+            {uploadedSeries.length > 0 && (
+              <button
+                onClick={handleClearAllSeries}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
+                style={{
+                  background: 'oklch(0.65 0.22 25 / 0.12)',
+                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
+                  color: 'oklch(0.65 0.22 25)',
+                }}
+              >
+                清除全部
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              multiple
+              onChange={handleCSVUpload}
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadedSeries.length >= 20}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all disabled:opacity-40"
+              style={{
+                background: 'oklch(0.58 0.22 265 / 0.15)',
+                border: '1px solid oklch(0.58 0.22 265 / 0.3)',
+                color: 'oklch(0.70 0.18 200)',
+              }}
+              title={uploadedSeries.length >= 20 ? '已达最大文件数量' : '上传 CSV 文件（最多20个）'}
+            >
+              <Upload size={11} />
+              上传CSV ({uploadedSeries.length}/20)
+            </button>
           </div>
         </div>
+
+        {/* 文件列表 - checkbox 控制显示/隐藏 + Hill 拟合曲线 checkbox */}
+        {(uploadedSeries.length > 0 || records.length > 0) && activeView === 'scatter' && (
+          <div
+            className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 rounded overflow-y-auto"
+            style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)', maxHeight: '100px' }}
+          >
+            {/* Hill 拟合曲线 checkbox */}
+            <label
+              className="flex items-center gap-1.5 cursor-pointer"
+              style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              <input
+                type="checkbox"
+                checked={showFitCurve}
+                onChange={() => setShowFitCurve(v => !v)}
+                className="w-3 h-3 rounded cursor-pointer"
+                style={{ accentColor: '#f0a030' }}
+              />
+              <svg width="14" height="10" style={{ flexShrink: 0 }}>
+                <line x1="0" y1="5" x2="14" y2="5" stroke="#f0a030" strokeWidth="2" strokeDasharray="3 2" />
+              </svg>
+              <span style={{ color: showFitCurve ? '#f0a030' : 'oklch(0.40 0.02 240)' }}>
+                Hill 拟合
+              </span>
+            </label>
+            {/* 数据系列 checkbox */}
+            {uploadedSeries.map((s) => (
+              <label
+                key={s.id}
+                className="flex items-center gap-1.5 cursor-pointer group"
+                style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={s.visible}
+                  onChange={() => handleToggleSeriesVisible(s.id)}
+                  className="w-3 h-3 rounded cursor-pointer"
+                  style={{ accentColor: s.color }}
+                />
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ background: s.color }}
+                />
+                <span
+                  style={{
+                    color: s.visible ? s.color : 'oklch(0.40 0.02 240)',
+                    textDecoration: s.visible ? 'none' : 'line-through',
+                    maxWidth: '120px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={`${s.name} (${s.records.length}条)`}
+                >
+                  {s.name}
+                </span>
+                <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+                  ({s.records.length})
+                </span>
+                <button
+                  onClick={(e) => { e.preventDefault(); handleRemoveSeries(s.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                  style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px', lineHeight: 1 }}
+                  title="移除此文件"
+                >
+                  ×
+                </button>
+              </label>
+            ))}
+          </div>
+        )}
 
         <div className="flex-1 min-h-0">
           {activeView === 'timeline' && (
@@ -321,7 +643,10 @@ export default function RepeatabilityPage() {
 
           {activeView === 'scatter' && (
             <DataChart
-              records={records}
+              series={chartSeries}
+              allSeriesForFit={allSeriesForFit}
+              showFitCurve={showFitCurve}
+              onFitCurveToggle={setShowFitCurve}
               title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
             />
           )}
@@ -329,6 +654,11 @@ export default function RepeatabilityPage() {
           {activeView === 'table' && (
             <DataTable records={records} onClear={handleReset} />
           )}
+        </div>
+
+        {/* 一致性评估：CV 分析 + 残差分布 */}
+        <div className="mt-3">
+          <ConsistencyAnalysis allSeries={allSeriesForFit} />
         </div>
       </div>
     </div>

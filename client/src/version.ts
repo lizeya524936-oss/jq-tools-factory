@@ -53,7 +53,8 @@
  * v1.9.2  - 性能优化：(1)chartSeries/allSeriesForFit改为useMemo避免每次渲染创建新引用；(2)Hill拟合结果缓存（数据签名比较）避免重复计算；(3)大数据集降采样后拟合；(4)Scatter组件关闭动画减少渲染开销
  * v1.9.3  - 彻底修复卡顿：(1)散点降采样显示（每系列最多200点）大幅减少SVG DOM节点；(2)React.memo包裹DataChart组件阻止父组件无关状态变化导致重渲染；(3)拟合曲线点数从150减少到100
  * v1.9.4  - 拟合公式导出：(1)导出JSON文件（含系数a/b/n、R²/RMSE、正向/反向公式的text和LaTeX格式）；(2)导出LaTeX .tex文件（含符号公式、代入系数公式、系数列表、拟合质量）；(3)一键复制LaTeX到剪贴板
+ * v1.9.5  - 关键压力点CV分析+残差分布：(1)一致性/重复性页面下方新增一致性评估面板；(2)7个关键压力点(5/10/20/30/50/70/100N)的CV变异系数折线图+等级判定；(3)各文件独立Hill拟合后在关键压力点的ADC预测值散点图；(4)全局残差分布直方图（±σ高亮）；(5)各文件残差σ和最大|残差|柱状图；(6)重复性页面新增CSV上传功能
  */
-export const APP_VERSION = 'v1.9.4';
+export const APP_VERSION = 'v1.9.5';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-04-21';
+export const BUILD_DATE = '2026-04-25';
