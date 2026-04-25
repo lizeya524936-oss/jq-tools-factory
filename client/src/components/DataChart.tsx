@@ -231,10 +231,127 @@ const CustomLegend = ({ payload }: any) => {
   );
 };
 
+// ─── 导出工具函数 ────────────────────────────────────────────────────────────────
+
+/**
+ * 生成 Hill 拟合结果的 LaTeX 公式字符串
+ */
+function generateLatex(fit: HillFitResult): string {
+  const a = fit.a;
+  const b = fit.b;
+  const n = fit.n;
+  const lines: string[] = [];
+
+  lines.push('% ========================================');
+  lines.push('% Hill Equation Fitting Result');
+  lines.push(`% Method: ${fit.method === 'hill' ? 'Hill 3-parameter' : fit.method === 'hyperbolic' ? 'Hyperbolic (n=1)' : 'Fallback estimate'}`);
+  lines.push(`% R^2 = ${fit.r2.toFixed(8)}`);
+  lines.push(`% RMSE = ${fit.rmse.toFixed(6)}`);
+  lines.push(`% Generated: ${new Date().toISOString()}`);
+  lines.push('% ========================================');
+  lines.push('');
+  lines.push('% --- General Hill Equation (symbolic) ---');
+  lines.push('\\begin{equation}');
+  lines.push('  \\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}');
+  lines.push('\\end{equation}');
+  lines.push('');
+  lines.push('% --- Fitted Hill Equation (with coefficients) ---');
+  lines.push('\\begin{equation}');
+  lines.push(`  \\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`);
+  lines.push('\\end{equation}');
+  lines.push('');
+  lines.push('% --- Inverse Formula: ADC to Pressure (symbolic) ---');
+  lines.push('\\begin{equation}');
+  lines.push('  P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}');
+  lines.push('\\end{equation}');
+  lines.push('');
+  lines.push('% --- Inverse Formula: ADC to Pressure (with coefficients) ---');
+  lines.push('\\begin{equation}');
+  lines.push(`  P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`);
+  lines.push('\\end{equation}');
+  lines.push('');
+  lines.push('% --- Coefficients ---');
+  lines.push('\\begin{align}');
+  lines.push(`  a &= ${a.toFixed(8)} \\quad &\\text{(saturation value, max ADC)} \\\\`);
+  lines.push(`  b &= ${b.toFixed(8)} \\quad &\\text{(half-saturation pressure, N)} \\\\`);
+  lines.push(`  n &= ${n.toFixed(8)} \\quad &\\text{(Hill coefficient, steepness)}`);
+  lines.push('\\end{align}');
+  lines.push('');
+  lines.push('% --- Fit Quality ---');
+  lines.push('\\begin{align}');
+  lines.push(`  R^{2} &= ${fit.r2.toFixed(8)} \\\\`);
+  lines.push(`  \\mathrm{RMSE} &= ${fit.rmse.toFixed(6)}`);
+  lines.push('\\end{align}');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
+ * 生成 JSON 格式的拟合结果（含系数、LaTeX 公式、拟合质量）
+ */
+function generateExportJson(fit: HillFitResult): string {
+  const a = fit.a;
+  const b = fit.b;
+  const n = fit.n;
+
+  const exportObj = {
+    hill_equation: {
+      description: 'Hill Equation: ADC = a * P^n / (b^n + P^n)',
+      coefficients: {
+        a: { value: a, description: 'Saturation value (max ADC)' },
+        b: { value: b, description: 'Half-saturation pressure (N), ADC = a/2 when P = b' },
+        n: { value: n, description: 'Hill coefficient (steepness)' },
+      },
+      fit_quality: {
+        r_squared: fit.r2,
+        rmse: fit.rmse,
+        method: fit.method,
+      },
+      formulas: {
+        forward: {
+          description: 'Pressure to ADC (forward)',
+          text: `ADC = ${a.toFixed(4)} * P^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + P^${n.toFixed(4)})`,
+          latex: `\\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`,
+          latex_symbolic: '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}',
+        },
+        inverse: {
+          description: 'ADC to Pressure (inverse)',
+          text: `P(N) = ${b.toFixed(4)} * (ADC / (${a.toFixed(4)} - ADC))^(1/${n.toFixed(4)})`,
+          latex: `P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`,
+          latex_symbolic: 'P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}',
+        },
+      },
+    },
+    metadata: {
+      generated_at: new Date().toISOString(),
+      tool: 'JQ Tools Factory - Hill Equation Fitting Engine',
+    },
+  };
+
+  return JSON.stringify(exportObj, null, 2);
+}
+
+/**
+ * 触发文件下载
+ */
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 /** Hill 拟合参数面板 */
 function HillFitPanel({ fit }: { fit: HillFitResult }) {
   const [adcInput, setAdcInput] = useState('');
   const [inverseResult, setInverseResult] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const handleInverse = useCallback(() => {
     const adcVal = parseFloat(adcInput);
@@ -254,6 +371,53 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
     }
   }, [adcInput, fit]);
 
+  // 导出 JSON
+  const handleExportJson = useCallback(() => {
+    const json = generateExportJson(fit);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    downloadFile(json, `hill_fit_${ts}.json`, 'application/json');
+  }, [fit]);
+
+  // 导出 LaTeX
+  const handleExportLatex = useCallback(() => {
+    const latex = generateLatex(fit);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    downloadFile(latex, `hill_fit_${ts}.tex`, 'application/x-tex');
+  }, [fit]);
+
+  // 复制 LaTeX 到剪贴板
+  const handleCopyLatex = useCallback(async () => {
+    const latex = generateLatex(fit);
+    try {
+      await navigator.clipboard.writeText(latex);
+      setCopyStatus('已复制');
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch {
+      // 备用方案
+      const textarea = document.createElement('textarea');
+      textarea.value = latex;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopyStatus('已复制');
+      setTimeout(() => setCopyStatus(null), 2000);
+    }
+  }, [fit]);
+
+  // 按钮样式
+  const exportBtnStyle = {
+    background: 'oklch(0.20 0.02 265)',
+    border: '1px solid oklch(0.30 0.03 265)',
+    color: 'oklch(0.70 0.12 200)',
+    fontSize: '9px',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    cursor: 'pointer' as const,
+    fontFamily: "'IBM Plex Mono', monospace",
+    transition: 'all 0.15s',
+  };
+
   return (
     <div
       className="rounded px-3 py-2 mt-1"
@@ -262,7 +426,7 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
         border: `1px solid oklch(0.25 0.03 265)`,
       }}
     >
-      {/* 标题行 */}
+      {/* 标题行 + 导出按钮 */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs font-mono font-semibold" style={{ color: FIT_CURVE_COLOR }}>
           Hill 方程拟合
@@ -297,6 +461,27 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
         >
           {fit.method === 'hill' ? 'Hill 3参数' : fit.method === 'hyperbolic' ? '双曲线 (n=1)' : '兜底估计'}
         </span>
+
+        {/* 导出按钮组 */}
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={handleExportJson} style={exportBtnStyle} title="导出拟合系数和公式为 JSON 文件">
+            ⬇ JSON
+          </button>
+          <button onClick={handleExportLatex} style={exportBtnStyle} title="导出拟合方程和反推公式为 LaTeX (.tex) 文件">
+            ⬇ LaTeX
+          </button>
+          <button
+            onClick={handleCopyLatex}
+            style={{
+              ...exportBtnStyle,
+              color: copyStatus ? 'oklch(0.72 0.20 145)' : exportBtnStyle.color,
+              borderColor: copyStatus ? 'oklch(0.72 0.20 145 / 0.4)' : exportBtnStyle.border.split(' ').pop(),
+            }}
+            title="复制 LaTeX 公式到剪贴板"
+          >
+            {copyStatus || '⎘ 复制 LaTeX'}
+          </button>
+        </div>
       </div>
 
       {/* 拟合方程和系数 — 两列布局 */}

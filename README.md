@@ -65,6 +65,32 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.4（2026-04-25）
+
+**拟合公式导出：系数 JSON + LaTeX 公式 + 剪贴板复制**
+
+在 Hill 拟合参数面板的标题行右侧新增三个导出按钮：
+
+1. **⬇ JSON**：导出完整的拟合结果为 JSON 文件，包含：
+   - 系数 `a`、`b`、`n` 的数值和说明
+   - 拟合质量 `R²`、`RMSE`、拟合方法
+   - 正向公式（P→ADC）的纯文本、LaTeX、符号 LaTeX 三种格式
+   - 反向公式（ADC→N）的纯文本、LaTeX、符号 LaTeX 三种格式
+
+2. **⬇ LaTeX**：导出为 `.tex` 文件，可直接在 LaTeX 文档中 `\input` 引用，包含：
+   - 符号形式的 Hill 方程（`\begin{equation}` 环境）
+   - 代入具体系数的拟合方程
+   - 符号形式的反推公式
+   - 代入具体系数的反推公式
+   - 系数列表（`\begin{align}` 环境，含英文说明）
+   - 拟合质量 R² 和 RMSE
+
+3. **⎘ 复制 LaTeX**：一键复制完整 LaTeX 内容到剪贴板，方便粘贴到论文或文档中
+
+修改文件：
+- 修改 `client/src/components/DataChart.tsx` — 新增 `generateLatex()`、`generateExportJson()`、`downloadFile()` 工具函数，HillFitPanel 标题行增加导出按钮组
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.4
+
 ### v1.9.3（2026-04-21）
 
 **彻底修复卡顿：散点降采样显示 + React.memo 防止无关重渲染**
