@@ -2,10 +2,12 @@
  * ConsistencyAnalysis — 关键压力点 CV 分析 + 残差分布可视化
  * 
  * 基于 Data_analysis/sensor_hill_fit 的一致性评估算法：
- * 1. 关键压力点 CV 分析：对每个文件独立拟合 Hill 参数，在 7 个关键压力点计算 ADC 预测值的变异系数
+ * 1. 关键压力点 CV 分析：对每个文件独立拟合 Hill 参数，在动态关键压力点计算 ADC 预测值的变异系数
  * 2. 残差分布：用全局 Hill 参数回代到每个文件，收集残差并统计分布
+ * 
+ * v1.9.6: 压力范围可配置 — 滑块 + 输入框 + 快捷按钮，最大值由数据决定
  */
-import { useMemo, useState, memo } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
 import {
   LineChart,
   Line,
@@ -27,9 +29,6 @@ import { fitHill, hillFunc, type HillFitResult } from '@/lib/hillFit';
 
 // ─── 常量 ────────────────────────────────────────────────────────────────────
 
-/** 7 个关键压力点 (N) */
-const KEY_PRESSURE_POINTS = [5, 10, 20, 30, 50, 70, 100];
-
 /** CV 判据阈值 */
 const CV_THRESHOLDS = {
   excellent: 3,   // ≤ 3%: 优秀
@@ -37,6 +36,48 @@ const CV_THRESHOLDS = {
   warning: 8,     // 5%-8%: 警告
   // > 8%: 不合格
 };
+
+/** 快捷压力范围选项 (N) */
+const QUICK_PRESETS = [50, 100, 200, 500];
+
+/** 根据最大压力值动态生成关键压力点 */
+function generatePressurePoints(maxPressure: number): number[] {
+  if (maxPressure <= 0) return [];
+  
+  // 根据范围大小决定点数：小范围少点，大范围多点
+  let count: number;
+  if (maxPressure <= 20) count = 4;
+  else if (maxPressure <= 50) count = 5;
+  else if (maxPressure <= 100) count = 7;
+  else if (maxPressure <= 200) count = 8;
+  else if (maxPressure <= 500) count = 10;
+  else count = 12;
+
+  const points: number[] = [];
+  const step = maxPressure / count;
+  
+  for (let i = 1; i <= count; i++) {
+    let val = step * i;
+    // 对值进行友好取整
+    if (val >= 100) val = Math.round(val / 10) * 10;
+    else if (val >= 10) val = Math.round(val / 5) * 5;
+    else if (val >= 1) val = Math.round(val);
+    else val = Math.round(val * 10) / 10;
+    
+    // 确保不超过最大值，且不重复
+    if (val > 0 && val <= maxPressure && !points.includes(val)) {
+      points.push(val);
+    }
+  }
+  
+  // 确保包含最大值
+  const lastVal = Math.round(maxPressure * 10) / 10;
+  if (!points.includes(lastVal) && lastVal > 0) {
+    points.push(lastVal);
+  }
+  
+  return points.sort((a, b) => a - b);
+}
 
 /** CV 颜色 */
 function getCVColor(cv: number): string {
@@ -88,10 +129,11 @@ interface AnalysisResult {
 
 // ─── 计算引擎 ────────────────────────────────────────────────────────────────
 
-function computeAnalysis(allSeries: DataSeries[]): AnalysisResult | null {
+function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): AnalysisResult | null {
   // 至少需要 2 个文件才能做 CV 分析
   const validSeries = allSeries.filter(s => s.records.length >= 5);
   if (validSeries.length < 2) return null;
+  if (pressurePoints.length === 0) return null;
 
   // 1. 对每个文件独立拟合 Hill 参数
   const perFileFits: { fileName: string; fit: HillFitResult }[] = [];
@@ -119,7 +161,7 @@ function computeAnalysis(allSeries: DataSeries[]): AnalysisResult | null {
 
   // 3. 关键压力点 CV 分析
   const cvPoints: CVAnalysisPoint[] = [];
-  for (const p of KEY_PRESSURE_POINTS) {
+  for (const p of pressurePoints) {
     const values: number[] = [];
     const fileNames: string[] = [];
     for (const { fileName, fit } of perFileFits) {
@@ -135,7 +177,6 @@ function computeAnalysis(allSeries: DataSeries[]): AnalysisResult | null {
   }
 
   const avgCV = cvPoints.reduce((sum, p) => sum + p.cv, 0) / cvPoints.length;
-  // 评分：avgCV ≤ 3% → 100 分，≥ 8% → 0 分，线性插值
   const cvScore = Math.max(0, Math.min(100, ((CV_THRESHOLDS.warning - avgCV) / (CV_THRESHOLDS.warning - CV_THRESHOLDS.excellent)) * 100));
 
   // 4. 残差分布（用全局 Hill 参数回代）
@@ -166,7 +207,6 @@ function computeAnalysis(allSeries: DataSeries[]): AnalysisResult | null {
   const residualVariance = allResiduals.length > 0
     ? allResiduals.reduce((sum, v) => sum + (v - residualMean) ** 2, 0) / allResiduals.length : 0;
   const residualStd = Math.sqrt(residualVariance);
-  // 评分：σ ≤ 5 → 100 分，σ ≥ 30 → 0 分
   const residualScore = Math.max(0, Math.min(100, ((30 - residualStd) / 25) * 100));
 
   return {
@@ -229,15 +269,70 @@ const SERIES_COLORS = [
 
 function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
   const [expanded, setExpanded] = useState(true);
+  const [maxPressure, setMaxPressure] = useState<number>(100); // 默认 100N
+  const [inputValue, setInputValue] = useState<string>('100');
+
+  // 从数据中获取最大压力值
+  const dataMaxPressure = useMemo(() => {
+    let maxP = 0;
+    for (const s of allSeries) {
+      for (const r of s.records) {
+        if (r.pressure > maxP) maxP = r.pressure;
+      }
+    }
+    // 向上取整到合理值
+    return Math.max(100, Math.ceil(maxP / 10) * 10);
+  }, [allSeries]);
+
+  // 滑块的上限
+  const sliderMax = useMemo(() => {
+    return Math.max(dataMaxPressure, 100);
+  }, [dataMaxPressure]);
+
+  // 动态生成关键压力点
+  const pressurePoints = useMemo(() => {
+    return generatePressurePoints(maxPressure);
+  }, [maxPressure]);
 
   // 数据签名缓存，避免重复计算
   const dataSignature = useMemo(() => {
-    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|');
-  }, [allSeries]);
+    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${maxPressure}`;
+  }, [allSeries, maxPressure]);
 
   const analysis = useMemo(() => {
-    return computeAnalysis(allSeries);
+    return computeAnalysis(allSeries, pressurePoints);
   }, [dataSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 处理滑块变化
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    setMaxPressure(val);
+    setInputValue(String(val));
+  }, []);
+
+  // 处理输入框变化
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
+
+  // 处理输入框确认（回车或失焦）
+  const handleInputConfirm = useCallback(() => {
+    const val = parseFloat(inputValue);
+    if (!isNaN(val) && val > 0) {
+      const clamped = Math.min(Math.max(val, 5), sliderMax);
+      setMaxPressure(clamped);
+      setInputValue(String(clamped));
+    } else {
+      setInputValue(String(maxPressure));
+    }
+  }, [inputValue, maxPressure, sliderMax]);
+
+  // 快捷按钮
+  const handlePreset = useCallback((val: number) => {
+    const clamped = Math.min(val, sliderMax);
+    setMaxPressure(clamped);
+    setInputValue(String(clamped));
+  }, [sliderMax]);
 
   if (!analysis) {
     return (
@@ -265,15 +360,6 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
 
   // 残差直方图数据
   const histData = buildHistogram(allResiduals, 30);
-
-  // 各文件残差统计柱状图数据
-  const fileResidualData = residualStats.map((s, i) => ({
-    name: s.fileName.replace(/\.csv$/i, '').slice(0, 15),
-    fullName: s.fileName,
-    std: Math.round(s.std * 100) / 100,
-    maxAbs: Math.round(s.maxAbs * 100) / 100,
-    color: SERIES_COLORS[i % SERIES_COLORS.length],
-  }));
 
   // 各文件在关键压力点的散点数据
   const scatterData: { pressure: number; adcPredicted: number; fileName: string; color: string }[] = [];
@@ -327,6 +413,101 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
 
       {expanded && (
         <div className="p-4 flex flex-col gap-4">
+
+          {/* ─── 压力范围控制栏 ─── */}
+          <div
+            className="flex items-center gap-3 px-3 py-2.5 rounded"
+            style={{
+              background: 'oklch(0.14 0.02 265)',
+              border: '1px solid oklch(0.22 0.03 265)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs font-mono font-medium flex-shrink-0" style={{ color: 'oklch(0.55 0.02 240)' }}>
+              压力范围
+            </span>
+
+            {/* 滑块 */}
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)' }}>0</span>
+              <input
+                type="range"
+                min={5}
+                max={sliderMax}
+                step={sliderMax <= 100 ? 5 : sliderMax <= 500 ? 10 : 50}
+                value={maxPressure}
+                onChange={handleSliderChange}
+                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, oklch(0.58 0.18 200) 0%, oklch(0.58 0.18 200) ${(maxPressure / sliderMax) * 100}%, oklch(0.25 0.02 240) ${(maxPressure / sliderMax) * 100}%, oklch(0.25 0.02 240) 100%)`,
+                  accentColor: 'oklch(0.58 0.18 200)',
+                }}
+              />
+              <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)' }}>{sliderMax}N</span>
+            </div>
+
+            {/* 输入框 */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={handleInputConfirm}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleInputConfirm(); }}
+                className="w-16 px-2 py-1 rounded text-xs font-mono text-center"
+                style={{
+                  background: 'oklch(0.20 0.025 265)',
+                  border: '1px solid oklch(0.30 0.03 265)',
+                  color: 'oklch(0.80 0.02 240)',
+                  outline: 'none',
+                }}
+              />
+              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>N</span>
+            </div>
+
+            {/* 分隔线 */}
+            <div className="w-px h-5 flex-shrink-0" style={{ background: 'oklch(0.25 0.03 265)' }} />
+
+            {/* 快捷按钮 */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {QUICK_PRESETS.filter(p => p <= sliderMax).map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => handlePreset(preset)}
+                  className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
+                  style={{
+                    background: maxPressure === preset ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
+                    border: `1px solid ${maxPressure === preset ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
+                    color: maxPressure === preset ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {preset}N
+                </button>
+              ))}
+              {/* 数据最大值按钮 */}
+              {dataMaxPressure > 100 && !QUICK_PRESETS.includes(dataMaxPressure) && (
+                <button
+                  onClick={() => handlePreset(dataMaxPressure)}
+                  className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
+                  style={{
+                    background: maxPressure === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
+                    border: `1px solid ${maxPressure === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
+                    color: maxPressure === dataMaxPressure ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Max {dataMaxPressure}N
+                </button>
+              )}
+            </div>
+
+            {/* 当前分析点数提示 */}
+            <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.40 0.02 240)' }}>
+              {pressurePoints.length} 个分析点
+            </span>
+          </div>
+
           {/* 上半部分：CV 分析（左右两图） */}
           <div className="flex gap-4">
             {/* 左图：关键压力点 CV 折线图 */}
@@ -336,7 +517,7 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                   关键压力点 CV 分析
                 </span>
                 <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
-                  ({analysis.perFileFits.length} 个文件独立拟合)
+                  ({analysis.perFileFits.length} 个文件独立拟合, 0-{maxPressure}N)
                 </span>
               </div>
               <div style={{ height: '220px' }}>
@@ -384,10 +565,10 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                 </ResponsiveContainer>
               </div>
               {/* CV 详情表格 */}
-              <div className="mt-2 overflow-x-auto">
+              <div className="mt-2 overflow-x-auto" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 <table className="w-full text-xs font-mono" style={{ borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid oklch(0.25 0.03 265)' }}>
+                    <tr style={{ borderBottom: '1px solid oklch(0.25 0.03 265)', position: 'sticky', top: 0, background: 'oklch(0.17 0.025 265)' }}>
                       <th className="px-2 py-1 text-left" style={{ color: 'oklch(0.50 0.02 240)' }}>压力点</th>
                       <th className="px-2 py-1 text-right" style={{ color: 'oklch(0.50 0.02 240)' }}>CV (%)</th>
                       <th className="px-2 py-1 text-right" style={{ color: 'oklch(0.50 0.02 240)' }}>均值</th>
@@ -439,7 +620,7 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                       unit="N"
                       tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                       axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      domain={[0, 'auto']}
+                      domain={[0, maxPressure]}
                     />
                     <YAxis
                       type="number"
