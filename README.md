@@ -65,6 +65,23 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.8（2026-04-26）
+
+**压力范围重新拟合 + 滑块防抖**
+
+调整压力范围滑块后，只使用 0~pressureMax 范围内的数据重新进行 Hill 拟合，避免曲线尾段对前段的影响：
+
+- 拟合数据过滤：`hillFitResult` 的 `useMemo` 中添加 `r.pressure <= pressureMax` 过滤条件，只用选定范围内的数据拟合
+- 缓存签名更新：数据签名中包含 `range=pressureMax`，确保范围变化时缓存失效并重新拟合
+- 滑块防抖：拖动过程中只更新显示值（X轴范围实时变化），松手后才触发 `onPressureMaxChange` 重新拟合
+- 依赖更新：`xMax` 加入 `useMemo` 依赖数组
+
+**修改文件：**
+
+- 修改 `client/src/components/DataChart.tsx` — 拟合数据过滤添加 pressureMax 范围限制
+- 修改 `client/src/components/PressureRangeBar.tsx` — 滑块拖动防抖，松手后才触发回调
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.8
+
 ### v1.9.7（2026-04-26）
 
 **压力范围双向联动**

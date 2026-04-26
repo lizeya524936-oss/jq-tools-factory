@@ -697,7 +697,7 @@ const DataChart = memo(function DataChart({
     return result;
   }, [series, records]);
 
-  // Hill 拟合 — 基于全部数据（包括不可见的系列），带缓存机制避免重复计算
+  // Hill 拟合 — 基于全部数据（包括不可见的系列），只使用 0~pressureMax 范围内的数据，带缓存机制避免重复计算
   const hillFitResult = useMemo<HillFitResult | null>(() => {
     if (!enableFit) return null;
 
@@ -706,11 +706,13 @@ const DataChart = memo(function DataChart({
 
     // 优先使用 allSeriesForFit（含不可见系列），否则使用 series/records
     const fitSource = allSeriesForFit || series;
+    // 只使用 0~xMax 范围内的数据进行拟合，避免尾段对前段的影响
+    const pressureCeiling = xMax;
 
     if (fitSource && fitSource.length > 0) {
       fitSource.forEach(s => {
         s.records.forEach(r => {
-          if (r.pressure != null && r.adcSum != null && r.pressure > 0) {
+          if (r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= pressureCeiling) {
             allPressures.push(r.pressure);
             allAdcValues.push(r.adcSum);
           }
@@ -718,7 +720,7 @@ const DataChart = memo(function DataChart({
       });
     } else if (records && records.length > 0) {
       records.forEach(r => {
-        if (r.pressure != null && r.adcSum != null && r.pressure > 0) {
+        if (r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= pressureCeiling) {
           allPressures.push(r.pressure);
           allAdcValues.push(r.adcSum);
         }
@@ -727,14 +729,14 @@ const DataChart = memo(function DataChart({
 
     if (allPressures.length < 5) return null;
 
-    // 计算数据签名，与缓存比较
-    const signature = computeDataSignature(allPressures, allAdcValues);
+    // 计算数据签名（含压力范围），与缓存比较
+    const signature = `range=${pressureCeiling}|` + computeDataSignature(allPressures, allAdcValues);
     if (signature === fitCacheRef.current.signature) {
-      // 数据没变，直接返回缓存结果
+      // 数据和范围都没变，直接返回缓存结果
       return fitCacheRef.current.result;
     }
 
-    // 数据变了，重新拟合
+    // 数据或范围变了，重新拟合
     try {
       const result = fitHill(allPressures, allAdcValues);
       fitCacheRef.current = { signature, result };
@@ -744,7 +746,7 @@ const DataChart = memo(function DataChart({
       fitCacheRef.current = { signature, result: null };
       return null;
     }
-  }, [allSeriesForFit, series, records, enableFit]);
+  }, [allSeriesForFit, series, records, enableFit, xMax]);
 
   // 通知父组件拟合结果
   useMemo(() => {

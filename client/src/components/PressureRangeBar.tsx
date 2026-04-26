@@ -3,8 +3,11 @@
  * 
  * 滑块 + 输入框 + 快捷按钮 + Max 按钮
  * 被 DataChart 和 ConsistencyAnalysis 共同使用，双向联动
+ * 
+ * v1.9.8: 滑块防抖 — 拖动过程中只更新显示值，松手（mouseup/touchend）后才触发 onPressureMaxChange
+ *         避免拖动时高频触发 Hill 拟合计算
  */
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
 
 /** 快捷压力范围选项 (N) */
 const QUICK_PRESETS = [50, 100, 200, 500];
@@ -30,6 +33,9 @@ function PressureRangeBarInner({
   compact = false,
 }: PressureRangeBarProps) {
   const [inputValue, setInputValue] = useState<string>(String(pressureMax));
+  // 滑块拖动中的临时值（拖动时只更新此值，不触发拟合）
+  const [sliderDragValue, setSliderDragValue] = useState<number | null>(null);
+  const isDraggingRef = useRef(false);
 
   // 滑块的上限
   const sliderMax = useMemo(() => {
@@ -37,15 +43,31 @@ function PressureRangeBarInner({
   }, [dataMaxPressure]);
 
   // 同步外部变化到输入框
-  useMemo(() => {
-    setInputValue(String(pressureMax));
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setInputValue(String(pressureMax));
+    }
   }, [pressureMax]);
 
-  // 处理滑块变化
-  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // 滑块显示值：拖动中用临时值，否则用外部值
+  const sliderDisplayValue = sliderDragValue !== null ? sliderDragValue : pressureMax;
+
+  // 处理滑块拖动中（只更新显示值，不触发拟合）
+  const handleSliderInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
-    onPressureMaxChange(val);
-  }, [onPressureMaxChange]);
+    isDraggingRef.current = true;
+    setSliderDragValue(val);
+    setInputValue(String(val));
+  }, []);
+
+  // 处理滑块松手（触发拟合）
+  const handleSliderCommit = useCallback(() => {
+    isDraggingRef.current = false;
+    if (sliderDragValue !== null) {
+      onPressureMaxChange(sliderDragValue);
+      setSliderDragValue(null);
+    }
+  }, [sliderDragValue, onPressureMaxChange]);
 
   // 处理输入框变化
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,11 +113,13 @@ function PressureRangeBarInner({
           min={5}
           max={sliderMax}
           step={sliderMax <= 100 ? 5 : sliderMax <= 500 ? 10 : 50}
-          value={pressureMax}
-          onChange={handleSliderChange}
+          value={sliderDisplayValue}
+          onChange={handleSliderInput}
+          onMouseUp={handleSliderCommit}
+          onTouchEnd={handleSliderCommit}
           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
           style={{
-            background: `linear-gradient(to right, oklch(0.58 0.18 200) 0%, oklch(0.58 0.18 200) ${(pressureMax / sliderMax) * 100}%, oklch(0.25 0.02 240) ${(pressureMax / sliderMax) * 100}%, oklch(0.25 0.02 240) 100%)`,
+            background: `linear-gradient(to right, oklch(0.58 0.18 200) 0%, oklch(0.58 0.18 200) ${(sliderDisplayValue / sliderMax) * 100}%, oklch(0.25 0.02 240) ${(sliderDisplayValue / sliderMax) * 100}%, oklch(0.25 0.02 240) 100%)`,
             accentColor: 'oklch(0.58 0.18 200)',
           }}
         />
