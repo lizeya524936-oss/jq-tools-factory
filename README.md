@@ -65,6 +65,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.8.1（2026-04-26）
+
+**添加浏览器 Favicon**
+
+为网站添加 JQ 品牌 favicon，替换 Chrome 默认的地球图标：
+
+- 新增 SVG/ICO/PNG 多格式 favicon（蓝紫色背景 + 白色 JQ 文字，与侧边栏 logo 一致）
+- 新增 Apple Touch Icon (180x180)
+- 配置 `index.html` 中的 favicon 链接
+
+**新增文件：**
+
+- `client/public/favicon.svg` — SVG 格式 favicon
+- `client/public/favicon.ico` — ICO 格式 favicon (16x16 + 32x32)
+- `client/public/favicon-32x32.png` — 32x32 PNG
+- `client/public/favicon-16x16.png` — 16x16 PNG
+- `client/public/apple-touch-icon.png` — Apple Touch Icon 180x180
+- 修改 `client/index.html` — 添加 favicon 链接标签
+
 ### v1.9.8（2026-04-26）
 
 **压力范围重新拟合 + 滑块防抖**
