@@ -486,6 +486,19 @@ export default function ConsistencyPage() {
   // 拟合曲线显示状态
   const [showFitCurve, setShowFitCurve] = useState(true);
 
+  // 共享的压力范围状态（DataChart 和 ConsistencyAnalysis 双向联动）
+  const [pressureMax, setPressureMax] = useState<number>(100);
+
+  // 计算数据中的最大压力值
+  const dataMaxPressure = useMemo(() => {
+    let maxP = 100;
+    const allData = [...(records || []), ...uploadedSeries.flatMap(s => s.records)];
+    for (const r of allData) {
+      if (r.pressure > maxP) maxP = r.pressure;
+    }
+    return Math.ceil(maxP);
+  }, [records, uploadedSeries]);
+
   // 构建图表系列：实时采集 + 上传文件（useMemo 避免每次渲染创建新引用，防止 DataChart 重复拟合）
   const chartSeries = useMemo<DataSeries[]>(() => [
     ...(records.length > 0 ? [{
@@ -836,12 +849,15 @@ export default function ConsistencyPage() {
                 allSeriesForFit={allSeriesForFit}
                 showFitCurve={showFitCurve}
                 onFitCurveToggle={setShowFitCurve}
+                pressureMax={pressureMax}
+                onPressureMaxChange={setPressureMax}
+                dataMaxPressure={dataMaxPressure}
               />
             </div>
 
             {/* 一致性评估：CV 分析 + 残差分布 */}
             <div className="mt-3">
-              <ConsistencyAnalysis allSeries={allSeriesForFit} />
+              <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} />
             </div>
           </div>
         </div>

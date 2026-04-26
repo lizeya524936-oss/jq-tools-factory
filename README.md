@@ -65,6 +65,28 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.7（2026-04-26）
+
+**压力范围双向联动**
+
+将压力范围控制提升为共享状态，综合曲线图表的 X 轴范围和一致性评估的分析范围双向联动：
+
+- 提取共享 `PressureRangeBar` 组件（滑块 + 输入框 + 快捷按钮 50/100/200/500N + Max 按钮）
+- DataChart 内的固定 X 轴范围按钮（20/30/50/70/100N）替换为 PressureRangeBar
+- 父组件（ConsistencyPage / RepeatabilityPage）统一维护 `pressureMax` 状态
+- 调整综合曲线的压力范围 → 一致性评估的分析点同步更新
+- 调整一致性评估的压力范围 → 综合曲线的 X 轴同步更新
+- 滑块上限由数据中的最大压力值决定
+
+**修改文件：**
+
+- 新增 `client/src/components/PressureRangeBar.tsx` — 共享压力范围控制栏组件
+- 修改 `client/src/components/DataChart.tsx` — 接收外部 pressureMax，替换固定按钮为 PressureRangeBar
+- 修改 `client/src/components/ConsistencyAnalysis.tsx` — 接收外部 pressureMax，移除内部压力范围状态
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 添加共享 pressureMax 状态，传递给 DataChart 和 ConsistencyAnalysis
+- 修改 `client/src/pages/RepeatabilityPage.tsx` — 同上
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.7
+
 ### v1.9.6（2026-04-26）
 
 **压力范围可配置**

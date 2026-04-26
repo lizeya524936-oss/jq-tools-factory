@@ -5,9 +5,9 @@
  * 1. 关键压力点 CV 分析：对每个文件独立拟合 Hill 参数，在动态关键压力点计算 ADC 预测值的变异系数
  * 2. 残差分布：用全局 Hill 参数回代到每个文件，收集残差并统计分布
  * 
- * v1.9.6: 压力范围可配置 — 滑块 + 输入框 + 快捷按钮，最大值由数据决定
+ * v1.9.7: 压力范围由外部控制，与 DataChart 双向联动
  */
-import { useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useState, memo } from 'react';
 import {
   LineChart,
   Line,
@@ -37,14 +37,10 @@ const CV_THRESHOLDS = {
   // > 8%: 不合格
 };
 
-/** 快捷压力范围选项 (N) */
-const QUICK_PRESETS = [50, 100, 200, 500];
-
 /** 根据最大压力值动态生成关键压力点 */
 function generatePressurePoints(maxPressure: number): number[] {
   if (maxPressure <= 0) return [];
   
-  // 根据范围大小决定点数：小范围少点，大范围多点
   let count: number;
   if (maxPressure <= 20) count = 4;
   else if (maxPressure <= 50) count = 5;
@@ -58,19 +54,16 @@ function generatePressurePoints(maxPressure: number): number[] {
   
   for (let i = 1; i <= count; i++) {
     let val = step * i;
-    // 对值进行友好取整
     if (val >= 100) val = Math.round(val / 10) * 10;
     else if (val >= 10) val = Math.round(val / 5) * 5;
     else if (val >= 1) val = Math.round(val);
     else val = Math.round(val * 10) / 10;
     
-    // 确保不超过最大值，且不重复
     if (val > 0 && val <= maxPressure && !points.includes(val)) {
       points.push(val);
     }
   }
   
-  // 确保包含最大值
   const lastVal = Math.round(maxPressure * 10) / 10;
   if (!points.includes(lastVal) && lastVal > 0) {
     points.push(lastVal);
@@ -81,10 +74,10 @@ function generatePressurePoints(maxPressure: number): number[] {
 
 /** CV 颜色 */
 function getCVColor(cv: number): string {
-  if (cv <= CV_THRESHOLDS.excellent) return 'oklch(0.72 0.20 145)'; // 绿
-  if (cv <= CV_THRESHOLDS.pass) return 'oklch(0.80 0.18 90)';      // 黄
-  if (cv <= CV_THRESHOLDS.warning) return 'oklch(0.70 0.20 55)';   // 橙
-  return 'oklch(0.65 0.22 25)';                                     // 红
+  if (cv <= CV_THRESHOLDS.excellent) return 'oklch(0.72 0.20 145)';
+  if (cv <= CV_THRESHOLDS.pass) return 'oklch(0.80 0.18 90)';
+  if (cv <= CV_THRESHOLDS.warning) return 'oklch(0.70 0.20 55)';
+  return 'oklch(0.65 0.22 25)';
 }
 
 function getCVLabel(cv: number): string {
@@ -98,11 +91,11 @@ function getCVLabel(cv: number): string {
 
 interface CVAnalysisPoint {
   pressure: number;
-  cv: number;          // 变异系数 (%)
-  mean: number;        // ADC 均值
-  std: number;         // ADC 标准差
-  values: number[];    // 各文件在此压力点的 ADC 预测值
-  fileNames: string[]; // 对应的文件名
+  cv: number;
+  mean: number;
+  std: number;
+  values: number[];
+  fileNames: string[];
 }
 
 interface ResidualStats {
@@ -130,12 +123,10 @@ interface AnalysisResult {
 // ─── 计算引擎 ────────────────────────────────────────────────────────────────
 
 function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): AnalysisResult | null {
-  // 至少需要 2 个文件才能做 CV 分析
   const validSeries = allSeries.filter(s => s.records.length >= 5);
   if (validSeries.length < 2) return null;
   if (pressurePoints.length === 0) return null;
 
-  // 1. 对每个文件独立拟合 Hill 参数
   const perFileFits: { fileName: string; fit: HillFitResult }[] = [];
   for (const series of validSeries) {
     const pressures = series.records.map(r => r.pressure);
@@ -148,7 +139,6 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
 
   if (perFileFits.length < 2) return null;
 
-  // 2. 全局拟合（所有文件数据合并）
   const allPressures: number[] = [];
   const allAdcSums: number[] = [];
   for (const series of validSeries) {
@@ -159,7 +149,6 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
   }
   const globalFit = fitHill(allPressures, allAdcSums);
 
-  // 3. 关键压力点 CV 分析
   const cvPoints: CVAnalysisPoint[] = [];
   for (const p of pressurePoints) {
     const values: number[] = [];
@@ -179,7 +168,6 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
   const avgCV = cvPoints.reduce((sum, p) => sum + p.cv, 0) / cvPoints.length;
   const cvScore = Math.max(0, Math.min(100, ((CV_THRESHOLDS.warning - avgCV) / (CV_THRESHOLDS.warning - CV_THRESHOLDS.excellent)) * 100));
 
-  // 4. 残差分布（用全局 Hill 参数回代）
   const residualStats: ResidualStats[] = [];
   const allResiduals: number[] = [];
 
@@ -210,16 +198,9 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
   const residualScore = Math.max(0, Math.min(100, ((30 - residualStd) / 25) * 100));
 
   return {
-    cvPoints,
-    avgCV,
-    cvScore,
-    residualStats,
-    allResiduals,
-    residualMean,
-    residualStd,
-    residualScore,
-    perFileFits,
-    globalFit,
+    cvPoints, avgCV, cvScore,
+    residualStats, allResiduals, residualMean, residualStd, residualScore,
+    perFileFits, globalFit,
   };
 }
 
@@ -250,89 +231,41 @@ function buildHistogram(values: number[], binCount: number = 25): { bin: string;
 
 interface ConsistencyAnalysisProps {
   allSeries: DataSeries[];
+  /** 外部控制的压力范围最大值（与 DataChart 联动） */
+  pressureMax: number;
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
 
 const SERIES_COLORS = [
-  'oklch(0.70 0.18 200)',  // 蓝
-  'oklch(0.72 0.20 145)',  // 绿
-  'oklch(0.70 0.20 55)',   // 橙
-  'oklch(0.70 0.18 330)',  // 粉
-  'oklch(0.65 0.18 280)',  // 紫
-  'oklch(0.75 0.15 80)',   // 黄
-  'oklch(0.68 0.20 170)',  // 青
-  'oklch(0.70 0.22 25)',   // 红
-  'oklch(0.72 0.15 230)',  // 淡蓝
-  'oklch(0.68 0.18 120)',  // 黄绿
+  'oklch(0.70 0.18 200)',
+  'oklch(0.72 0.20 145)',
+  'oklch(0.70 0.20 55)',
+  'oklch(0.70 0.18 330)',
+  'oklch(0.65 0.18 280)',
+  'oklch(0.75 0.15 80)',
+  'oklch(0.68 0.20 170)',
+  'oklch(0.70 0.22 25)',
+  'oklch(0.72 0.15 230)',
+  'oklch(0.68 0.18 120)',
 ];
 
-function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
+function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysisProps) {
   const [expanded, setExpanded] = useState(true);
-  const [maxPressure, setMaxPressure] = useState<number>(100); // 默认 100N
-  const [inputValue, setInputValue] = useState<string>('100');
 
-  // 从数据中获取最大压力值
-  const dataMaxPressure = useMemo(() => {
-    let maxP = 0;
-    for (const s of allSeries) {
-      for (const r of s.records) {
-        if (r.pressure > maxP) maxP = r.pressure;
-      }
-    }
-    // 向上取整到合理值
-    return Math.max(100, Math.ceil(maxP / 10) * 10);
-  }, [allSeries]);
-
-  // 滑块的上限
-  const sliderMax = useMemo(() => {
-    return Math.max(dataMaxPressure, 100);
-  }, [dataMaxPressure]);
-
-  // 动态生成关键压力点
+  // 动态生成关键压力点（基于外部传入的 pressureMax）
   const pressurePoints = useMemo(() => {
-    return generatePressurePoints(maxPressure);
-  }, [maxPressure]);
+    return generatePressurePoints(pressureMax);
+  }, [pressureMax]);
 
-  // 数据签名缓存，避免重复计算
+  // 数据签名缓存
   const dataSignature = useMemo(() => {
-    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${maxPressure}`;
-  }, [allSeries, maxPressure]);
+    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${pressureMax}`;
+  }, [allSeries, pressureMax]);
 
   const analysis = useMemo(() => {
     return computeAnalysis(allSeries, pressurePoints);
   }, [dataSignature]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 处理滑块变化
-  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    setMaxPressure(val);
-    setInputValue(String(val));
-  }, []);
-
-  // 处理输入框变化
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  }, []);
-
-  // 处理输入框确认（回车或失焦）
-  const handleInputConfirm = useCallback(() => {
-    const val = parseFloat(inputValue);
-    if (!isNaN(val) && val > 0) {
-      const clamped = Math.min(Math.max(val, 5), sliderMax);
-      setMaxPressure(clamped);
-      setInputValue(String(clamped));
-    } else {
-      setInputValue(String(maxPressure));
-    }
-  }, [inputValue, maxPressure, sliderMax]);
-
-  // 快捷按钮
-  const handlePreset = useCallback((val: number) => {
-    const clamped = Math.min(val, sliderMax);
-    setMaxPressure(clamped);
-    setInputValue(String(clamped));
-  }, [sliderMax]);
 
   if (!analysis) {
     return (
@@ -349,19 +282,16 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
     );
   }
 
-  const { cvPoints, avgCV, cvScore, residualStats, allResiduals, residualMean, residualStd, residualScore } = analysis;
+  const { cvPoints, avgCV, cvScore, allResiduals, residualMean, residualStd, residualScore } = analysis;
 
-  // CV 折线图数据
   const cvChartData = cvPoints.map(p => ({
     pressure: `${p.pressure}N`,
     cv: Math.round(p.cv * 100) / 100,
     mean: Math.round(p.mean * 10) / 10,
   }));
 
-  // 残差直方图数据
   const histData = buildHistogram(allResiduals, 30);
 
-  // 各文件在关键压力点的散点数据
   const scatterData: { pressure: number; adcPredicted: number; fileName: string; color: string }[] = [];
   for (const cp of cvPoints) {
     cp.values.forEach((v, i) => {
@@ -392,8 +322,11 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
         <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
           {expanded ? '▼' : '▶'} 一致性评估
         </span>
-        {/* 评分摘要 */}
         <div className="flex items-center gap-3 ml-auto text-xs font-mono">
+          <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>
+            0-{pressureMax}N · {pressurePoints.length} 个分析点
+          </span>
+          <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
           <span style={{ color: getCVColor(avgCV) }}>
             平均 CV: {avgCV.toFixed(2)}% ({getCVLabel(avgCV)})
           </span>
@@ -414,100 +347,6 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
       {expanded && (
         <div className="p-4 flex flex-col gap-4">
 
-          {/* ─── 压力范围控制栏 ─── */}
-          <div
-            className="flex items-center gap-3 px-3 py-2.5 rounded"
-            style={{
-              background: 'oklch(0.14 0.02 265)',
-              border: '1px solid oklch(0.22 0.03 265)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-xs font-mono font-medium flex-shrink-0" style={{ color: 'oklch(0.55 0.02 240)' }}>
-              压力范围
-            </span>
-
-            {/* 滑块 */}
-            <div className="flex-1 flex items-center gap-2 min-w-0">
-              <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)' }}>0</span>
-              <input
-                type="range"
-                min={5}
-                max={sliderMax}
-                step={sliderMax <= 100 ? 5 : sliderMax <= 500 ? 10 : 50}
-                value={maxPressure}
-                onChange={handleSliderChange}
-                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, oklch(0.58 0.18 200) 0%, oklch(0.58 0.18 200) ${(maxPressure / sliderMax) * 100}%, oklch(0.25 0.02 240) ${(maxPressure / sliderMax) * 100}%, oklch(0.25 0.02 240) 100%)`,
-                  accentColor: 'oklch(0.58 0.18 200)',
-                }}
-              />
-              <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)' }}>{sliderMax}N</span>
-            </div>
-
-            {/* 输入框 */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={handleInputChange}
-                onBlur={handleInputConfirm}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleInputConfirm(); }}
-                className="w-16 px-2 py-1 rounded text-xs font-mono text-center"
-                style={{
-                  background: 'oklch(0.20 0.025 265)',
-                  border: '1px solid oklch(0.30 0.03 265)',
-                  color: 'oklch(0.80 0.02 240)',
-                  outline: 'none',
-                }}
-              />
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>N</span>
-            </div>
-
-            {/* 分隔线 */}
-            <div className="w-px h-5 flex-shrink-0" style={{ background: 'oklch(0.25 0.03 265)' }} />
-
-            {/* 快捷按钮 */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {QUICK_PRESETS.filter(p => p <= sliderMax).map(preset => (
-                <button
-                  key={preset}
-                  onClick={() => handlePreset(preset)}
-                  className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
-                  style={{
-                    background: maxPressure === preset ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
-                    border: `1px solid ${maxPressure === preset ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-                    color: maxPressure === preset ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {preset}N
-                </button>
-              ))}
-              {/* 数据最大值按钮 */}
-              {dataMaxPressure > 100 && !QUICK_PRESETS.includes(dataMaxPressure) && (
-                <button
-                  onClick={() => handlePreset(dataMaxPressure)}
-                  className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
-                  style={{
-                    background: maxPressure === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
-                    border: `1px solid ${maxPressure === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-                    color: maxPressure === dataMaxPressure ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Max {dataMaxPressure}N
-                </button>
-              )}
-            </div>
-
-            {/* 当前分析点数提示 */}
-            <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.40 0.02 240)' }}>
-              {pressurePoints.length} 个分析点
-            </span>
-          </div>
-
           {/* 上半部分：CV 分析（左右两图） */}
           <div className="flex gap-4">
             {/* 左图：关键压力点 CV 折线图 */}
@@ -517,7 +356,7 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                   关键压力点 CV 分析
                 </span>
                 <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
-                  ({analysis.perFileFits.length} 个文件独立拟合, 0-{maxPressure}N)
+                  ({analysis.perFileFits.length} 个文件独立拟合, 0-{pressureMax}N)
                 </span>
               </div>
               <div style={{ height: '220px' }}>
@@ -548,7 +387,6 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                         return [value, name];
                       }}
                     />
-                    {/* 参考线 */}
                     <ReferenceLine y={CV_THRESHOLDS.excellent} stroke="oklch(0.72 0.20 145)" strokeDasharray="5 3" label={{ value: '优秀 3%', fill: 'oklch(0.72 0.20 145)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
                     <ReferenceLine y={CV_THRESHOLDS.pass} stroke="oklch(0.80 0.18 90)" strokeDasharray="5 3" label={{ value: '合格 5%', fill: 'oklch(0.80 0.18 90)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
                     <ReferenceLine y={CV_THRESHOLDS.warning} stroke="oklch(0.70 0.20 55)" strokeDasharray="5 3" label={{ value: '警告 8%', fill: 'oklch(0.70 0.20 55)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
@@ -620,7 +458,7 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                       unit="N"
                       tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                       axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      domain={[0, maxPressure]}
+                      domain={[0, pressureMax]}
                     />
                     <YAxis
                       type="number"
@@ -709,16 +547,16 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                       }}
                       formatter={(value: number) => [value, '频次']}
                     />
-                    {/* 均值参考线 */}
-                    <ReferenceLine
-                      x={histData.reduce((closest, d) => Math.abs(d.center - residualMean) < Math.abs(closest.center - residualMean) ? d : closest, histData[0])?.bin}
-                      stroke="oklch(0.80 0.18 90)"
-                      strokeDasharray="5 3"
-                      label={{ value: `μ=${residualMean.toFixed(1)}`, fill: 'oklch(0.80 0.18 90)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'top' }}
-                    />
+                    {histData.length > 0 && (
+                      <ReferenceLine
+                        x={histData.reduce((closest, d) => Math.abs(d.center - residualMean) < Math.abs(closest.center - residualMean) ? d : closest, histData[0])?.bin}
+                        stroke="oklch(0.80 0.18 90)"
+                        strokeDasharray="5 3"
+                        label={{ value: `μ=${residualMean.toFixed(1)}`, fill: 'oklch(0.80 0.18 90)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'top' }}
+                      />
+                    )}
                     <Bar dataKey="count" isAnimationActive={false} radius={[2, 2, 0, 0]}>
                       {histData.map((entry, index) => {
-                        // 在 ±σ 范围内用亮色，外部用暗色
                         const inSigma = Math.abs(entry.center - residualMean) <= residualStd;
                         return (
                           <Cell
@@ -731,7 +569,6 @@ function ConsistencyAnalysisInner({ allSeries }: ConsistencyAnalysisProps) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              {/* 统计摘要 */}
               <div className="mt-2 flex gap-4 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
                 <span>均值 μ = {residualMean.toFixed(2)}</span>
                 <span>标准差 σ = {residualStd.toFixed(2)}</span>

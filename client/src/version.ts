@@ -55,7 +55,8 @@
  * v1.9.4  - 拟合公式导出：(1)导出JSON文件（含系数a/b/n、R²/RMSE、正向/反向公式的text和LaTeX格式）；(2)导出LaTeX .tex文件（含符号公式、代入系数公式、系数列表、拟合质量）；(3)一键复制LaTeX到剪贴板
  * v1.9.5  - 关键压力点CV分析+残差分布：(1)一致性/重复性页面下方新增一致性评估面板；(2)7个关键压力点(5/10/20/30/50/70/100N)的CV变异系数折线图+等级判定；(3)各文件独立Hill拟合后在关键压力点的ADC预测值散点图；(4)全局残差分布直方图（±σ高亮）；(5)各文件残差σ和最大|残差|柱状图；(6)重复性页面新增CSV上传功能
  * v1.9.6  - 压力范围可配置：(1)CV分析的关键压力点从固定7点改为动态生成；(2)滑块+输入框控制最大压力值(0-XXN)；(3)快捷按钮(50/100/200/500N)；(4)最大值上限由数据中最大压力值决定；(5)散点图X轴联动更新
+ * v1.9.7  - 压力范围双向联动：(1)提取共享 PressureRangeBar 组件（滑块+输入框+快捷按钮+Max按钮）；(2)DataChart的X轴范围和ConsistencyAnalysis的分析范围由父组件统一控制，双向联动；(3)DataChart内的固定按钮替换为PressureRangeBar
  */
-export const APP_VERSION = 'v1.9.6';
+export const APP_VERSION = 'v1.9.7';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-04-25';

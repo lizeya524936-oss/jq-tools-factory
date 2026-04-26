@@ -11,6 +11,7 @@
  *   纵坐标：串口上报的ADC求和数据，以选定区域的串口上报十六进制数组求和
  */
 import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import PressureRangeBar from './PressureRangeBar';
 import {
   ScatterChart,
   Scatter,
@@ -56,6 +57,12 @@ interface DataChartProps {
   onFitCurveToggle?: (show: boolean) => void;
   /** 拟合结果回调（通知父组件拟合结果） */
   onFitResult?: (result: HillFitResult | null) => void;
+  /** 外部控制的压力范围最大值 */
+  pressureMax?: number;
+  /** 压力范围变更回调 */
+  onPressureMaxChange?: (val: number) => void;
+  /** 数据中的最大压力值（用于 PressureRangeBar） */
+  dataMaxPressure?: number;
 }
 
 interface ChartDataPoint {
@@ -68,8 +75,7 @@ interface ChartDataPoint {
   seriesColor?: string;
 }
 
-// X轴范围预设
-const X_RANGE_PRESETS = [20, 30, 50, 70, 100] as const;
+// （X轴范围预设已移至 PressureRangeBar 组件）
 
 // 每个系列在图表中最多显示的散点数量
 const MAX_DISPLAY_POINTS_PER_SERIES = 200;
@@ -622,9 +628,20 @@ const DataChart = memo(function DataChart({
   showFitCurve: externalShowFit,
   onFitCurveToggle,
   onFitResult,
+  pressureMax: externalPressureMax,
+  onPressureMaxChange,
+  dataMaxPressure,
 }: DataChartProps) {
-  // X轴范围状态
-  const [xMax, setXMax] = useState<number>(100);
+  // X轴范围状态：优先使用外部控制
+  const [internalXMax, setInternalXMax] = useState<number>(100);
+  const xMax = externalPressureMax !== undefined ? externalPressureMax : internalXMax;
+  const setXMax = useCallback((val: number) => {
+    if (onPressureMaxChange) {
+      onPressureMaxChange(val);
+    } else {
+      setInternalXMax(val);
+    }
+  }, [onPressureMaxChange]);
   // 内部拟合曲线显示状态（当外部不控制时使用）
   const [internalShowFit, setInternalShowFit] = useState<boolean>(true);
 
@@ -778,34 +795,21 @@ const DataChart = memo(function DataChart({
         </div>
       ) : (
         <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
-          {/* X轴范围快捷按钮 */}
-          <div className="flex items-center gap-1.5 mb-1.5" style={{ minHeight: '24px' }}>
-            <span className="text-xs font-mono mr-1" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
-              X轴范围:
-            </span>
-            {X_RANGE_PRESETS.map(val => (
-              <button
-                key={val}
-                onClick={() => setXMax(val)}
-                className="px-2 py-0.5 rounded text-xs font-mono transition-all"
-                style={{
-                  background: xMax === val ? 'oklch(0.70 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
-                  border: `1px solid ${xMax === val ? 'oklch(0.70 0.18 200 / 0.6)' : 'oklch(0.30 0.03 265)'}`,
-                  color: xMax === val ? 'oklch(0.85 0.12 200)' : 'oklch(0.55 0.02 240)',
-                  fontSize: '10px',
-                  fontWeight: xMax === val ? 600 : 400,
-                }}
-              >
-                {val === 100 ? '100N (全部)' : `${val}N`}
-              </button>
-            ))}
-            {/* 降采样提示 */}
-            {totalRawPoints > totalDisplayPoints && (
-              <span className="ml-2 text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
-                已降采样显示 ({totalDisplayPoints}/{totalRawPoints} 点)
-              </span>
-            )}
+          {/* 压力范围控制栏 */}
+          <div className="mb-1.5">
+            <PressureRangeBar
+              pressureMax={xMax}
+              onPressureMaxChange={setXMax}
+              dataMaxPressure={dataMaxPressure}
+              compact={true}
+            />
           </div>
+          {/* 降采样提示 */}
+          {totalRawPoints > totalDisplayPoints && (
+            <div className="mb-1 text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+              已降采样显示 ({totalDisplayPoints}/{totalRawPoints} 点)
+            </div>
+          )}
 
           <div className="flex-1" style={{ minHeight: '400px' }}>
             <ResponsiveContainer width="100%" height="100%">

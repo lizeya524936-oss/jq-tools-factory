@@ -344,6 +344,19 @@ export default function RepeatabilityPage() {
     ...uploadedSeries.map(s => ({ ...s, visible: true })),
   ], [records, uploadedSeries]);
 
+  // 共享的压力范围状态（DataChart 和 ConsistencyAnalysis 双向联动）
+  const [pressureMax, setPressureMax] = useState<number>(100);
+
+  // 计算数据中的最大压力值
+  const dataMaxPressure = useMemo(() => {
+    let maxP = 100;
+    const allData = [...(records || []), ...uploadedSeries.flatMap(s => s.records)];
+    for (const r of allData) {
+      if (r.pressure > maxP) maxP = r.pressure;
+    }
+    return Math.ceil(maxP);
+  }, [records, uploadedSeries]);
+
   return (
     <div className="flex h-full gap-0">
       {/* 左侧 */}
@@ -648,6 +661,9 @@ export default function RepeatabilityPage() {
               showFitCurve={showFitCurve}
               onFitCurveToggle={setShowFitCurve}
               title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
+              pressureMax={pressureMax}
+              onPressureMaxChange={setPressureMax}
+              dataMaxPressure={dataMaxPressure}
             />
           )}
 
@@ -658,7 +674,7 @@ export default function RepeatabilityPage() {
 
         {/* 一致性评估：CV 分析 + 残差分布 */}
         <div className="mt-3">
-          <ConsistencyAnalysis allSeries={allSeriesForFit} />
+          <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} />
         </div>
       </div>
     </div>
