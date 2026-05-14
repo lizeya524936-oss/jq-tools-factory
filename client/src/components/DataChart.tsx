@@ -63,6 +63,10 @@ interface DataChartProps {
   onPressureMaxChange?: (val: number) => void;
   /** 数据中的最大压力值（用于 PressureRangeBar） */
   dataMaxPressure?: number;
+  /** 横纵坐标是否交换（外部控制，可选） */
+  axisSwapped?: boolean;
+  /** 横纵坐标交换回调 */
+  onAxisSwap?: (v: boolean) => void;
 }
 
 interface ChartDataPoint {
@@ -128,7 +132,7 @@ function downsampleForDisplay(data: ChartDataPoint[], maxPoints: number): ChartD
   return result;
 }
 
-const MultiSeriesTooltip = ({ active, payload }: any) => {
+function MultiSeriesTooltipInner({ active, payload, axisSwapped }: { active: boolean; payload: any[]; axisSwapped: boolean }) {
   if (active && payload && payload.length) {
     const data = payload[0]?.payload as ChartDataPoint | undefined;
     if (!data) return null;
@@ -150,12 +154,12 @@ const MultiSeriesTooltip = ({ active, payload }: any) => {
             Hill 拟合曲线
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: 'oklch(0.72 0.20 145)' }}>压力:</span>
-            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{data?.pressure?.toFixed(2)} N</span>
+            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'oklch(0.72 0.20 145)' }}>{axisSwapped ? 'ADC (拟合):' : '压力:'}</span>
+            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum?.toFixed(1)}` : `${data?.pressure?.toFixed(2)} N`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: FIT_CURVE_COLOR }}>ADC (拟合):</span>
-            <span style={{ color: FIT_CURVE_COLOR, fontWeight: 600 }}>{data?.adcSum?.toFixed(1)}</span>
+            <span style={{ color: axisSwapped ? 'oklch(0.72 0.20 145)' : FIT_CURVE_COLOR }}>{axisSwapped ? '压力 (拟合):' : 'ADC (拟合):'}</span>
+            <span style={{ color: axisSwapped ? 'oklch(0.72 0.20 145)' : FIT_CURVE_COLOR, fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum?.toFixed(1)}`}</span>
           </div>
         </div>
       );
@@ -182,12 +186,12 @@ const MultiSeriesTooltip = ({ active, payload }: any) => {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: 'oklch(0.72 0.20 145)' }}>压力:</span>
-            <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{data?.pressure?.toFixed(2)} N</span>
+            <span style={{ color: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)' }}>{axisSwapped ? 'ADC Sum:' : '压力:'}</span>
+            <span style={{ color: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum}` : `${data?.pressure?.toFixed(2)} N`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)' }}>ADC Sum:</span>
-            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)', fontWeight: 600 }}>{data?.adcSum}</span>
+            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)' }}>{axisSwapped ? '压力:' : 'ADC Sum:'}</span>
+            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)', fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum}`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
             <span style={{ color: 'oklch(0.55 0.15 200)' }}>Hex Sum:</span>
@@ -242,14 +246,35 @@ const CustomLegend = ({ payload }: any) => {
 /**
  * 生成 Hill 拟合结果的 LaTeX 公式字符串
  */
-function generateLatex(fit: HillFitResult): string {
+function generateLatex(fit: HillFitResult, axisSwapped: boolean = false): string {
   const a = fit.a;
   const b = fit.b;
   const n = fit.n;
+  const lhsVar = axisSwapped ? '\\mathrm{P}' : '\\mathrm{ADC}';
+  const rhsVar = axisSwapped ? '\\mathrm{ADC}' : '\\mathrm{P}';
+  const xLabel = axisSwapped ? 'ADC' : 'P';
+  const forwardDesc = axisSwapped ? 'P = f(ADC)' : 'ADC = f(P)';
+  const inverseDesc = axisSwapped ? 'ADC from P' : 'P from ADC';
+  const aLabel = axisSwapped ? 'saturation value, max P (N)' : 'saturation value, max ADC';
+  const bLabel = axisSwapped ? 'half-saturation ADC' : 'half-saturation pressure (N)';
+  const forwardNum = axisSwapped
+    ? `  \\mathrm{P} = ${a.toFixed(4)} \\cdot \\frac{\\mathrm{ADC}^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + \\mathrm{ADC}^{${n.toFixed(4)}}}`
+    : `  \\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`;
+  const inverseNum = axisSwapped
+    ? `  \\mathrm{ADC} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{P}}{${a.toFixed(4)} - \\mathrm{P}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`
+    : `  P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`;
+  const forwardSym = axisSwapped
+    ? '\\mathrm{P} = a \\cdot \\frac{\\mathrm{ADC}^{n}}{b^{n} + \\mathrm{ADC}^{n}}'
+    : '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}';
+  const inverseSym = axisSwapped
+    ? '\\mathrm{ADC} = b \\cdot \\left( \\frac{\\mathrm{P}}{a - \\mathrm{P}} \\right)^{\\frac{1}{n}}'
+    : 'P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}';
+
   const lines: string[] = [];
 
   lines.push('% ========================================');
   lines.push('% Hill Equation Fitting Result');
+  lines.push(`% Direction: ${forwardDesc}`);
   lines.push(`% Method: ${fit.method === 'hill' ? 'Hill 3-parameter' : fit.method === 'hyperbolic' ? 'Hyperbolic (n=1)' : 'Fallback estimate'}`);
   lines.push(`% R^2 = ${fit.r2.toFixed(8)}`);
   lines.push(`% RMSE = ${fit.rmse.toFixed(6)}`);
@@ -258,28 +283,28 @@ function generateLatex(fit: HillFitResult): string {
   lines.push('');
   lines.push('% --- General Hill Equation (symbolic) ---');
   lines.push('\\begin{equation}');
-  lines.push('  \\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}');
+  lines.push(`  ${forwardSym}`);
   lines.push('\\end{equation}');
   lines.push('');
   lines.push('% --- Fitted Hill Equation (with coefficients) ---');
   lines.push('\\begin{equation}');
-  lines.push(`  \\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`);
+  lines.push(forwardNum);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push('% --- Inverse Formula: ADC to Pressure (symbolic) ---');
+  lines.push(`% --- Inverse Formula: ${inverseDesc} (symbolic) ---`);
   lines.push('\\begin{equation}');
-  lines.push('  P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}');
+  lines.push(`  ${inverseSym}`);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push('% --- Inverse Formula: ADC to Pressure (with coefficients) ---');
+  lines.push(`% --- Inverse Formula: ${inverseDesc} (with coefficients) ---`);
   lines.push('\\begin{equation}');
-  lines.push(`  P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`);
+  lines.push(inverseNum);
   lines.push('\\end{equation}');
   lines.push('');
   lines.push('% --- Coefficients ---');
   lines.push('\\begin{align}');
-  lines.push(`  a &= ${a.toFixed(8)} \\quad &\\text{(saturation value, max ADC)} \\\\`);
-  lines.push(`  b &= ${b.toFixed(8)} \\quad &\\text{(half-saturation pressure, N)} \\\\`);
+  lines.push(`  a &= ${a.toFixed(8)} \\quad &\\text{(${aLabel})} \\\\`);
+  lines.push(`  b &= ${b.toFixed(8)} \\quad &\\text{(${bLabel})} \\\\`);
   lines.push(`  n &= ${n.toFixed(8)} \\quad &\\text{(Hill coefficient, steepness)}`);
   lines.push('\\end{align}');
   lines.push('');
@@ -296,17 +321,17 @@ function generateLatex(fit: HillFitResult): string {
 /**
  * 生成 JSON 格式的拟合结果（含系数、LaTeX 公式、拟合质量）
  */
-function generateExportJson(fit: HillFitResult): string {
+function generateExportJson(fit: HillFitResult, axisSwapped: boolean = false): string {
   const a = fit.a;
   const b = fit.b;
   const n = fit.n;
 
   const exportObj = {
     hill_equation: {
-      description: 'Hill Equation: ADC = a * P^n / (b^n + P^n)',
+      description: axisSwapped ? 'Hill Equation (swapped): P = a * ADC^n / (b^n + ADC^n)' : 'Hill Equation: ADC = a * P^n / (b^n + P^n)',
       coefficients: {
-        a: { value: a, description: 'Saturation value (max ADC)' },
-        b: { value: b, description: 'Half-saturation pressure (N), ADC = a/2 when P = b' },
+        a: { value: a, description: axisSwapped ? 'Saturation value (max P, N)' : 'Saturation value (max ADC)' },
+        b: { value: b, description: axisSwapped ? 'Half-saturation ADC, P = a/2 when ADC = b' : 'Half-saturation pressure (N), ADC = a/2 when P = b' },
         n: { value: n, description: 'Hill coefficient (steepness)' },
       },
       fit_quality: {
@@ -315,13 +340,23 @@ function generateExportJson(fit: HillFitResult): string {
         method: fit.method,
       },
       formulas: {
-        forward: {
+        forward: axisSwapped ? {
+          description: 'ADC to Pressure (forward when swapped)',
+          text: `P(N) = ${a.toFixed(4)} * ADC^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + ADC^${n.toFixed(4)})`,
+          latex: `\\mathrm{P} = ${a.toFixed(4)} \\cdot \\frac{\\mathrm{ADC}^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + \\mathrm{ADC}^{${n.toFixed(4)}}}`,
+          latex_symbolic: '\\mathrm{P} = a \\cdot \\frac{\\mathrm{ADC}^{n}}{b^{n} + \\mathrm{ADC}^{n}}',
+        } : {
           description: 'Pressure to ADC (forward)',
           text: `ADC = ${a.toFixed(4)} * P^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + P^${n.toFixed(4)})`,
           latex: `\\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`,
           latex_symbolic: '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}',
         },
-        inverse: {
+        inverse: axisSwapped ? {
+          description: 'Pressure to ADC (inverse when swapped)',
+          text: `ADC = ${b.toFixed(4)} * (P / (${a.toFixed(4)} - P))^(1/${n.toFixed(4)})`,
+          latex: `\\mathrm{ADC} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{P}}{${a.toFixed(4)} - \\mathrm{P}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`,
+          latex_symbolic: '\\mathrm{ADC} = b \\cdot \\left( \\frac{\\mathrm{P}}{a - \\mathrm{P}} \\right)^{\\frac{1}{n}}',
+        } : {
           description: 'ADC to Pressure (inverse)',
           text: `P(N) = ${b.toFixed(4)} * (ADC / (${a.toFixed(4)} - ADC))^(1/${n.toFixed(4)})`,
           latex: `P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`,
@@ -354,46 +389,46 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 /** Hill 拟合参数面板 */
-function HillFitPanel({ fit }: { fit: HillFitResult }) {
-  const [adcInput, setAdcInput] = useState('');
-  const [inverseResult, setInverseResult] = useState<string | null>(null);
+function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: boolean }) {
+  const [calcInput, setCalcInput] = useState('');
+  const [calcResult, setCalcResult] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const handleInverse = useCallback(() => {
-    const adcVal = parseFloat(adcInput);
-    if (isNaN(adcVal)) {
-      setInverseResult('请输入有效的 ADC 值');
+    const val = parseFloat(calcInput);
+    if (isNaN(val)) {
+      setCalcResult(axisSwapped ? '请输入有效的压力值' : '请输入有效的 ADC 值');
       return;
     }
-    const result = inverseHill(adcVal, fit.a, fit.b, fit.n);
+    const result = inverseHill(val, fit.a, fit.b, fit.n);
     if (result.status === 'valid' && result.pressure !== null) {
-      setInverseResult(`${adcVal} → ${result.pressure.toFixed(4)} N`);
+      setCalcResult(`${val} → ${result.pressure.toFixed(4)} ${axisSwapped ? 'ADC' : 'N'}`);
     } else if (result.status === 'zero') {
-      setInverseResult('ADC ≤ 0，无意义');
+      setCalcResult(axisSwapped ? 'P ≤ 0，无意义' : 'ADC ≤ 0，无意义');
     } else if (result.status === 'saturated') {
-      setInverseResult(`ADC ≥ a(${fit.a.toFixed(2)})，已饱和`);
+      setCalcResult(axisSwapped ? `P ≥ a(${fit.a.toFixed(2)})，已饱和` : `ADC ≥ a(${fit.a.toFixed(2)})，已饱和`);
     } else if (result.status === 'out_of_range') {
-      setInverseResult(`超出范围: ${result.pressure?.toFixed(2)} N`);
+      setCalcResult(`超出范围: ${result.pressure?.toFixed(2)} ${axisSwapped ? 'ADC' : 'N'}`);
     }
-  }, [adcInput, fit]);
+  }, [calcInput, fit, axisSwapped]);
 
   // 导出 JSON
   const handleExportJson = useCallback(() => {
-    const json = generateExportJson(fit);
+    const json = generateExportJson(fit, axisSwapped);
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     downloadFile(json, `hill_fit_${ts}.json`, 'application/json');
   }, [fit]);
 
   // 导出 LaTeX
   const handleExportLatex = useCallback(() => {
-    const latex = generateLatex(fit);
+    const latex = generateLatex(fit, axisSwapped);
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     downloadFile(latex, `hill_fit_${ts}.tex`, 'application/x-tex');
   }, [fit]);
 
   // 复制 LaTeX 到剪贴板
   const handleCopyLatex = useCallback(async () => {
-    const latex = generateLatex(fit);
+    const latex = generateLatex(fit, axisSwapped);
     try {
       await navigator.clipboard.writeText(latex);
       setCopyStatus('已复制');
@@ -509,7 +544,9 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
                 lineHeight: '18px',
               }}
             >
-              ADC = {fit.a.toFixed(2)} &times; P<sup>{fit.n.toFixed(4)}</sup> / ({fit.b.toFixed(4)}<sup>{fit.n.toFixed(4)}</sup> + P<sup>{fit.n.toFixed(4)}</sup>)
+              {axisSwapped
+                ? `P = ${fit.a.toFixed(2)} × ADC^${fit.n.toFixed(4)} / (${fit.b.toFixed(4)}^${fit.n.toFixed(4)} + ADC^${fit.n.toFixed(4)})`
+                : `ADC = ${fit.a.toFixed(2)} × P^${fit.n.toFixed(4)} / (${fit.b.toFixed(4)}^${fit.n.toFixed(4)} + P^${fit.n.toFixed(4)})`}
             </code>
           </div>
 
@@ -517,10 +554,10 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
           <div className="flex items-center gap-3">
             <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>系数:</span>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.75 0.18 80)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              a = {fit.a.toFixed(4)}
+              a = {fit.a.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>({axisSwapped ? 'max N' : 'max ADC'})</span>
             </code>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.72 0.20 145)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              b = {fit.b.toFixed(4)}
+              b = {fit.b.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>({axisSwapped ? '半饱和 ADC' : '半饱和 N'})</span>
             </code>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.68 0.20 300)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
               n = {fit.n.toFixed(4)}
@@ -530,7 +567,7 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
           {/* 反推公式 */}
           <div className="flex items-start gap-2">
             <span className="text-xs font-mono shrink-0" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px', lineHeight: '18px' }}>
-              ADC→N:
+              {axisSwapped ? 'N→ADC:' : 'ADC→N:'}
             </span>
             <code
               className="text-xs font-mono px-2 py-0.5 rounded"
@@ -542,7 +579,9 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
                 lineHeight: '18px',
               }}
             >
-              P(N) = {fit.b.toFixed(4)} &times; (ADC / ({fit.a.toFixed(2)} - ADC))<sup>1/{fit.n.toFixed(4)}</sup>
+              {axisSwapped
+                ? `ADC = ${fit.b.toFixed(4)} × (P / (${fit.a.toFixed(2)} - P))^(1/${fit.n.toFixed(4)})`
+                : `P(N) = ${fit.b.toFixed(4)} × (ADC / (${fit.a.toFixed(2)} - ADC))^(1/${fit.n.toFixed(4)})`}
             </code>
           </div>
         </div>
@@ -557,15 +596,15 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
           }}
         >
           <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
-            ADC → N 在线计算
+            {axisSwapped ? 'N → ADC 在线计算' : 'ADC → N 在线计算'}
           </span>
           <div className="flex items-center gap-1.5">
             <input
               type="number"
-              value={adcInput}
-              onChange={(e) => setAdcInput(e.target.value)}
+              value={calcInput}
+              onChange={(e) => setCalcInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleInverse()}
-              placeholder="输入 ADC 值"
+              placeholder={axisSwapped ? '输入压力值 (N)' : '输入 ADC 值'}
               className="flex-1 px-2 py-1 rounded text-xs font-mono"
               style={{
                 background: 'oklch(0.17 0.025 265)',
@@ -588,9 +627,9 @@ function HillFitPanel({ fit }: { fit: HillFitResult }) {
               计算
             </button>
           </div>
-          {inverseResult && (
+          {calcResult && (
             <div className="text-xs font-mono" style={{ color: 'oklch(0.72 0.20 145)', fontSize: '10px' }}>
-              {inverseResult}
+              {calcResult}
             </div>
           )}
         </div>
@@ -631,6 +670,8 @@ const DataChart = memo(function DataChart({
   pressureMax: externalPressureMax,
   onPressureMaxChange,
   dataMaxPressure,
+  axisSwapped: externalAxisSwapped,
+  onAxisSwap,
 }: DataChartProps) {
   // X轴范围状态：优先使用外部控制
   const [internalXMax, setInternalXMax] = useState<number>(100);
@@ -644,6 +685,17 @@ const DataChart = memo(function DataChart({
   }, [onPressureMaxChange]);
   // 内部拟合曲线显示状态（当外部不控制时使用）
   const [internalShowFit, setInternalShowFit] = useState<boolean>(true);
+  // 横纵坐标交换状态
+  const [internalAxisSwapped, setInternalAxisSwapped] = useState<boolean>(false);
+  const axisSwapped = externalAxisSwapped !== undefined ? externalAxisSwapped : internalAxisSwapped;
+  const toggleAxisSwap = useCallback(() => {
+    const next = !axisSwapped;
+    if (onAxisSwap) {
+      onAxisSwap(next);
+    } else {
+      setInternalAxisSwapped(next);
+    }
+  }, [axisSwapped, onAxisSwap]);
 
   // 最终的 showFit 状态：优先使用外部控制
   const showFit = externalShowFit !== undefined ? externalShowFit : internalShowFit;
@@ -738,7 +790,10 @@ const DataChart = memo(function DataChart({
 
     // 数据或范围变了，重新拟合
     try {
-      const result = fitHill(allPressures, allAdcValues);
+      // axisSwapped 时交换 x/y：拟合 P = f(ADC)
+      const result = axisSwapped
+        ? fitHill(allAdcValues, allPressures)
+        : fitHill(allPressures, allAdcValues);
       fitCacheRef.current = { signature, result };
       return result;
     } catch (e) {
@@ -746,7 +801,7 @@ const DataChart = memo(function DataChart({
       fitCacheRef.current = { signature, result: null };
       return null;
     }
-  }, [allSeriesForFit, series, records, enableFit, xMax]);
+  }, [allSeriesForFit, series, records, enableFit, xMax, axisSwapped]);
 
   // 通知父组件拟合结果
   useMemo(() => {
@@ -756,8 +811,24 @@ const DataChart = memo(function DataChart({
   // 生成拟合曲线数据（只需要少量点即可画出平滑曲线）
   const fitCurveData = useMemo(() => {
     if (!hillFitResult || !showFit) return [];
+    if (axisSwapped) {
+      // 拟合是 P = f(ADC)，x 轴是 ADC，从数据中获取 ADC 范围
+      const allAdcValues = (allSeriesForFit || series || []).flatMap(s =>
+        s.records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).map(r => r.adcSum)
+      );
+      if (allAdcValues.length === 0 && records) {
+        records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).forEach(r => allAdcValues.push(r.adcSum));
+      }
+      const adcMin = 0;
+      const adcMax = allAdcValues.length > 0 ? Math.max(...allAdcValues) * 1.05 : 5000;
+      // generateFitCurve 生成 (pressure, adcSum) 对，交换后 pressure 是 Y 轴值，adcSum 是 X 轴值
+      return generateFitCurve(hillFitResult, adcMin, adcMax, 100).map(p => ({
+        pressure: p.adcSum,  // p.adcSum 是拟合的 P 值 → 放在图表 Y 轴
+        adcSum: p.pressure,  // p.pressure 是拟合的 ADC 值 → 放在图表 X 轴
+      }));
+    }
     return generateFitCurve(hillFitResult, 0, xMax, 100);
-  }, [hillFitResult, showFit, xMax]);
+  }, [hillFitResult, showFit, xMax, axisSwapped, allSeriesForFit, series, records]);
 
   // 判断是否有数据可显示（可见系列有数据，或者拟合曲线有数据）
   const hasVisibleData = visibleSeries.some(s => s.data.length > 0);
@@ -797,14 +868,42 @@ const DataChart = memo(function DataChart({
         </div>
       ) : (
         <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
-          {/* 压力范围控制栏 */}
-          <div className="mb-1.5">
-            <PressureRangeBar
-              pressureMax={xMax}
-              onPressureMaxChange={setXMax}
-              dataMaxPressure={dataMaxPressure}
-              compact={true}
-            />
+          {/* 压力范围控制栏（横纵交换时隐藏，因为 X 轴不再是压力） */}
+          {!axisSwapped && (
+            <div className="mb-1.5">
+              <PressureRangeBar
+                pressureMax={xMax}
+                onPressureMaxChange={setXMax}
+                dataMaxPressure={dataMaxPressure}
+                compact={true}
+              />
+            </div>
+          )}
+          {/* 横纵坐标切换按钮 */}
+          <div className="flex items-center gap-2 mb-1.5">
+            <button
+              onClick={toggleAxisSwap}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
+              style={{
+                background: axisSwapped ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.20 0.02 265)',
+                border: axisSwapped ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid oklch(0.30 0.03 265)',
+                color: axisSwapped ? 'oklch(0.75 0.12 220)' : 'oklch(0.50 0.02 240)',
+                fontSize: '9px',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 5l3-3 3 3"/>
+                <path d="M5 2v8"/>
+                <path d="M14 11l-3 3-3-3"/>
+                <path d="M11 14V6"/>
+              </svg>
+              横纵切换
+            </button>
+            {axisSwapped && (
+              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+                X: ADC Sum · Y: 压力 (N)
+              </span>
+            )}
           </div>
           {/* 降采样提示 */}
           {totalRawPoints > totalDisplayPoints && (
@@ -821,46 +920,47 @@ const DataChart = memo(function DataChart({
                   stroke="oklch(0.25 0.03 265)"
                   strokeOpacity={0.6}
                 />
-                {/* 横坐标：力学数据（N） */}
+                {/* 横坐标：axisSwapped 时为 ADC Sum，否则为 压力 (N) */}
                 <XAxis
-                  dataKey="pressure"
+                  dataKey={axisSwapped ? "adcSum" : "pressure"}
                   type="number"
-                  name="压力"
+                  name={axisSwapped ? "ADC Sum" : "压力"}
                   tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                   axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                   tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
+                  tickFormatter={axisSwapped ? formatAdcTick : undefined}
                   label={{
-                    value: '压力 (N)',
+                    value: axisSwapped ? 'ADC Sum' : '压力 (N)',
                     position: 'insideBottom',
                     offset: -5,
-                    fill: 'oklch(0.72 0.20 145)',
+                    fill: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)',
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
-                  domain={[0, xMax]}
-                  allowDataOverflow={true}
+                  domain={axisSwapped ? ['auto', 'auto'] : [0, xMax]}
+                  allowDataOverflow={!axisSwapped}
                 />
-                {/* 纵坐标：ADC求和 */}
+                {/* 纵坐标：axisSwapped 时为 压力 (N)，否则为 ADC Sum */}
                 <YAxis
-                  dataKey="adcSum"
+                  dataKey={axisSwapped ? "pressure" : "adcSum"}
                   type="number"
-                  name="ADC Sum"
+                  name={axisSwapped ? "压力" : "ADC Sum"}
                   tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                   axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                   tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                  tickFormatter={formatAdcTick}
+                  tickFormatter={axisSwapped ? undefined : formatAdcTick}
                   label={{
-                    value: 'ADC Sum',
+                    value: axisSwapped ? '压力 (N)' : 'ADC Sum',
                     angle: -90,
                     position: 'insideLeft',
-                    fill: 'oklch(0.70 0.18 200)',
+                    fill: axisSwapped ? 'oklch(0.72 0.20 145)' : 'oklch(0.70 0.18 200)',
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
                   domain={['auto', 'auto']}
                 />
                 <ZAxis range={[15, 15]} />
-                <Tooltip content={<MultiSeriesTooltip />} />
+                <Tooltip content={(tooltipProps: any) => <MultiSeriesTooltipInner {...tooltipProps} axisSwapped={axisSwapped} />} />
                 <Legend content={<CustomLegend />} />
                 {/* 拟合曲线 — 使用 Scatter + line */}
                 {showFit && fitCurveData.length > 0 && (
@@ -902,7 +1002,7 @@ const DataChart = memo(function DataChart({
 
           {/* Hill 拟合参数面板 */}
           {hillFitResult && (
-            <HillFitPanel fit={hillFitResult} />
+            <HillFitPanel fit={hillFitResult} axisSwapped={axisSwapped} />
           )}
         </div>
       )}
