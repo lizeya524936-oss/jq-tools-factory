@@ -27,6 +27,7 @@ import { DataRecord, toHex } from '@/lib/sensorData';
 import {
   fitHill,
   generateFitCurve,
+  hillFunc,
   inverseHill,
   type HillFitResult,
 } from '@/lib/hillFit';
@@ -250,61 +251,58 @@ function generateLatex(fit: HillFitResult, axisSwapped: boolean = false): string
   const a = fit.a;
   const b = fit.b;
   const n = fit.n;
-  const lhsVar = axisSwapped ? '\\mathrm{P}' : '\\mathrm{ADC}';
-  const rhsVar = axisSwapped ? '\\mathrm{ADC}' : '\\mathrm{P}';
-  const xLabel = axisSwapped ? 'ADC' : 'P';
-  const forwardDesc = axisSwapped ? 'P = f(ADC)' : 'ADC = f(P)';
-  const inverseDesc = axisSwapped ? 'ADC from P' : 'P from ADC';
-  const aLabel = axisSwapped ? 'saturation value, max P (N)' : 'saturation value, max ADC';
-  const bLabel = axisSwapped ? 'half-saturation ADC' : 'half-saturation pressure (N)';
+  // 始终拟合 ADC = f(P)，轴交换时用反函数作为正向公式
+  const forwardTitle = axisSwapped
+    ? 'Inverse Hill: P = f(ADC) via inverse formula'
+    : 'Hill Equation: ADC = f(P)';
   const forwardNum = axisSwapped
-    ? `  \\mathrm{P} = ${a.toFixed(4)} \\cdot \\frac{\\mathrm{ADC}^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + \\mathrm{ADC}^{${n.toFixed(4)}}}`
+    ? `  \\mathrm{P} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`
     : `  \\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`;
-  const inverseNum = axisSwapped
-    ? `  \\mathrm{ADC} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{P}}{${a.toFixed(4)} - \\mathrm{P}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`
-    : `  P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`;
   const forwardSym = axisSwapped
-    ? '\\mathrm{P} = a \\cdot \\frac{\\mathrm{ADC}^{n}}{b^{n} + \\mathrm{ADC}^{n}}'
+    ? 'P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}'
     : '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}';
+  const inverseNum = axisSwapped
+    ? `  \\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`
+    : `  P\\,(\\mathrm{N}) = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`;
   const inverseSym = axisSwapped
-    ? '\\mathrm{ADC} = b \\cdot \\left( \\frac{\\mathrm{P}}{a - \\mathrm{P}} \\right)^{\\frac{1}{n}}'
+    ? '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}'
     : 'P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}';
 
   const lines: string[] = [];
 
   lines.push('% ========================================');
   lines.push('% Hill Equation Fitting Result');
-  lines.push(`% Direction: ${forwardDesc}`);
+  lines.push(`% Direction: ${forwardTitle}`);
   lines.push(`% Method: ${fit.method === 'hill' ? 'Hill 3-parameter' : fit.method === 'hyperbolic' ? 'Hyperbolic (n=1)' : 'Fallback estimate'}`);
   lines.push(`% R^2 = ${fit.r2.toFixed(8)}`);
   lines.push(`% RMSE = ${fit.rmse.toFixed(6)}`);
   lines.push(`% Generated: ${new Date().toISOString()}`);
   lines.push('% ========================================');
   lines.push('');
-  lines.push('% --- General Hill Equation (symbolic) ---');
+  lines.push('% --- Forward Formula (symbolic) ---');
   lines.push('\\begin{equation}');
   lines.push(`  ${forwardSym}`);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push('% --- Fitted Hill Equation (with coefficients) ---');
+  lines.push('% --- Forward Formula (with coefficients) ---');
   lines.push('\\begin{equation}');
   lines.push(forwardNum);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push(`% --- Inverse Formula: ${inverseDesc} (symbolic) ---`);
+  lines.push('% --- Reverse Formula (symbolic) ---');
   lines.push('\\begin{equation}');
   lines.push(`  ${inverseSym}`);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push(`% --- Inverse Formula: ${inverseDesc} (with coefficients) ---`);
+  lines.push('% --- Reverse Formula (with coefficients) ---');
   lines.push('\\begin{equation}');
   lines.push(inverseNum);
   lines.push('\\end{equation}');
   lines.push('');
-  lines.push('% --- Coefficients ---');
+  lines.push('% --- Coefficients (from ADC = f(P) fit) ---');
   lines.push('\\begin{align}');
-  lines.push(`  a &= ${a.toFixed(8)} \\quad &\\text{(${aLabel})} \\\\`);
-  lines.push(`  b &= ${b.toFixed(8)} \\quad &\\text{(${bLabel})} \\\\`);
+  lines.push(`  a &= ${a.toFixed(8)} \\quad &\\text{(saturation value, max ADC)} \\\\`);
+  lines.push(`  b &= ${b.toFixed(8)} \\quad &\\text{(half-saturation pressure, N)} \\\\`);
   lines.push(`  n &= ${n.toFixed(8)} \\quad &\\text{(Hill coefficient, steepness)}`);
   lines.push('\\end{align}');
   lines.push('');
@@ -328,10 +326,12 @@ function generateExportJson(fit: HillFitResult, axisSwapped: boolean = false): s
 
   const exportObj = {
     hill_equation: {
-      description: axisSwapped ? 'Hill Equation (swapped): P = a * ADC^n / (b^n + ADC^n)' : 'Hill Equation: ADC = a * P^n / (b^n + P^n)',
+      description: axisSwapped
+        ? 'Inverse Hill (via standard fit): P = b * (ADC / (a - ADC))^(1/n)'
+        : 'Hill Equation: ADC = a * P^n / (b^n + P^n)',
       coefficients: {
-        a: { value: a, description: axisSwapped ? 'Saturation value (max P, N)' : 'Saturation value (max ADC)' },
-        b: { value: b, description: axisSwapped ? 'Half-saturation ADC, P = a/2 when ADC = b' : 'Half-saturation pressure (N), ADC = a/2 when P = b' },
+        a: { value: a, description: 'Saturation value (max ADC)' },
+        b: { value: b, description: 'Half-saturation pressure (N)' },
         n: { value: n, description: 'Hill coefficient (steepness)' },
       },
       fit_quality: {
@@ -341,21 +341,21 @@ function generateExportJson(fit: HillFitResult, axisSwapped: boolean = false): s
       },
       formulas: {
         forward: axisSwapped ? {
-          description: 'ADC to Pressure (forward when swapped)',
-          text: `P(N) = ${a.toFixed(4)} * ADC^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + ADC^${n.toFixed(4)})`,
-          latex: `\\mathrm{P} = ${a.toFixed(4)} \\cdot \\frac{\\mathrm{ADC}^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + \\mathrm{ADC}^{${n.toFixed(4)}}}`,
-          latex_symbolic: '\\mathrm{P} = a \\cdot \\frac{\\mathrm{ADC}^{n}}{b^{n} + \\mathrm{ADC}^{n}}',
+          description: 'ADC to Pressure via inverse formula (shown when swapped)',
+          text: `P(N) = ${b.toFixed(4)} * (ADC / (${a.toFixed(4)} - ADC))^(1/${n.toFixed(4)})`,
+          latex: `\\mathrm{P} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{ADC}}{${a.toFixed(4)} - \\mathrm{ADC}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`,
+          latex_symbolic: 'P = b \\cdot \\left( \\frac{\\mathrm{ADC}}{a - \\mathrm{ADC}} \\right)^{\\frac{1}{n}}',
         } : {
-          description: 'Pressure to ADC (forward)',
+          description: 'Pressure to ADC (standard forward)',
           text: `ADC = ${a.toFixed(4)} * P^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + P^${n.toFixed(4)})`,
           latex: `\\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`,
           latex_symbolic: '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}',
         },
         inverse: axisSwapped ? {
-          description: 'Pressure to ADC (inverse when swapped)',
-          text: `ADC = ${b.toFixed(4)} * (P / (${a.toFixed(4)} - P))^(1/${n.toFixed(4)})`,
-          latex: `\\mathrm{ADC} = ${b.toFixed(4)} \\cdot \\left( \\frac{\\mathrm{P}}{${a.toFixed(4)} - \\mathrm{P}} \\right)^{\\frac{1}{${n.toFixed(4)}}}`,
-          latex_symbolic: '\\mathrm{ADC} = b \\cdot \\left( \\frac{\\mathrm{P}}{a - \\mathrm{P}} \\right)^{\\frac{1}{n}}',
+          description: 'Pressure to ADC (standard forward, shown as reverse)',
+          text: `ADC = ${a.toFixed(4)} * P^${n.toFixed(4)} / (${b.toFixed(4)}^${n.toFixed(4)} + P^${n.toFixed(4)})`,
+          latex: `\\mathrm{ADC} = ${a.toFixed(4)} \\cdot \\frac{P^{${n.toFixed(4)}}}{${b.toFixed(4)}^{${n.toFixed(4)}} + P^{${n.toFixed(4)}}}`,
+          latex_symbolic: '\\mathrm{ADC} = a \\cdot \\frac{P^{n}}{b^{n} + P^{n}}',
         } : {
           description: 'ADC to Pressure (inverse)',
           text: `P(N) = ${b.toFixed(4)} * (ADC / (${a.toFixed(4)} - ADC))^(1/${n.toFixed(4)})`,
@@ -400,15 +400,28 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
       setCalcResult(axisSwapped ? '请输入有效的压力值' : '请输入有效的 ADC 值');
       return;
     }
-    const result = inverseHill(val, fit.a, fit.b, fit.n);
-    if (result.status === 'valid' && result.pressure !== null) {
-      setCalcResult(`${val} → ${result.pressure.toFixed(4)} ${axisSwapped ? 'ADC' : 'N'}`);
-    } else if (result.status === 'zero') {
-      setCalcResult(axisSwapped ? 'P ≤ 0，无意义' : 'ADC ≤ 0，无意义');
-    } else if (result.status === 'saturated') {
-      setCalcResult(axisSwapped ? `P ≥ a(${fit.a.toFixed(2)})，已饱和` : `ADC ≥ a(${fit.a.toFixed(2)})，已饱和`);
-    } else if (result.status === 'out_of_range') {
-      setCalcResult(`超出范围: ${result.pressure?.toFixed(2)} ${axisSwapped ? 'ADC' : 'N'}`);
+    if (axisSwapped) {
+      // 输入压力值 → 用 Hill 正向公式计算 ADC
+      const adc = hillFunc(val, fit.a, fit.b, fit.n);
+      if (val <= 0) {
+        setCalcResult('P ≤ 0，无意义');
+      } else if (!isFinite(adc)) {
+        setCalcResult('计算出错');
+      } else {
+        setCalcResult(`${val} N → ${adc.toFixed(4)} ADC`);
+      }
+    } else {
+      // 输入 ADC 值 → 用 Hill 反函数计算压力
+      const result = inverseHill(val, fit.a, fit.b, fit.n);
+      if (result.status === 'valid' && result.pressure !== null) {
+        setCalcResult(`${val} → ${result.pressure.toFixed(4)} N`);
+      } else if (result.status === 'zero') {
+        setCalcResult('ADC ≤ 0，无意义');
+      } else if (result.status === 'saturated') {
+        setCalcResult(`ADC ≥ a(${fit.a.toFixed(2)})，已饱和`);
+      } else if (result.status === 'out_of_range') {
+        setCalcResult(`超出范围: ${result.pressure?.toFixed(2)} N`);
+      }
     }
   }, [calcInput, fit, axisSwapped]);
 
@@ -545,7 +558,7 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
               }}
             >
               {axisSwapped
-                ? `P = ${fit.a.toFixed(2)} × ADC^${fit.n.toFixed(4)} / (${fit.b.toFixed(4)}^${fit.n.toFixed(4)} + ADC^${fit.n.toFixed(4)})`
+                ? `P = ${fit.b.toFixed(4)} × (ADC / (${fit.a.toFixed(2)} - ADC))^(1/${fit.n.toFixed(4)})`
                 : `ADC = ${fit.a.toFixed(2)} × P^${fit.n.toFixed(4)} / (${fit.b.toFixed(4)}^${fit.n.toFixed(4)} + P^${fit.n.toFixed(4)})`}
             </code>
           </div>
@@ -554,10 +567,10 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
           <div className="flex items-center gap-3">
             <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>系数:</span>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.75 0.18 80)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              a = {fit.a.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>({axisSwapped ? 'max N' : 'max ADC'})</span>
+              a = {fit.a.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>(max ADC)</span>
             </code>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.72 0.20 145)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              b = {fit.b.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>({axisSwapped ? '半饱和 ADC' : '半饱和 N'})</span>
+              b = {fit.b.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>(半饱和 N)</span>
             </code>
             <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.68 0.20 300)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
               n = {fit.n.toFixed(4)}
@@ -567,7 +580,7 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
           {/* 反推公式 */}
           <div className="flex items-start gap-2">
             <span className="text-xs font-mono shrink-0" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px', lineHeight: '18px' }}>
-              {axisSwapped ? 'N→ADC:' : 'ADC→N:'}
+              {axisSwapped ? 'P→ADC:' : 'ADC→N:'}
             </span>
             <code
               className="text-xs font-mono px-2 py-0.5 rounded"
@@ -580,7 +593,7 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
               }}
             >
               {axisSwapped
-                ? `ADC = ${fit.b.toFixed(4)} × (P / (${fit.a.toFixed(2)} - P))^(1/${fit.n.toFixed(4)})`
+                ? `ADC = ${fit.a.toFixed(2)} × P^${fit.n.toFixed(4)} / (${fit.b.toFixed(4)}^${fit.n.toFixed(4)} + P^${fit.n.toFixed(4)})`
                 : `P(N) = ${fit.b.toFixed(4)} × (ADC / (${fit.a.toFixed(2)} - ADC))^(1/${fit.n.toFixed(4)})`}
             </code>
           </div>
@@ -596,7 +609,7 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
           }}
         >
           <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
-            {axisSwapped ? 'N → ADC 在线计算' : 'ADC → N 在线计算'}
+            {axisSwapped ? 'P → ADC 在线计算' : 'ADC → N 在线计算'}
           </span>
           <div className="flex items-center gap-1.5">
             <input
@@ -784,16 +797,12 @@ const DataChart = memo(function DataChart({
     // 计算数据签名（含压力范围 + 轴方向），与缓存比较
     const signature = `range=${pressureCeiling}|swapped=${axisSwapped}|` + computeDataSignature(allPressures, allAdcValues);
     if (signature === fitCacheRef.current.signature) {
-      // 数据和范围都没变，直接返回缓存结果
       return fitCacheRef.current.result;
     }
 
-    // 数据或范围变了，重新拟合
+    // 始终拟合 ADC = f(P) 的自然方向（R² 更高），轴交换时用 Hill 反函数公式表达
     try {
-      // axisSwapped 时交换 x/y：拟合 P = f(ADC)
-      const result = axisSwapped
-        ? fitHill(allAdcValues, allPressures)
-        : fitHill(allPressures, allAdcValues);
+      const result = fitHill(allPressures, allAdcValues);
       fitCacheRef.current = { signature, result };
       return result;
     } catch (e) {
@@ -808,24 +817,30 @@ const DataChart = memo(function DataChart({
     onFitResult?.(hillFitResult);
   }, [hillFitResult, onFitResult]);
 
-  // 生成拟合曲线数据（只需要少量点即可画出平滑曲线）
+  // 生成拟合曲线数据
   const fitCurveData = useMemo(() => {
     if (!hillFitResult || !showFit) return [];
     if (axisSwapped) {
-      // 拟合是 P = f(ADC)，x 轴是 ADC，从数据中获取 ADC 范围
+      // 用 Hill 反函数：已知 ADC → 反推 P，绘制 (ADC, P) 散点
       const allAdcValues = (allSeriesForFit || series || []).flatMap(s =>
         s.records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).map(r => r.adcSum)
       );
       if (allAdcValues.length === 0 && records) {
         records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).forEach(r => allAdcValues.push(r.adcSum));
       }
-      const adcMin = 0;
       const adcMax = allAdcValues.length > 0 ? Math.max(...allAdcValues) * 1.05 : 5000;
-      // generateFitCurve 生成 (pressure, adcSum) 对，交换后 pressure 是 Y 轴值，adcSum 是 X 轴值
-      return generateFitCurve(hillFitResult, adcMin, adcMax, 100).map(p => ({
-        pressure: p.adcSum,  // p.adcSum 是拟合的 P 值 → 放在图表 Y 轴
-        adcSum: p.pressure,  // p.pressure 是拟合的 ADC 值 → 放在图表 X 轴
-      }));
+      const numPoints = 100;
+      const step = adcMax / (numPoints - 1);
+      const points: { pressure: number; adcSum: number }[] = [];
+      for (let i = 0; i < numPoints; i++) {
+        const adc = step * i;
+        const inv = inverseHill(adc, hillFitResult.a, hillFitResult.b, hillFitResult.n);
+        const p = inv.status === 'valid' ? inv.pressure! : (inv.status === 'saturated' ? hillFitResult.b * 5 : null);
+        if (p !== null && isFinite(p) && p > 0) {
+          points.push({ adcSum: adc, pressure: p });
+        }
+      }
+      return points;
     }
     return generateFitCurve(hillFitResult, 0, xMax, 100);
   }, [hillFitResult, showFit, xMax, axisSwapped, allSeriesForFit, series, records]);
