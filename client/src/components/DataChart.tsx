@@ -781,8 +781,8 @@ const DataChart = memo(function DataChart({
 
     if (allPressures.length < 5) return null;
 
-    // 计算数据签名（含压力范围），与缓存比较
-    const signature = `range=${pressureCeiling}|` + computeDataSignature(allPressures, allAdcValues);
+    // 计算数据签名（含压力范围 + 轴方向），与缓存比较
+    const signature = `range=${pressureCeiling}|swapped=${axisSwapped}|` + computeDataSignature(allPressures, allAdcValues);
     if (signature === fitCacheRef.current.signature) {
       // 数据和范围都没变，直接返回缓存结果
       return fitCacheRef.current.result;
