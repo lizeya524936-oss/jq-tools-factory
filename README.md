@@ -65,6 +65,24 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.10（2026-05-15）
+
+**横纵坐标切换功能**
+
+在综合曲线图表（DataChart）中新增横纵坐标切换开关，点击后交换 X/Y 轴数据方向，Hill 拟合方程自动反向计算：
+
+- 切换开关位于压力范围栏下方，双向箭头图标 + "横纵切换" 文字
+- 激活后 X 轴显示 ADC Sum，Y 轴显示压力 (N)
+- Hill 拟合自动反向：原 `ADC = f(P)` → 切换后 `P = f(ADC)`
+- 拟合面板所有标签联动更新：正向方程、反推公式、系数说明、在线计算器
+- LaTeX/JSON 导出内容自动适配当前坐标轴方向
+- Tooltip 标签顺序跟随坐标轴方向调整
+- 切换后隐藏 PressureRangeBar（因 X 轴不再是压力）
+
+**修改文件：**
+
+- 修改 `client/src/components/DataChart.tsx` — 新增 axisSwapped 状态、切换按钮、X/Y 轴交换、拟合反向、HillFitPanel/tooltip/导出函数全部适配
+
 ### v1.9.9（2026-05-14）
 
 **版本号更新**
