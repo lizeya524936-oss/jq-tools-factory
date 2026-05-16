@@ -65,6 +65,26 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.11（2026-05-16）
+
+**Inverse Hill 拟合实现（ADC → 压力）**
+
+将坐标轴切换后的拟合逻辑从"Hill 反函数公式推导"替换为真正的 Inverse Hill 直接拟合，X 轴 = ADC，Y 轴 = 压力：
+
+- `hillFit.ts` 新增 `fitInverseHill`、`invHillFunc`、`generateInvFitCurve`、`formatInvHillEquation` 函数
+- `DataChart.tsx` axisSwapped 模式下使用 Inverse Hill 直接拟合（P = K·(ADC/(Vmax-ADC))^(1/n)）
+- Python 分析工具 `sensor_hill_fit.py` 升级至 v1.7：
+  - 加载参数模式支持 Inverse Hill（Vmax/K/n 输入 + 逐传感器残差计算）
+  - UI 动态切换 Hill / Inverse Hill 参数面板
+  - JSON 导入/导出、CSV 导出完整适配 Inverse Hill
+  - 新增 Inverse Hill 加载参数模式可视化图表
+
+**修改文件：**
+
+- 修改 `client/src/components/DataChart.tsx` — axisSwapped 模式改用 fitInverseHill
+- 修改 `client/src/lib/hillFit.ts` — 新增 Inverse Hill 拟合全套函数
+- 修改 `sensor_hill_fit.py` — v1.7 Inverse Hill 加载参数模式（本地分析工具）
+
 ### v1.9.10（2026-05-15）
 
 **横纵坐标切换功能**
