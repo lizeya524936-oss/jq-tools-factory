@@ -414,6 +414,151 @@ export function fitHill(pressures: number[], adcValues: number[]): HillFitResult
   return { a: a0, b: b0, n: 1.0, rmse, r2, method: 'fallback' };
 }
 
+// ─── Inverse Hill 拟合（v1.6 新增）────────────────────────────────────────────
+
+/**
+ * Inverse Hill 方程: P = K * (ADC/(Vmax-ADC))^(1/n)
+ * ADC 为 X 轴，压力为 Y 轴
+ */
+export function invHillFunc(x: number, Vmax: number, K: number, n: number): number {
+  const ratio = x / (Vmax - x + 1e-12);
+  if (ratio <= 0) return 0;
+  return K * Math.pow(ratio, 1.0 / n);
+}
+
+/**
+ * 批量 Inverse Hill
+ */
+export function invHillFuncArray(xs: number[], Vmax: number, K: number, n: number): number[] {
+  return xs.map(x => invHillFunc(x, Vmax, K, n));
+}
+
+/**
+ * Inverse Hill 拟合结果（与 HillFitResult 兼容）
+ * Vmax = 渐近最大ADC, K = 半饱和ADC, n = Hill系数
+ * a 字段复用为 Vmax, b 字段复用为 K
+ */
+export interface InvHillFitResult {
+  Vmax: number;
+  K: number;
+  n: number;
+  rmse: number;
+  r2: number;
+  method: 'inv_hill' | 'inv_hill_n1' | 'fallback';
+}
+
+/**
+ * 对 ADC-压力 数据进行 Inverse Hill 拟合
+ * P = K * (ADC/(Vmax-ADC))^(1/n)
+ */
+export function fitInverseHill(
+  adcValues: number[],
+  pressures: number[],
+): InvHillFitResult | null {
+  if (adcValues.length < 3 || pressures.length < 3) return null;
+  if (adcValues.length !== pressures.length) return null;
+
+  const validPairs: { x: number; y: number }[] = [];
+  for (let i = 0; i < adcValues.length; i++) {
+    const x = adcValues[i];
+    const y = pressures[i];
+    if (isFinite(x) && isFinite(y) && x > 0 && y >= 0) {
+      validPairs.push({ x, y });
+    }
+  }
+  if (validPairs.length < 3) return null;
+
+  // 降采样
+  const rawXs = validPairs.map(d => d.x);
+  const rawYs = validPairs.map(d => d.y);
+  const { ps: fitXs, vs: fitYs } = downsampleForFit(rawXs, rawYs, 500);
+
+  const xs = fitXs;
+  const ys = fitYs;
+  const evalXs = rawXs;
+  const evalYs = rawYs;
+
+  const maxX = Math.max(...xs);
+  const medianX = [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+  // Inverse Hill 模型：P = K * (ADC/(Vmax-ADC))^(1/n)
+  const invHillModel = (x: number, params: number[]) =>
+    invHillFunc(x, params[0], params[1], params[2]);
+
+  // 策略 1: 完整 3 参数
+  let bestResult: InvHillFitResult | null = null;
+  try {
+    const params = levenbergMarquardt(
+      xs, ys, invHillModel,
+      [maxX * 1.1, Math.max(0.5, medianX * 0.5), 0.9],
+      { lower: [maxX * 0.9, 0.5, 0.3], upper: [maxX * 3.0, 200, 8] },
+      5000,
+    );
+    const [Vmax, K, n] = params;
+    const predicted = evalXs.map(x => invHillFunc(x, Vmax, K, n));
+    const { rmse, r2 } = computeMetrics(evalYs, predicted);
+    bestResult = { Vmax, K, n, rmse, r2, method: 'inv_hill' };
+  } catch {
+    // 拟合失败
+  }
+
+  // 策略 2: n=1 降级
+  let n1Result: InvHillFitResult | null = null;
+  try {
+    const n1Model = (x: number, params: number[]) =>
+      invHillFunc(x, params[0], params[1], 1.0);
+    const params = levenbergMarquardt(
+      xs, ys, n1Model,
+      [maxX * 1.1, Math.max(0.5, medianX * 0.5)],
+      { lower: [maxX * 0.9, 0.5], upper: [maxX * 3.0, 200] },
+      3000,
+    );
+    const [Vmax, K] = params;
+    const predicted = evalXs.map(x => invHillFunc(x, Vmax, K, 1.0));
+    const { rmse, r2 } = computeMetrics(evalYs, predicted);
+    n1Result = { Vmax, K, n: 1.0, rmse, r2, method: 'inv_hill_n1' };
+  } catch {
+    // 拟合失败
+  }
+
+  if (bestResult && n1Result) {
+    return bestResult.r2 >= n1Result.r2 ? bestResult : n1Result;
+  }
+  if (bestResult) return bestResult;
+  if (n1Result) return n1Result;
+
+  // Fallback
+  const predicted = evalXs.map(x => invHillFunc(x, maxX * 1.1, medianX * 0.5, 1.0));
+  const { rmse, r2 } = computeMetrics(evalYs, predicted);
+  return { Vmax: maxX * 1.1, K: medianX * 0.5, n: 1.0, rmse, r2, method: 'fallback' };
+}
+
+/**
+ * 格式化 Inverse Hill 公式
+ */
+export function formatInvHillEquation(fit: InvHillFitResult): string {
+  return `P = ${fit.K.toFixed(2)} × (ADC / (${fit.Vmax.toFixed(1)} - ADC))^(1/${fit.n.toFixed(4)})`;
+}
+
+/**
+ * 生成 Inverse Hill 拟合曲线数据点
+ */
+export function generateInvFitCurve(
+  fit: InvHillFitResult,
+  adcMin: number = 0,
+  adcMax: number = 100,
+  numPoints: number = 200,
+): { adc: number; pressure: number }[] {
+  const points: { adc: number; pressure: number }[] = [];
+  const step = (adcMax - adcMin) / (numPoints - 1);
+  for (let i = 0; i < numPoints; i++) {
+    const adc = adcMin + step * i;
+    const pressure = invHillFunc(adc, fit.Vmax, fit.K, fit.n);
+    points.push({ adc, pressure });
+  }
+  return points;
+}
+
 /**
  * 生成拟合曲线数据点（用于图表绘制）
  * 

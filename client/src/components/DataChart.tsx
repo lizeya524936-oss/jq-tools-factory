@@ -29,7 +29,12 @@ import {
   generateFitCurve,
   hillFunc,
   inverseHill,
+  fitInverseHill,
+  generateInvFitCurve,
+  invHillFunc,
   type HillFitResult,
+  type InvHillFitResult,
+  formatInvHillEquation,
 } from '@/lib/hillFit';
 
 /** 单个上传文件的数据系列 */
@@ -762,16 +767,16 @@ const DataChart = memo(function DataChart({
     return result;
   }, [series, records]);
 
-  // Hill 拟合 — 基于全部数据（包括不可见的系列），只使用 0~pressureMax 范围内的数据，带缓存机制避免重复计算
+  // Hill 拟合 / Inverse Hill 拟合 — 基于全部数据，带缓存机制
+  // axisSwapped=false → Hill 正向: ADC = f(P)
+  // axisSwapped=true  → Inverse Hill: P = f(ADC)
   const hillFitResult = useMemo<HillFitResult | null>(() => {
     if (!enableFit) return null;
 
     const allPressures: number[] = [];
     const allAdcValues: number[] = [];
 
-    // 优先使用 allSeriesForFit（含不可见系列），否则使用 series/records
     const fitSource = allSeriesForFit || series;
-    // 只使用 0~xMax 范围内的数据进行拟合，避免尾段对前段的影响
     const pressureCeiling = xMax;
 
     if (fitSource && fitSource.length > 0) {
@@ -794,17 +799,32 @@ const DataChart = memo(function DataChart({
 
     if (allPressures.length < 5) return null;
 
-    // 计算数据签名（含压力范围 + 轴方向），与缓存比较
     const signature = `range=${pressureCeiling}|swapped=${axisSwapped}|` + computeDataSignature(allPressures, allAdcValues);
     if (signature === fitCacheRef.current.signature) {
       return fitCacheRef.current.result;
     }
 
-    // 始终拟合 ADC = f(P) 的自然方向（R² 更高），轴交换时用 Hill 反函数公式表达
     try {
-      const result = fitHill(allPressures, allAdcValues);
-      fitCacheRef.current = { signature, result };
-      return result;
+      if (axisSwapped) {
+        // v1.6: Inverse Hill — P = f(ADC)
+        const invResult = fitInverseHill(allAdcValues, allPressures);
+        if (!invResult) {
+          fitCacheRef.current = { signature, result: null };
+          return null;
+        }
+        // 转换为 HillFitResult 兼容格式（复用 a= Vmax, b= K, n= n）
+        const result: HillFitResult = {
+          a: invResult.Vmax, b: invResult.K, n: invResult.n,
+          rmse: invResult.rmse, r2: invResult.r2,
+          method: 'hill', // 标记为 hill 以兼容现有 UI
+        };
+        fitCacheRef.current = { signature, result };
+        return result;
+      } else {
+        const result = fitHill(allPressures, allAdcValues);
+        fitCacheRef.current = { signature, result };
+        return result;
+      }
     } catch (e) {
       console.error('[Hill Fit] 拟合失败:', e);
       fitCacheRef.current = { signature, result: null };
@@ -821,7 +841,7 @@ const DataChart = memo(function DataChart({
   const fitCurveData = useMemo(() => {
     if (!hillFitResult || !showFit) return [];
     if (axisSwapped) {
-      // 用 Hill 反函数：已知 ADC → 反推 P，绘制 (ADC, P) 散点
+      // v1.6: 使用 Inverse Hill 拟合直接生成的曲线
       const allAdcValues = (allSeriesForFit || series || []).flatMap(s =>
         s.records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).map(r => r.adcSum)
       );
@@ -829,18 +849,9 @@ const DataChart = memo(function DataChart({
         records.filter(r => r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= xMax).forEach(r => allAdcValues.push(r.adcSum));
       }
       const adcMax = allAdcValues.length > 0 ? Math.max(...allAdcValues) * 1.05 : 5000;
-      const numPoints = 100;
-      const step = adcMax / (numPoints - 1);
-      const points: { pressure: number; adcSum: number }[] = [];
-      for (let i = 0; i < numPoints; i++) {
-        const adc = step * i;
-        const inv = inverseHill(adc, hillFitResult.a, hillFitResult.b, hillFitResult.n);
-        const p = inv.status === 'valid' ? inv.pressure! : (inv.status === 'saturated' ? hillFitResult.b * 5 : null);
-        if (p !== null && isFinite(p) && p > 0) {
-          points.push({ adcSum: adc, pressure: p });
-        }
-      }
-      return points;
+      const invFit: InvHillFitResult = { Vmax: hillFitResult.a, K: hillFitResult.b, n: hillFitResult.n, rmse: hillFitResult.rmse, r2: hillFitResult.r2, method: 'inv_hill' };
+      const curvePoints = generateInvFitCurve(invFit, 0, adcMax, 100);
+      return curvePoints.map(p => ({ pressure: p.pressure, adcSum: p.adc }));
     }
     return generateFitCurve(hillFitResult, 0, xMax, 100);
   }, [hillFitResult, showFit, xMax, axisSwapped, allSeriesForFit, series, records]);
