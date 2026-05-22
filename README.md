@@ -65,6 +65,20 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.12（2026-05-22）
+
+**修复：Python 工具横纵模式切换后参数面板和图表公式未同步更新**
+
+切换 Hill（压力→ADC）和 Inverse Hill（ADC→压力）模式后，参数面板中的公式、标签和图表标题仍显示旧模式内容：
+
+- `_on_mode_changed()` 新增 `_update_params_text()` 和 `_refresh_plots()` 调用，确保切换后所有 UI 同步刷新
+- `_update_params_text()` 按当前模式（正向/逆向）过滤显示，不再混合展示两种模式的结果
+- 新增 `_refresh_plots()` 方法，根据当前模式重绘"拟合曲线"、"残差分析"、"各次实验对比"、"加载参数残差"四个 Tab
+
+**修改文件：**
+
+- 修改 `sensor_hill_fit.py` — 模式切换回调新增参数刷新和图表重绘逻辑
+
 ### v1.9.11（2026-05-16）
 
 **Inverse Hill 拟合实现（ADC → 压力）**
