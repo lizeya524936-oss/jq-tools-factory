@@ -50,7 +50,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const [showSizeEditor, setShowSizeEditor] = useState(false);
   const [editRows, setEditRows] = useState(rows);
   const [editCols, setEditCols] = useState(cols);
-  const [showArrayIndex, setShowArrayIndex] = useState(true);
+  const [displayMode, setDisplayMode] = useState<'index' | 'value' | 'off'>('index');
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, sensor: null });
   const [zoom, setZoom] = useState<ZoomState>({ active: false, centerRow: 0, centerCol: 0, radius: 3 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -216,7 +216,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const maxDim = Math.max(rows, cols);
   const dotSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
   const showLabels = maxDim <= 32;
-  const showIndexInDot = maxDim <= 16 && showArrayIndex;
+  const showLabelInDot = maxDim <= 16 && displayMode !== 'off';
 
   // 缓存已选传感器的数组索引列表
   const selectedIndices = useMemo(
@@ -310,7 +310,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             </span>
           </div>
         )}
-        {/* 主矩阵：显示数组位序 */}
+        {/* 主矩阵：显示数组位序或ADC数值 */}
         {!isZoomView && showIdx && (
           <span style={{
             fontSize: size > 16 ? '7px' : '5px',
@@ -319,7 +319,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             fontWeight: 600,
             lineHeight: 1,
           }}>
-            {arrayIdx}
+            {displayMode === 'value' ? adcVal : arrayIdx}
           </span>
         )}
       </div>
@@ -413,17 +413,17 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           )}
         </div>
         <button
-          onClick={() => setShowArrayIndex(!showArrayIndex)}
+          onClick={() => setDisplayMode(prev => prev === 'index' ? 'value' : prev === 'value' ? 'off' : 'index')}
           className="text-xs font-mono px-1.5 py-0.5 rounded transition-colors"
           style={{
-            background: showArrayIndex ? 'oklch(0.70 0.18 200 / 0.12)' : 'transparent',
-            color: showArrayIndex ? 'oklch(0.70 0.18 200)' : 'oklch(0.40 0.02 240)',
+            background: displayMode !== 'off' ? 'oklch(0.70 0.18 200 / 0.12)' : 'transparent',
+            color: displayMode !== 'off' ? 'oklch(0.70 0.18 200)' : 'oklch(0.40 0.02 240)',
             fontSize: '9px',
-            border: `1px solid ${showArrayIndex ? 'oklch(0.70 0.18 200 / 0.3)' : 'oklch(0.25 0.03 265)'}`,
+            border: `1px solid ${displayMode !== 'off' ? 'oklch(0.70 0.18 200 / 0.3)' : 'oklch(0.25 0.03 265)'}`,
           }}
-          title="切换显示数组位序号"
+          title="切换显示: 序号 → 数值 → 关闭"
         >
-          #序号
+          {displayMode === 'index' ? '#序号' : displayMode === 'value' ? '#数值' : '#关闭'}
         </button>
       </div>
 
@@ -593,7 +593,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                 {r + 1}
               </div>
             )}
-            {Array.from({ length: cols }, (_, c) => renderDot(r, c, dotSize, showIndexInDot, false))}
+            {Array.from({ length: cols }, (_, c) => renderDot(r, c, dotSize, showLabelInDot, false))}
           </div>
         ))}
 
