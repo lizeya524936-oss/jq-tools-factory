@@ -11,7 +11,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "deploy:test": "pnpm run build && npx wrangler pages deploy dist/public --project-name=jq-tools-factory-test --branch=main && node scripts/cleanup-deployments.js jq-tools-factory-test",
-    "deploy:prod": "pnpm run build && npx wrangler pages deploy dist/public --project-name=jq-tools-factory --branch=main && node scripts/cleanup-deployments.js jq-tools-factory"
+    "deploy:prod": "pnpm run build && npx wrangler pages deploy dist/public --project-name=jq-tools-factory --branch=master && node scripts/cleanup-deployments.js jq-tools-factory"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
