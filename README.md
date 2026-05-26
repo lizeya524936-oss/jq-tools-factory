@@ -61,6 +61,12 @@ pnpm deploy:prod
 
 > **工作流程：** 修改代码 → `pnpm deploy:test` → 在测试环境验证 → 确认OK → `pnpm deploy:prod` → 客户使用正式环境
 
+> ⚠️ **注意：** 两个 Cloudflare Pages 项目的生产分支不同：
+> - 测试项目 `jq-tools-factory-test` → 生产分支 = `main`
+> - 正式项目 `jq-tools-factory` → 生产分支 = `master`
+>
+> 修改 deploy 命令时必须确保 `--branch` 参数与对应项目的生产分支一致，否则部署不会更新到正式域名。
+
 ---
 
 ## 版本变动记录
