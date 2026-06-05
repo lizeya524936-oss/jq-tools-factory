@@ -1672,7 +1672,7 @@ def main():
   python hill_fit_offline.py *.csv --custom-pressure 15
         """,
     )
-    parser.add_argument("files", nargs="+", help="CSV 文件路径（支持多个文件）")
+    parser.add_argument("files", nargs="*", help="CSV 文件路径（支持多个文件）")
     parser.add_argument("--output", "-o", default=None, help="JSON 输出文件路径")
     parser.add_argument("--plot", "-p", action="store_true", help="生成 matplotlib 图表")
     parser.add_argument("--max-pressure", "-m", type=float, default=None,
@@ -1689,6 +1689,9 @@ def main():
     if args.gui:
         run_gui()
         return
+
+    if not args.files:
+        parser.error("请指定 CSV 文件路径，或使用 --gui 启动图形界面")
 
     # 加载 CSV 文件
     all_series = []
