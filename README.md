@@ -71,6 +71,23 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.15（2026-06-05）
+
+**新增离线 Hill 拟合工具 `hill_fit_offline.py`**
+
+创建与网页前端 `client/src/lib/hillFit.ts` 算法逐行一致的 Python 离线分析工具：
+
+- Hill 方程正向/反向、双曲线方程、Levenberg-Marquardt 拟合、降采样策略完全对应 TS 实现
+- 支持网页端全部 3 种 CSV 格式，含上升段过滤
+- 一致性分析：多文件独立拟合 + 全局拟合 + 关键压力点 CV 分析 + 残差统计
+- 支持自定义压力点 CV 计算、JSON 结果导出、matplotlib 图表生成
+- 仅依赖 numpy，不依赖 scipy
+
+**修改文件：**
+
+- 新增 `hill_fit_offline.py` — 离线 Hill 拟合 CLI 工具
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.15
+
 ### v1.9.14（2026-06-05）
 
 **一致性评估：自定义压力点 CV 计算器**

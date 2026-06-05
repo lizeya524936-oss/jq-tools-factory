@@ -58,6 +58,6 @@
  * v1.9.7  - 压力范围双向联动：(1)提取共享 PressureRangeBar 组件（滑块+输入框+快捷按钮+Max按钮）；(2)DataChart的X轴范围和ConsistencyAnalysis的分析范围由父组件统一控制，双向联动；(3)DataChart内的固定按钮替换为PressureRangeBar
  * v1.9.8  - 压力范围重新拟合：(1)调整滑块后只使用0~pressureMax范围内的数据重新进行Hill拟合，避免尾段对前段的影响；(2)滑块拖动防抖：拖动过程中只更新显示值，松手后才触发重新拟合
  */
-export const APP_VERSION = 'v1.9.14';
+export const APP_VERSION = 'v1.9.15';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-06-05';
