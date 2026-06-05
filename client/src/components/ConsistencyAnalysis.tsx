@@ -258,6 +258,9 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysi
     return generatePressurePoints(pressureMax);
   }, [pressureMax]);
 
+  // 自定义压力点 CV 计算
+  const [customPressure, setCustomPressure] = useState<string>('');
+
   // 数据签名缓存
   const dataSignature = useMemo(() => {
     return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${pressureMax}`;
@@ -266,6 +269,29 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysi
   const analysis = useMemo(() => {
     return computeAnalysis(allSeries, pressurePoints);
   }, [dataSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 自定义压力点 CV 计算结果
+  const customCVResult = useMemo(() => {
+    if (!analysis || !customPressure || customPressure.trim() === '') return null;
+    const p = parseFloat(customPressure);
+    if (!isFinite(p) || p < 0) return null;
+
+    const values: number[] = [];
+    const fileNames: string[] = [];
+    for (const { fileName, fit } of analysis.perFileFits) {
+      const predicted = hillFunc(p, fit.a, fit.b, fit.n);
+      values.push(predicted);
+      fileNames.push(fileName);
+    }
+    if (values.length < 2) return null;
+
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+    const std = Math.sqrt(variance);
+    const cv = mean > 0 ? (std / mean) * 100 : 0;
+
+    return { pressure: p, cv, mean, std, values, fileNames, isOutOfRange: p > pressureMax };
+  }, [analysis, customPressure, pressureMax]);
 
   if (!analysis) {
     return (
@@ -442,6 +468,106 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysi
 
             {/* 右图：各文件在关键压力点的 ADC 预测值散点 */}
             <div className="flex-1 min-w-0">
+              {/* 自定义压力点 CV 计算器 */}
+              <div
+                className="rounded p-3 mb-3"
+                style={{
+                  background: 'oklch(0.15 0.02 265)',
+                  border: '1px solid oklch(0.25 0.03 265)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
+                    自定义压力点 CV 计算
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={`输入压力值 (N), 0-${pressureMax}`}
+                    value={customPressure}
+                    onChange={e => setCustomPressure(e.target.value)}
+                    className="flex-1 px-2 py-1 rounded text-xs font-mono outline-none"
+                    style={{
+                      background: 'oklch(0.20 0.02 265)',
+                      border: '1px solid oklch(0.30 0.03 265)',
+                      color: 'oklch(0.70 0.02 240)',
+                    }}
+                  />
+                  <button
+                    onClick={() => setCustomPressure('')}
+                    className="px-2 py-1 rounded text-xs font-mono hover:opacity-80 transition-opacity"
+                    style={{
+                      background: 'oklch(0.25 0.03 265)',
+                      border: '1px solid oklch(0.30 0.03 265)',
+                      color: 'oklch(0.55 0.02 240)',
+                    }}
+                  >
+                    清除
+                  </button>
+                </div>
+
+                {customCVResult ? (
+                  <div className="mt-2">
+                    {customCVResult.isOutOfRange && (
+                      <div className="text-xs font-mono mb-1" style={{ color: 'oklch(0.70 0.20 55)' }}>
+                        ⚠ 超出当前分析范围 (0-{pressureMax}N)，结果仅供参考
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono">
+                      <span>
+                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>CV: </span>
+                        <span style={{ color: getCVColor(customCVResult.cv) }}>{customCVResult.cv.toFixed(2)}%</span>
+                      </span>
+                      <span>
+                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>均值: </span>
+                        <span style={{ color: 'oklch(0.65 0.02 240)' }}>{customCVResult.mean.toFixed(1)}</span>
+                      </span>
+                      <span>
+                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>标准差: </span>
+                        <span style={{ color: 'oklch(0.65 0.02 240)' }}>{customCVResult.std.toFixed(2)}</span>
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded"
+                        style={{
+                          background: getCVColor(customCVResult.cv).replace(')', ' / 0.15)'),
+                          color: getCVColor(customCVResult.cv),
+                          fontSize: '9px',
+                        }}
+                      >
+                        {getCVLabel(customCVResult.cv)}
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}>
+                      <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
+                        各文件预测值:
+                      </span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                        {customCVResult.fileNames.map((name, i) => {
+                          const seriesIdx = allSeries.findIndex(s => s.name === name);
+                          const color = SERIES_COLORS[(seriesIdx >= 0 ? seriesIdx : i) % SERIES_COLORS.length];
+                          return (
+                            <span key={name} className="text-xs font-mono" style={{ fontSize: '9px' }}>
+                              <span style={{ color: 'oklch(0.45 0.02 240)' }}>
+                                {name.replace(/\.csv$/i, '').slice(0, 14)}:
+                              </span>
+                              {' '}
+                              <span style={{ color }}>{customCVResult.values[i].toFixed(1)}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
+                    输入压力值查看该点的 CV 计算结果
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
                   各文件关键压力点 ADC 预测值
