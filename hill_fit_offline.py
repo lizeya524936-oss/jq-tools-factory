@@ -1069,7 +1069,595 @@ def plot_results(all_series, analysis, pressure_max, output_path=None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 第 8 部分: CLI 入口
+# 第 8 部分: GUI（CustomTkinter + Matplotlib）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def run_gui():
+    """启动图形界面"""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
+        import customtkinter as ctk
+        import matplotlib
+        matplotlib.use("TkAgg")
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+        from matplotlib.figure import Figure
+    except ImportError as e:
+        print(f"错误: GUI 模式需要额外依赖: {e}")
+        print("安装命令: pip install customtkinter matplotlib")
+        sys.exit(1)
+
+    class HillFitGUI(ctk.CTk):
+        """Hill 方程拟合离线分析工具 GUI"""
+
+        VERSION = "v1.0"
+
+        def __init__(self):
+            super().__init__()
+            self.title(f"Hill 方程拟合分析工具  {self.VERSION}")
+            self.geometry("1300x850")
+            self.minsize(1000, 600)
+
+            self.loaded_series: list = []  # [{"name": ..., "records": [...]}]
+            self.analysis_result: Optional[dict] = None
+            self.pressure_max: float = 100.0
+
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("blue")
+
+            self._build_ui()
+
+        def _build_ui(self):
+            # 顶部标题栏
+            header = ctk.CTkFrame(self, height=48, corner_radius=0, fg_color="#1a1a2e")
+            header.pack(fill="x", side="top")
+            ctk.CTkLabel(
+                header,
+                text=f"⚗  Hill 方程拟合分析工具  {self.VERSION}",
+                font=("Microsoft YaHei", 14, "bold"),
+                text_color="#4FC3F7",
+            ).pack(side="left", padx=20, pady=10)
+            ctk.CTkLabel(
+                header,
+                text="上传 CSV → Hill 拟合 → CV 分析 → 残差统计（算法与网页端一致）",
+                font=("Microsoft YaHei", 11),
+                text_color="#888",
+            ).pack(side="left", padx=10)
+
+            # 主体
+            body = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+            body.pack(fill="both", expand=True)
+
+            self._build_left_panel(body)
+            self._build_right_panel(body)
+
+        # ── 左侧控制面板 ──
+
+        def _build_left_panel(self, parent):
+            left = ctk.CTkFrame(parent, width=340, corner_radius=0, fg_color="#16213e")
+            left.pack(side="left", fill="y")
+            left.pack_propagate(False)
+
+            scroll = ctk.CTkScrollableFrame(left, fg_color="transparent")
+            scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+            # ── 文件上传区 ──
+            self._section(scroll, "📁  数据文件")
+            self.file_listbox = tk.Listbox(
+                scroll, bg="#0a1f3b", fg="#e0e0e0", selectbackground="#2196F3",
+                selectforeground="#fff", font=("Microsoft YaHei", 10), height=6,
+                relief="flat", bd=0, highlightthickness=2, highlightcolor="#2196F3",
+                highlightbackground="#1a3a5c",
+            )
+            self.file_listbox.pack(fill="x", pady=(0, 6))
+
+            btn_row = ctk.CTkFrame(scroll, fg_color="transparent")
+            btn_row.pack(fill="x", pady=(0, 4))
+            ctk.CTkButton(btn_row, text="+ 添加文件", command=self._add_files,
+                          width=120, height=30).pack(side="left", padx=(0, 4))
+            ctk.CTkButton(btn_row, text="清空", command=self._clear_files,
+                          width=70, height=30, fg_color="#c0392b",
+                          hover_color="#e74c3c").pack(side="left")
+
+            ctk.CTkLabel(
+                scroll, text="支持网页端全部 3 种 CSV 格式，自动识别。",
+                font=("Microsoft YaHei", 10), text_color="#888", wraplength=300,
+            ).pack(anchor="w", pady=(0, 6))
+
+            # ── 数据摘要 ──
+            self.summary_frame = ctk.CTkFrame(
+                scroll, fg_color="#0f3460", corner_radius=8,
+                border_width=1, border_color="#1a5276",
+            )
+            self.summary_frame.pack(fill="x", pady=(0, 8))
+            summary_inner = ctk.CTkFrame(self.summary_frame, fg_color="transparent")
+            summary_inner.pack(fill="x", padx=10, pady=8)
+
+            self.summary_label = ctk.CTkLabel(
+                summary_inner, text="📊  暂无数据",
+                font=("Microsoft YaHei", 11, "bold"), text_color="#888",
+            )
+            self.summary_label.pack(anchor="w")
+
+            self.sum_file_label = ctk.CTkLabel(
+                summary_inner, text="文件: 0  数据行: 0",
+                font=("Microsoft YaHei", 10), text_color="#666",
+            )
+            self.sum_file_label.pack(anchor="w", pady=(4, 0))
+
+            # ── 分析配置 ──
+            self._section(scroll, "⚙  分析配置")
+            self._label(scroll, "压力范围最大值 (N)")
+            self.p_max_var = tk.StringVar(value="100")
+            p_row = ctk.CTkFrame(scroll, fg_color="transparent")
+            p_row.pack(fill="x", pady=(0, 6))
+            self.p_max_entry = ctk.CTkEntry(p_row, textvariable=self.p_max_var, width=80)
+            self.p_max_entry.pack(side="left", padx=(0, 8))
+            ctk.CTkButton(p_row, text="自动检测", command=self._auto_detect_pmax,
+                          width=80, height=28, font=("Microsoft YaHei", 10)).pack(side="left")
+
+            # ── 自定义压力点 ──
+            self._label(scroll, "自定义压力点 CV 计算 (N)")
+            self.custom_p_var = tk.StringVar(value="")
+            ctk.CTkEntry(scroll, textvariable=self.custom_p_var,
+                         placeholder_text="输入压力值，如 15").pack(fill="x", pady=(0, 6))
+
+            # ── 执行按钮 ──
+            ctk.CTkButton(
+                scroll, text="▶  开始拟合分析", command=self._run_analysis,
+                height=40, font=("Microsoft YaHei", 12, "bold"),
+                fg_color="#1565C0", hover_color="#1976D2",
+            ).pack(fill="x", pady=(10, 4))
+
+            # ── 拟合参数展示 ──
+            self._section(scroll, "📐  拟合参数")
+            self.param_text = tk.Text(
+                scroll, height=14, bg="#0f3460", fg="#e0e0e0",
+                font=("Consolas", 10), relief="flat", bd=0,
+                state="disabled", wrap="none",
+            )
+            self.param_text.pack(fill="x", pady=(0, 6))
+
+            # ── 导出 ──
+            self._section(scroll, "💾  导出结果")
+            exp_row = ctk.CTkFrame(scroll, fg_color="transparent")
+            exp_row.pack(fill="x")
+            ctk.CTkButton(exp_row, text="导出 JSON", command=lambda: self._export_json(),
+                          width=110, height=30).pack(side="left", padx=(0, 4))
+            ctk.CTkButton(exp_row, text="导出 CSV", command=lambda: self._export_csv(),
+                          width=110, height=30).pack(side="left")
+
+            # ── 状态栏 ──
+            self.status_var = tk.StringVar(value="就绪 — 请添加 CSV 文件")
+            self.status_label = ctk.CTkLabel(
+                scroll, textvariable=self.status_var,
+                font=("Microsoft YaHei", 10), text_color="#aaa", wraplength=280,
+                anchor="w", justify="left",
+            )
+            self.status_label.pack(anchor="w", pady=(10, 0))
+
+        # ── 右侧图表面板（Tab）──
+
+        def _build_right_panel(self, parent):
+            right = ctk.CTkFrame(parent, corner_radius=0, fg_color="#0d1b2a")
+            right.pack(side="left", fill="both", expand=True)
+
+            self.tab_view = ctk.CTkTabview(
+                right, fg_color="#0d1b2a",
+                segmented_button_fg_color="#16213e",
+                segmented_button_selected_color="#1565C0",
+            )
+            self.tab_view.pack(fill="both", expand=True, padx=8, pady=8)
+
+            self.tab_fit = self.tab_view.add("拟合曲线")
+            self.tab_cv = self.tab_view.add("CV 分析")
+            self.tab_resid = self.tab_view.add("残差分析")
+
+            self.fig_fit, self.canvas_fit = self._make_canvas(self.tab_fit)
+            self.fig_cv, self.canvas_cv = self._make_canvas(self.tab_cv)
+            self.fig_resid, self.canvas_resid = self._make_canvas(self.tab_resid)
+
+        def _make_canvas(self, parent):
+            fig = Figure(figsize=(9, 6), dpi=96, facecolor="#0d1b2a")
+            canvas = FigureCanvasTkAgg(fig, master=parent)
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            toolbar_frame = tk.Frame(parent, bg="#0d1b2a")
+            toolbar_frame.pack(fill="x")
+            NavigationToolbar2Tk(canvas, toolbar_frame)
+            return fig, canvas
+
+        # ── 辅助方法 ──
+
+        def _section(self, parent, title):
+            ctk.CTkLabel(parent, text=title,
+                         font=("Microsoft YaHei", 12, "bold"),
+                         text_color="#4FC3F7").pack(anchor="w", pady=(12, 2))
+
+        def _label(self, parent, text):
+            ctk.CTkLabel(parent, text=text, font=("Microsoft YaHei", 10),
+                         text_color="#aaa").pack(anchor="w", pady=(4, 1))
+
+        # ── 文件操作 ──
+
+        def _add_files(self):
+            paths = filedialog.askopenfilenames(
+                title="选择 CSV 文件",
+                filetypes=[("CSV 文件", "*.csv"), ("所有文件", "*.*")],
+            )
+            for path in paths:
+                records = load_csv_file(path)
+                if len(records) < 5:
+                    messagebox.showwarning("提示",
+                                           f"{os.path.basename(path)}: 有效记录不足 5 条")
+                    continue
+                filename = os.path.basename(path)
+                self.loaded_series.append({"name": filename, "records": records, "path": path})
+                self.file_listbox.insert(tk.END, f"{filename}  ({len(records)} 条)")
+            self._update_summary()
+
+        def _clear_files(self):
+            self.loaded_series.clear()
+            self.analysis_result = None
+            self.file_listbox.delete(0, tk.END)
+            self._update_summary()
+            self._clear_param_text()
+            self._clear_charts()
+            self._set_status("就绪 — 请添加 CSV 文件")
+
+        def _update_summary(self):
+            n_files = len(self.loaded_series)
+            total_rows = sum(len(s["records"]) for s in self.loaded_series)
+            self.sum_file_label.configure(text=f"文件: {n_files}  数据行: {total_rows}")
+            if n_files >= 2:
+                self.summary_label.configure(
+                    text=f"📊  已就绪 — {n_files} 个文件",
+                    text_color="#4FC3F7",
+                )
+            elif n_files == 1:
+                self.summary_label.configure(
+                    text="📊  还需要 1 个文件（至少 2 个）",
+                    text_color="#FFB74D",
+                )
+            else:
+                self.summary_label.configure(
+                    text="📊  暂无数据", text_color="#888",
+                )
+
+        def _auto_detect_pmax(self):
+            if not self.loaded_series:
+                return
+            all_max = []
+            for s in self.loaded_series:
+                for r in s["records"]:
+                    all_max.append(r["pressure"])
+            pmax = max(all_max) if all_max else 100
+            if pmax <= 20:
+                pmax = math.ceil(pmax)
+            elif pmax <= 50:
+                pmax = math.ceil(pmax / 5) * 5
+            elif pmax <= 100:
+                pmax = math.ceil(pmax / 10) * 10
+            else:
+                pmax = math.ceil(pmax / 50) * 50
+            self.p_max_var.set(str(pmax))
+
+        # ── 分析执行 ──
+
+        def _run_analysis(self):
+            if len(self.loaded_series) < 2:
+                messagebox.showwarning("提示", "需要至少 2 个数据文件")
+                return
+
+            try:
+                self.pressure_max = float(self.p_max_var.get())
+            except ValueError:
+                self.pressure_max = 100
+                self.p_max_var.set("100")
+
+            self._set_status("计算中...", "#FFB74D")
+            self.update_idletasks()
+
+            pressure_points = generate_pressure_points(self.pressure_max)
+            self.analysis_result = compute_analysis(self.loaded_series, pressure_points)
+
+            if not self.analysis_result:
+                messagebox.showerror("错误", "无法完成分析")
+                self._set_status("分析失败")
+                return
+
+            # 自定义压力点
+            custom_p = None
+            try:
+                cp_str = self.custom_p_var.get().strip()
+                if cp_str:
+                    custom_p = float(cp_str)
+            except ValueError:
+                custom_p = None
+
+            self._update_param_text(self.analysis_result, custom_p)
+            self._draw_charts(self.analysis_result)
+            self._set_status(
+                f"✓ 分析完成 — {len(self.analysis_result['perFileFits'])} 个文件拟合成功  |  "
+                f"平均 CV: {self.analysis_result['avgCV']:.2f}% ({get_cv_label(self.analysis_result['avgCV'])})",
+                "#4FC3F7" if self.analysis_result['avgCV'] <= 5 else "#FFB74D",
+            )
+
+        # ── 参数展示 ──
+
+        def _update_param_text(self, analysis, custom_p=None):
+            self.param_text.configure(state="normal")
+            self.param_text.delete("1.0", tk.END)
+
+            lines = []
+            lines.append("═ 各文件独立拟合 ═")
+            lines.append(f"{'文件':<24s} {'a':>8s} {'b':>8s} {'n':>8s} {'R²':>8s} {'方法':>10s}")
+            lines.append("─" * 70)
+            for entry in analysis["perFileFits"]:
+                f = entry["fit"]
+                name = entry["fileName"].replace('.csv', '')[:22]
+                lines.append(f"{name:<24s} {f['a']:>8.1f} {f['b']:>8.1f} {f['n']:>8.4f} {f['r2']:>8.4f} {f['method']:>10s}")
+
+            if analysis["globalFit"]:
+                gf = analysis["globalFit"]
+                lines.append("")
+                lines.append("═ 全局拟合 ═")
+                lines.append(f"a={gf['a']:.4f}  b={gf['b']:.4f}  n={gf['n']:.4f}")
+                lines.append(f"R²={gf['r2']:.6f}  RMSE={gf['rmse']:.4f}")
+                lines.append(f"正向: {format_hill_equation(gf)}")
+                lines.append(f"反向: {format_inverse_equation(gf)}")
+
+            if custom_p is not None:
+                values = []
+                for entry in analysis['perFileFits']:
+                    predicted = hill_func(custom_p, entry['fit']['a'], entry['fit']['b'], entry['fit']['n'])
+                    values.append(predicted)
+                mean_v = np.mean(values) if values else 0
+                variance = np.sum((np.array(values) - mean_v) ** 2) / len(values) if values else 0
+                std_v = math.sqrt(variance)
+                cv = (std_v / mean_v) * 100 if mean_v > 0 else 0
+                lines.append("")
+                lines.append(f"══ 自定义压力点 P={custom_p}N ══")
+                lines.append(f"CV={cv:.2f}%  均值={mean_v:.1f}  标准差={std_v:.2f}  {get_cv_label(cv)}")
+
+            lines.append("")
+            lines.append("═ CV 分析 ═")
+            lines.append(f"平均 CV: {analysis['avgCV']:.2f}% ({get_cv_label(analysis['avgCV'])})")
+            lines.append(f"CV 评分: {analysis['cvScore']:.0f}  残差 σ: {analysis['residualStd']:.2f}")
+
+            self.param_text.insert("1.0", "\n".join(lines))
+            self.param_text.configure(state="disabled")
+
+        def _clear_param_text(self):
+            self.param_text.configure(state="normal")
+            self.param_text.delete("1.0", tk.END)
+            self.param_text.configure(state="disabled")
+
+        def _clear_charts(self):
+            for fig in [self.fig_fit, self.fig_cv, self.fig_resid]:
+                fig.clear()
+                fig.canvas.draw_idle()
+
+        # ── 图表绘制 ──
+
+        def _draw_charts(self, analysis):
+            self._draw_fit_tab(analysis)
+            self._draw_cv_tab(analysis)
+            self._draw_resid_tab(analysis)
+
+        def _draw_fit_tab(self, analysis):
+            fig = self.fig_fit
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.set_facecolor("#0d1b2a")
+            fig.patch.set_facecolor("#0d1b2a")
+
+            colors = plt.cm.tab10(np.linspace(0, 1, 10))
+
+            # 散点数据
+            for idx, series in enumerate(self.loaded_series):
+                ps = [r["pressure"] for r in series["records"]]
+                vs = [r["adcSum"] for r in series["records"]]
+                name = series["name"].replace('.csv', '')[:18]
+                color = MPL_COLORS[idx % len(MPL_COLORS)]
+                ax.scatter(ps, vs, s=6, alpha=0.4, color=color, label=name)
+
+            # 各文件拟合曲线
+            for idx, entry in enumerate(analysis["perFileFits"]):
+                f = entry["fit"]
+                curve = generate_fit_curve(f, 0, self.pressure_max, 200)
+                cp_arr = [c["pressure"] for c in curve]
+                ca_arr = [c["adcSum"] for c in curve]
+                color = MPL_COLORS[idx % len(MPL_COLORS)]
+                ax.plot(cp_arr, ca_arr, '--', linewidth=1.5, color=color, alpha=0.7)
+
+            # 全局拟合
+            if analysis["globalFit"]:
+                gf = analysis["globalFit"]
+                curve = generate_fit_curve(gf, 0, self.pressure_max, 200)
+                cp_arr = [c["pressure"] for c in curve]
+                ca_arr = [c["adcSum"] for c in curve]
+                ax.plot(cp_arr, ca_arr, '-', linewidth=2.5, color='white', alpha=0.9,
+                        label=f'Global: R²={gf["r2"]:.4f}')
+
+            ax.set_xlabel("Pressure (N)", color="#aaa")
+            ax.set_ylabel("ADC Sum", color="#aaa")
+            ax.set_title(f"Hill Fitting (0-{self.pressure_max}N)", color="#e0e0e0", fontsize=13)
+            ax.tick_params(colors="#aaa")
+            ax.legend(loc='upper left', fontsize=7, ncol=2, labelcolor="#ccc")
+            ax.grid(True, alpha=0.15, color="#aaa")
+            ax.spines["bottom"].set_color("#333")
+            ax.spines["left"].set_color("#333")
+            fig.tight_layout()
+            fig.canvas.draw_idle()
+
+        def _draw_cv_tab(self, analysis):
+            fig = self.fig_cv
+            fig.clear()
+            gs = fig.add_gridspec(2, 1, hspace=0.35, height_ratios=[1, 1])
+            fig.patch.set_facecolor("#0d1b2a")
+
+            # 上：CV 折线图
+            ax1 = fig.add_subplot(gs[0])
+            ax1.set_facecolor("#0d1b2a")
+            cv_ps = [cp["pressure"] for cp in analysis["cvPoints"]]
+            cv_vals = [cp["cv"] for cp in analysis["cvPoints"]]
+            ax1.plot(cv_ps, cv_vals, 'o-', color='#4A9BD9', linewidth=2, markersize=7)
+            ax1.axhline(y=3, color='#55B87A', linestyle='--', alpha=0.7, label='Excellent 3%')
+            ax1.axhline(y=5, color='#E8923F', linestyle='--', alpha=0.7, label='Pass 5%')
+            ax1.axhline(y=8, color='#E05555', linestyle='--', alpha=0.7, label='Warning 8%')
+            ax1.set_ylabel("CV (%)", color="#aaa")
+            ax1.set_title(f"CV Analysis (Avg: {analysis['avgCV']:.2f}%, Score: {analysis['cvScore']:.0f})",
+                          color="#e0e0e0", fontsize=13)
+            ax1.tick_params(colors="#aaa")
+            ax1.legend(fontsize=8, labelcolor="#ccc")
+            ax1.grid(True, alpha=0.15, color="#aaa")
+            ax1.spines["bottom"].set_color("#333")
+            ax1.spines["left"].set_color("#333")
+
+            # 下：散点图 — 各文件在关键压力点的预测 ADC
+            ax2 = fig.add_subplot(gs[1])
+            ax2.set_facecolor("#0d1b2a")
+            for idx, entry in enumerate(analysis["perFileFits"]):
+                fit = entry["fit"]
+                p_vals = [cp["pressure"] for cp in analysis["cvPoints"]]
+                adc_vals = [hill_func(p, fit["a"], fit["b"], fit["n"]) for p in p_vals]
+                color = MPL_COLORS[idx % len(MPL_COLORS)]
+                ax2.scatter(p_vals, adc_vals, s=25, color=color, alpha=0.8,
+                            label=entry["fileName"].replace('.csv', '')[:18])
+            ax2.set_xlabel("Pressure (N)", color="#aaa")
+            ax2.set_ylabel("Predicted ADC", color="#aaa")
+            ax2.set_title("Per-File ADC Predictions at Key Points", color="#e0e0e0", fontsize=13)
+            ax2.tick_params(colors="#aaa")
+            ax2.legend(fontsize=7, ncol=3, labelcolor="#ccc")
+            ax2.grid(True, alpha=0.15, color="#aaa")
+            ax2.spines["bottom"].set_color("#333")
+            ax2.spines["left"].set_color("#333")
+
+            fig.tight_layout()
+            fig.canvas.draw_idle()
+
+        def _draw_resid_tab(self, analysis):
+            fig = self.fig_resid
+            fig.clear()
+            gs_resid = fig.add_gridspec(2, 1, hspace=0.35)
+            fig.patch.set_facecolor("#0d1b2a")
+
+            # 上：残差直方图
+            ax1 = fig.add_subplot(gs_resid[0])
+            ax1.set_facecolor("#0d1b2a")
+            if analysis["allResiduals"]:
+                n_bins = min(30, max(5, len(analysis["allResiduals"]) // 5))
+                ax1.hist(analysis["allResiduals"], bins=n_bins, color='#5B9BD5', alpha=0.7,
+                         edgecolor='white', linewidth=0.5)
+                ax1.axvline(x=analysis["residualMean"], color='#E8923F', linestyle='--', linewidth=1.5,
+                            label=f'μ={analysis["residualMean"]:.2f}')
+                ax1.axvline(x=analysis["residualMean"] - analysis["residualStd"], color='#E05555',
+                            linestyle=':', linewidth=1, alpha=0.6)
+                ax1.axvline(x=analysis["residualMean"] + analysis["residualStd"], color='#E05555',
+                            linestyle=':', linewidth=1, alpha=0.6)
+            ax1.set_ylabel("Count", color="#aaa")
+            ax1.set_title(f"Residuals (σ={analysis['residualStd']:.2f}, n={len(analysis['allResiduals'])})",
+                          color="#e0e0e0", fontsize=13)
+            ax1.tick_params(colors="#aaa")
+            ax1.legend(fontsize=8, labelcolor="#ccc")
+            ax1.grid(True, alpha=0.15, color="#aaa")
+            ax1.spines["bottom"].set_color("#333")
+            ax1.spines["left"].set_color("#333")
+
+            # 下：各文件残差 σ 和 max|残差| 柱状图
+            ax2 = fig.add_subplot(gs_resid[1])
+            ax2.set_facecolor("#0d1b2a")
+            file_names = [rs["fileName"].replace('.csv', '')[:22] for rs in analysis["residualStats"]]
+            sigmas = [rs["std"] for rs in analysis["residualStats"]]
+            max_abs = [rs["maxAbs"] for rs in analysis["residualStats"]]
+            x_pos = np.arange(len(file_names))
+            width = 0.35
+            ax2.bar(x_pos - width / 2, sigmas, width, label='σ (Std)', color='#5B9BD5', alpha=0.85)
+            ax2.bar(x_pos + width / 2, max_abs, width, label='Max |Residual|', color='#E05555', alpha=0.85)
+            ax2.set_xticks(x_pos)
+            ax2.set_xticklabels(file_names, rotation=45, ha='right', fontsize=8, color="#aaa")
+            ax2.set_ylabel("ADC", color="#aaa")
+            ax2.set_title("Per-File Residual Statistics", color="#e0e0e0", fontsize=13)
+            ax2.tick_params(colors="#aaa")
+            ax2.legend(fontsize=9, labelcolor="#ccc")
+            ax2.grid(True, alpha=0.15, color="#aaa", axis='y')
+            ax2.spines["bottom"].set_color("#333")
+            ax2.spines["left"].set_color("#333")
+
+            fig.tight_layout()
+            fig.canvas.draw_idle()
+
+        # ── 状态 ──
+
+        def _set_status(self, msg, color="#aaa"):
+            self.status_var.set(msg)
+            self.status_label.configure(text_color=color)
+
+        # ── 导出 ──
+
+        def _export_json(self):
+            if not self.analysis_result:
+                messagebox.showwarning("提示", "请先完成分析")
+                return
+            path = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON 文件", "*.json")],
+            )
+            if path:
+                export_json(self.analysis_result, self.pressure_max, path,
+                            self._get_custom_p())
+
+        def _export_csv(self):
+            if not self.analysis_result:
+                messagebox.showwarning("提示", "请先完成分析")
+                return
+            path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV 文件", "*.csv")],
+            )
+            if not path:
+                return
+            rows = [["文件", "a", "b", "n", "R²", "RMSE", "方法"]]
+            for entry in self.analysis_result["perFileFits"]:
+                f = entry["fit"]
+                rows.append([entry["fileName"], f"{f['a']:.4f}", f"{f['b']:.4f}",
+                             f"{f['n']:.4f}", f"{f['r2']:.6f}", f"{f['rmse']:.4f}", f['method']])
+
+            if self.analysis_result["globalFit"]:
+                gf = self.analysis_result["globalFit"]
+                rows.append([])
+                rows.append(["全局拟合", f"{gf['a']:.4f}", f"{gf['b']:.4f}",
+                             f"{gf['n']:.4f}", f"{gf['r2']:.6f}", f"{gf['rmse']:.4f}", gf['method']])
+
+            rows.append([])
+            rows.append(["压力点", "CV(%)", "均值", "标准差", "等级"])
+            for cp in self.analysis_result["cvPoints"]:
+                rows.append([f"{cp['pressure']}N", f"{cp['cv']:.2f}%",
+                             f"{cp['mean']:.1f}", f"{cp['std']:.2f}", get_cv_label(cp['cv'])])
+
+            import csv as csv_mod
+            with open(path, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv_mod.writer(f)
+                writer.writerows(rows)
+            self._set_status(f"✓ 已导出 CSV: {os.path.basename(path)}", "#4FC3F7")
+
+        def _get_custom_p(self):
+            try:
+                cp_str = self.custom_p_var.get().strip()
+                if cp_str:
+                    return float(cp_str)
+            except ValueError:
+                pass
+            return None
+
+    # 启动 GUI
+    app = HillFitGUI()
+    app.mainloop()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 第 9 部分: CLI 入口
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
@@ -1092,8 +1680,15 @@ def main():
     parser.add_argument("--custom-pressure", "-c", type=float, default=None,
                         help="自定义压力点 (N) 查看 CV 值")
     parser.add_argument("--plot-output", default=None, help="图表输出路径（PNG格式）")
+    parser.add_argument("--gui", "-g", action="store_true",
+                        help="启动图形界面（需要 customtkinter 和 matplotlib）")
 
     args = parser.parse_args()
+
+    # GUI 模式
+    if args.gui:
+        run_gui()
+        return
 
     # 加载 CSV 文件
     all_series = []
