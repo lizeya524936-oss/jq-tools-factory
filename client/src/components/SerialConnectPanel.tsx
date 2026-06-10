@@ -10,12 +10,12 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2, Hand } from 'lucide-react';
-import { isWebSerialSupported, SerialPortState, SerialStatus } from '@/hooks/useSerialPort';
+import { isWebSerialSupported, SerialPortState, SerialStatus, type SensorProtocol } from '@/hooks/useSerialPort';
 
 interface SerialConnectPanelProps {
   role: 'force' | 'sensor';
   state: SerialPortState;
-  onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProduct) => Promise<boolean>;
+  onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProductConfig) => Promise<boolean>;
   onDisconnect: () => Promise<void>;
   /** 传感器设备类型标识，如 'LH'/'RH'/'LF'/'RF'/'WB'/'HD'（仅 sensor role 使用） */
   deviceType?: string | null;
@@ -24,33 +24,43 @@ interface SerialConnectPanelProps {
 const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600, 1000000];
 
 // 传感器产品类型
-export type SensorProduct = '16x16' | '32x32';
+export type SensorProduct = string;
 
-const SENSOR_PRODUCTS: Record<SensorProduct, {
+export interface SensorProductConfig {
   label: string;
   sublabel: string;
   defaultBaud: number;
   quickBauds: number[];
   hint: string;
   matrixSize: number;
-}> = {
-  '16x16': {
+  /** 协议类型，用于帧解析分支 */
+  protocol: SensorProtocol;
+  /** custom 协议的自定义帧头（可选） */
+  frameHeader?: number[];
+  /** custom 协议的单帧总长度（可选） */
+  frameLength?: number;
+}
+
+const SENSOR_PRODUCTS: SensorProductConfig[] = [
+  {
     label: '16×16 触觉传感器',
     sublabel: '织物触觉传感器',
     defaultBaud: 921600,
     quickBauds: [2400, 115200, 921600],
     hint: '16×16点阵，256个ADC，双包协议',
     matrixSize: 16,
+    protocol: '16x16',
   },
-  '32x32': {
+  {
     label: '32×32 高密度传感器',
     sublabel: 'JQGY-YL-09',
     defaultBaud: 1000000,
     quickBauds: [921600, 1000000],
     hint: '32×32点阵，1024个ADC，单帧协议，100Hz',
     matrixSize: 32,
+    protocol: '32x32',
   },
-};
+];
 
 // 检测设备类型
 type DetectionDevice = 'pressure' | 'robot';
@@ -117,18 +127,19 @@ export default function SerialConnectPanel({
   const [selectedDevice, setSelectedDevice] = useState<DetectionDevice>('pressure');
   const deviceCfg = role === 'force' ? DETECTION_DEVICES[selectedDevice] : null;
 
-  // sensor role 专用：传感器产品选择（16×16 / 32×32）
-  const [selectedSensor, setSelectedSensor] = useState<SensorProduct>('16x16');
-  const sensorCfg = role === 'sensor' ? SENSOR_PRODUCTS[selectedSensor] : null;
+  // sensor role 专用：传感器产品选择（下拉菜单，索引 0 = 默认触觉传感器）
+  const [selectedSensorIdx, setSelectedSensorIdx] = useState(0);
+  const selectedSensor = SENSOR_PRODUCTS[selectedSensorIdx];
+  const sensorCfg = role === 'sensor' ? selectedSensor : null;
 
   // 波特率
   const defaultBaud = role === 'force'
     ? DETECTION_DEVICES[selectedDevice].defaultBaud
-    : SENSOR_PRODUCTS[selectedSensor].defaultBaud;
+    : selectedSensor.defaultBaud;
   const [baudInput, setBaudInput] = useState(defaultBaud.toString());
   const quickBauds = role === 'force'
     ? DETECTION_DEVICES[selectedDevice].quickBauds
-    : SENSOR_PRODUCTS[selectedSensor].quickBauds;
+    : selectedSensor.quickBauds;
 
   const [showBaudMenu, setShowBaudMenu] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -140,9 +151,9 @@ export default function SerialConnectPanel({
   }, []);
 
   // 切换传感器产品时同步波特率
-  const handleSensorChange = useCallback((product: SensorProduct) => {
-    setSelectedSensor(product);
-    setBaudInput(SENSOR_PRODUCTS[product].defaultBaud.toString());
+  const handleSensorChange = useCallback((idx: number) => {
+    setSelectedSensorIdx(idx);
+    setBaudInput(SENSOR_PRODUCTS[idx].defaultBaud.toString());
   }, []);
 
   const handleConnect = useCallback(async () => {
@@ -286,33 +297,28 @@ export default function SerialConnectPanel({
             </div>
           )}
 
-          {/* sensor role：传感器产品选择 */}
+          {/* sensor role：传感器产品下拉选择 */}
           {role === 'sensor' && (
             <div className="mb-3">
               <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
                 传感器产品类型
               </label>
-              <div className="flex gap-2">
-                {(Object.entries(SENSOR_PRODUCTS) as [SensorProduct, typeof SENSOR_PRODUCTS[SensorProduct]][]).map(([key, prod]) => {
-                  const isActive = selectedSensor === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleSensorChange(key)}
-                      className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded text-xs font-mono font-medium transition-all"
-                      style={{
-                        background: isActive ? cfg.accentBg : 'oklch(0.20 0.025 265)',
-                        border: `1px solid ${isActive ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
-                        color: isActive ? cfg.accentColor : 'oklch(0.55 0.02 240)',
-                        boxShadow: isActive ? `0 0 6px oklch(0.72 0.20 145 / 0.15)` : 'none',
-                      }}
-                    >
-                      <Layers size={11} />
-                      <span>{prod.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <select
+                value={selectedSensorIdx}
+                onChange={e => handleSensorChange(parseInt(e.target.value, 10))}
+                className="w-full px-2.5 py-2 rounded text-xs font-mono cursor-pointer outline-none appearance-none"
+                style={{
+                  background: `oklch(0.20 0.025 265) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center`,
+                  border: `1px solid oklch(0.28 0.03 265)`,
+                  color: cfg.accentColor,
+                }}
+              >
+                {SENSOR_PRODUCTS.map((prod, idx) => (
+                  <option key={prod.label} value={idx} style={{ background: '#16213e', color: '#e0e0e0' }}>
+                    {prod.label}{prod.sublabel ? ` (${prod.sublabel})` : ''}
+                  </option>
+                ))}
+              </select>
               <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
                 {sensorCfg!.sublabel} · {sensorCfg!.hint}
               </p>

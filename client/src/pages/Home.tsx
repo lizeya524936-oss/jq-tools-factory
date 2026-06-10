@@ -18,7 +18,7 @@ import DataLogPage from './DataLogPage';
 import AboutPage from './AboutPage';
 import SerialConnectPanel from '@/components/SerialConnectPanel';
 import { useSerialPort, isWebSerialSupported, type SensorProtocol } from '@/hooks/useSerialPort';
-import type { SensorProduct } from '@/components/SerialConnectPanel';
+import type { SensorProductConfig } from '@/components/SerialConnectPanel';
 import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { Activity } from 'lucide-react';
 import { toast } from 'sonner';
@@ -234,13 +234,13 @@ export default function Home() {
     return ok;
   }, [forceSerial]);
 
-  const handleSensorConnect = useCallback(async (baudRate: number, _deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProduct) => {
+  const handleSensorConnect = useCallback(async (baudRate: number, _deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProductConfig) => {
     // 先设置协议模式，让 useSerialPort 知道用哪种解析器
-    const protocol: SensorProtocol = sensorProduct === '32x32' ? '32x32' : '16x16';
+    const protocol: SensorProtocol = sensorProduct ? sensorProduct.protocol : '16x16';
     setSensorProtocol(protocol);
     const ok = await sensorSerial.connect(baudRate);
     if (ok) {
-      const productLabel = sensorProduct === '32x32' ? '32×32高密度传感器' : '16×16触觉传感器';
+      const productLabel = sensorProduct ? sensorProduct.label : '传感器';
       toast.success(`${productLabel}已连接，波特率 ${baudRate.toLocaleString()}`);
     }
     return ok;
