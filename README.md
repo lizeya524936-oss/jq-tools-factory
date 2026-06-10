@@ -71,6 +71,22 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.16（2026-06-10）
+
+**传感器产品选择改为下拉菜单**
+
+将连接面板的传感器产品选择从两个平铺按钮改为下拉菜单（`<select>`），为后续多品种定制传感器扩展做准备：
+
+- 产品配置数组化（`SENSOR_PRODUCTS` → `SensorProductConfig[]`），新增产品只需加一行配置
+- 每个产品含 `protocol` 字段，对接帧解析逻辑
+- 切换产品自动同步默认波特率和快捷波特率
+- `onConnect` 回调传递完整配置对象
+
+**修改文件：**
+
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 重构传感器产品选择
+- 修改 `client/src/pages/Home.tsx` — 适配回调签名
+
 ### v1.9.15（2026-06-05）
 
 **新增离线 Hill 拟合工具 `hill_fit_offline.py`**
