@@ -89,6 +89,13 @@ const SENSOR_TOTAL_32 = 1024; // 32×32总传感器点数
 const FRAME_32X32_DATA_LEN = 1024; // 数据域长度
 const FRAME_32X32_TOTAL_LEN = FRAME_HEADER_LEN + FRAME_32X32_DATA_LEN; // 帧头(4B) + 数据域(1024B) = 1028B
 
+// 单帧协议常量（灏存科技定制 HC-16×16）
+// 帧格式：帧头(4B) + 无效数据(2B) + 传感器(256B) + 陀螺仪(16B) = 278B
+const HC_HAOCUN_DATA_LEN = 256;   // 传感器数据长度
+const HC_HAOCUN_GYRO_LEN = 16;    // 陀螺仪数据长度
+const HC_HAOCUN_SKIP_LEN = 2;     // 无效数据长度
+const HC_HAOCUN_TOTAL_LEN = FRAME_HEADER_LEN + HC_HAOCUN_SKIP_LEN + HC_HAOCUN_DATA_LEN + HC_HAOCUN_GYRO_LEN; // 278B
+
 /**
  * 32×32矩阵映射表（1-based索引 → 0-based索引）
  * 数据域1024字节按此映射表重排到32行×32列矩阵
@@ -144,7 +151,7 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 }
 
 /** 传感器协议模式 */
-export type SensorProtocol = '16x16' | '32x32';
+export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun';
 
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
@@ -421,6 +428,46 @@ export function useSerialPort(options: UseSerialPortOptions) {
     pendingLastDataRef.current = `32x32[1024B] ${Array.from(data.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
   }, []);
 
+  // ── 灏存科技定制协议帧处理 ──
+  const processHaocunFrame = useCallback((sensorData: Uint8Array, gyroData: Uint8Array) => {
+    // 256 字节传感器数据 → 16×16 矩阵（行优先）
+    const matrix = buildMatrix(sensorData, 16, 16);
+    const adcValues = Array.from(sensorData);
+
+    // 触发设备类型回调：灏存科技无设备类型字节，使用固定标识 'HC'
+    if (lastDeviceIdRef.current !== 0xFE && onDeviceTypeRef.current) {
+      lastDeviceIdRef.current = 0xFE;
+      onDeviceTypeRef.current('HC', 0xFE); // HC = HaoCun
+    }
+
+    // 使用新的数据流架构
+    getSensorDataStreamV2().updateSensorData(matrix, adcValues, sensorData);
+
+    // 触发回调
+    if (onSensorMatrixRef.current) {
+      onSensorMatrixRef.current(matrix, 16, 16);
+    }
+
+    if (onSensorDataRef.current) {
+      onSensorDataRef.current(adcValues);
+    }
+
+    if (onDataRef.current) {
+      // 输出传感器数据摘要 + 陀螺仪数据
+      const sensorHex = Array.from(sensorData.slice(0, 16))
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ') + '...';
+      const gyroHex = Array.from(gyroData)
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ');
+      onDataRef.current(`HC[256B] sensor: ${sensorHex} | gyro: ${gyroHex}`);
+    }
+
+    // 性能优化
+    pendingBytesRef.current += HC_HAOCUN_DATA_LEN;
+    pendingLastDataRef.current = `HC[278B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
+  }, []);
+
   // 处理传感器二进制缓冲区：根据协议模式解析帧数据
   const processSensorBuffer = useCallback(() => {
     let buf = binaryBufRef.current;
@@ -459,6 +506,24 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
         // 移动到下一帧
         buf = buf.slice(FRAME_32X32_TOTAL_LEN);
+      } else if (protocol === 'custom_haocun') {
+        // ===== 灏存科技定制 单帧协议 =====
+        // 帧格式：帧头(4B) + 无效数据(2B) + 传感器(256B) + 陀螺仪(16B) = 278B
+        if (buf.length < HC_HAOCUN_TOTAL_LEN) {
+          binaryBufRef.current = buf;
+          return;
+        }
+
+        // 提取传感器数据（跳过帧头4B + 无效2B）
+        const dataStart = FRAME_HEADER_LEN + HC_HAOCUN_SKIP_LEN;
+        const sensorData = buf.slice(dataStart, dataStart + HC_HAOCUN_DATA_LEN);
+        // 提取陀螺仪数据
+        const gyroData = buf.slice(dataStart + HC_HAOCUN_DATA_LEN, dataStart + HC_HAOCUN_DATA_LEN + HC_HAOCUN_GYRO_LEN);
+
+        processHaocunFrame(new Uint8Array(sensorData), new Uint8Array(gyroData));
+
+        // 移动到下一帧
+        buf = buf.slice(HC_HAOCUN_TOTAL_LEN);
       } else {
         // ===== 16×16 双包协议 =====
         if (buf.length < FRAME_HEADER_LEN + 1) {
@@ -508,7 +573,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
 
     binaryBufRef.current = buf;
-  }, [processSensorPackets, process32x32Frame]);
+  }, [processSensorPackets, process32x32Frame, processHaocunFrame]);
 
   // 读取循环（二进制模式）
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {

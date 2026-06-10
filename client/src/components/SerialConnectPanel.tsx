@@ -60,6 +60,15 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     matrixSize: 32,
     protocol: '32x32',
   },
+  {
+    label: '灏存科技定制',
+    sublabel: 'HC-16×16',
+    defaultBaud: 921600,
+    quickBauds: [921600],
+    hint: '16×16点阵，256个ADC，单帧278B（4帧头+2无效+256数据+16陀螺仪），200Hz',
+    matrixSize: 16,
+    protocol: 'custom_haocun',
+  },
 ];
 
 // 检测设备类型
