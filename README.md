@@ -71,6 +71,22 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.17（2026-06-10）
+
+**新增传感器产品：灏存科技定制 (HC-16×16)**
+
+适配灏存科技定制传感器的通信协议：
+
+- 单帧协议 278 字节：帧头(4B) + 无效数据(2B) + 传感器(256B) + 陀螺仪(16B)
+- 16×16 矩阵，256 个 ADC 点，波特率 921600
+- 设备类型标识 'HC'
+- 协议 `custom_haocun` 在 `useSerialPort.ts` 中有独立解析分支
+
+**修改文件：**
+
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增 `custom_haocun` 协议解析
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 产品列表新增"灏存科技定制"
+
 ### v1.9.16（2026-06-10）
 
 **传感器产品选择改为下拉菜单**
