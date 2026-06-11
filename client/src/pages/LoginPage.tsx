@@ -1,17 +1,30 @@
 /**
- * LoginPage — 客户登录页面
+ * LoginPage — 客户登录页面（用户名 + 密码）
  */
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useClient } from '@/contexts/ClientContext';
-import { CLIENTS } from '@/config/clients';
+import { Key, User } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    if (selectedId) login(selectedId);
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!username.trim() || !password.trim()) {
+      setError('请输入用户名和密码');
+      return;
+    }
+
+    const err = login(username.trim(), password);
+    if (err) {
+      setError(err);
+    }
   };
 
   return (
@@ -21,7 +34,7 @@ export default function LoginPage() {
     >
       {/* 卡片 */}
       <div
-        className="rounded-2xl p-8 w-full max-w-md"
+        className="rounded-2xl p-8 w-full max-w-sm"
         style={{
           background: 'oklch(0.17 0.025 265)',
           border: '1px solid oklch(0.25 0.03 265)',
@@ -44,74 +57,108 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* 分隔线 */}
         <div
-          className="mb-5"
+          className="mb-6"
           style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}
         />
 
-        <p
-          className="text-xs mb-3 text-center"
-          style={{ color: 'oklch(0.45 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
-        >
-          选择客户账号进入系统
-        </p>
-
-        {/* 客户列表 */}
-        <div className="flex flex-col gap-2 mb-6">
-          {CLIENTS.map(c => {
-            const isActive = selectedId === c.id;
-            return (
-              <button
-                key={c.id}
-                onClick={() => setSelectedId(c.id)}
-                className="w-full text-left px-4 py-3 rounded-lg transition-all text-sm"
+        {/* 表单 */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {/* 用户名 */}
+          <div>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              用户名
+            </label>
+            <div className="relative">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
+                <User size={14} style={{ color: 'oklch(0.40 0.02 240)' }} />
+              </div>
+              <input
+                type="text"
+                value={username}
+                onChange={e => { setUsername(e.target.value); setError(null); }}
+                placeholder="请输入用户名"
+                className="w-full pl-8 pr-3 py-2 text-sm font-mono rounded outline-none transition-colors"
                 style={{
-                  background: isActive
-                    ? 'oklch(0.72 0.20 145 / 0.12)'
-                    : 'oklch(0.20 0.025 265)',
-                  border: `1px solid ${
-                    isActive
-                      ? 'oklch(0.72 0.20 145 / 0.35)'
-                      : 'oklch(0.28 0.03 265)'
-                  }`,
-                  color: isActive ? 'oklch(0.72 0.20 145)' : 'oklch(0.60 0.02 240)',
+                  background: 'oklch(0.20 0.025 265)',
+                  border: `1px solid ${error ? 'oklch(0.65 0.22 25 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
+                  color: 'oklch(0.70 0.02 240)',
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
-              >
-                <div className="font-medium">{c.name}</div>
-                <div
-                  className="text-xs mt-0.5"
-                  style={{ color: 'oklch(0.40 0.02 240)' }}
-                >
-                  {c.allowedProducts.length} 个可用产品
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                autoComplete="username"
+              />
+            </div>
+          </div>
 
-        {/* 登录按钮 */}
-        <button
-          onClick={handleLogin}
-          disabled={!selectedId}
-          className="w-full py-2.5 rounded-lg text-sm font-bold transition-all"
-          style={{
-            background: selectedId
-              ? 'oklch(0.72 0.20 145 / 0.85)'
-              : 'oklch(0.25 0.03 265)',
-            color: selectedId ? '#0a0e1a' : 'oklch(0.40 0.02 240)',
-            cursor: selectedId ? 'pointer' : 'not-allowed',
-            fontFamily: "'IBM Plex Mono', monospace",
-            opacity: selectedId ? 1 : 0.5,
-          }}
-        >
-          进入系统
-        </button>
+          {/* 密码 */}
+          <div>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              密码
+            </label>
+            <div className="relative">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
+                <Key size={14} style={{ color: 'oklch(0.40 0.02 240)' }} />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(null); }}
+                placeholder="请输入密码"
+                className="w-full pl-8 pr-3 py-2 text-sm font-mono rounded outline-none transition-colors"
+                style={{
+                  background: 'oklch(0.20 0.025 265)',
+                  border: `1px solid ${error ? 'oklch(0.65 0.22 25 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
+                  color: 'oklch(0.70 0.02 240)',
+                  fontFamily: "'IBM Plex Mono', monospace",
+                }}
+                autoComplete="current-password"
+                onKeyDown={e => { if (e.key === 'Enter') handleSubmit(e); }}
+              />
+            </div>
+          </div>
+
+          {/* 错误提示 */}
+          {error && (
+            <p
+              className="text-xs py-1 px-2 rounded"
+              style={{
+                color: 'oklch(0.70 0.22 25)',
+                background: 'oklch(0.65 0.22 25 / 0.08)',
+                fontFamily: "'IBM Plex Mono', monospace",
+              }}
+            >
+              {error}
+            </p>
+          )}
+
+          {/* 登录按钮 */}
+          <button
+            type="submit"
+            disabled={!username.trim() || !password.trim()}
+            className="w-full py-2.5 rounded-lg text-sm font-bold transition-all mt-2"
+            style={{
+              background: (username.trim() && password.trim())
+                ? 'oklch(0.72 0.20 145 / 0.85)'
+                : 'oklch(0.25 0.03 265)',
+              color: (username.trim() && password.trim()) ? '#0a0e1a' : 'oklch(0.40 0.02 240)',
+              cursor: (username.trim() && password.trim()) ? 'pointer' : 'not-allowed',
+              opacity: (username.trim() && password.trim()) ? 1 : 0.5,
+              fontFamily: "'IBM Plex Mono', monospace",
+            }}
+          >
+            登录
+          </button>
+        </form>
 
         <div className="mt-4 text-center">
           <p className="text-xs" style={{ color: 'oklch(0.30 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
-            v1.9.17 · Web Serial API
+            v1.9.18 · Web Serial API
           </p>
         </div>
       </div>

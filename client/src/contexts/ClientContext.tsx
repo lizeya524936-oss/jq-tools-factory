@@ -5,13 +5,14 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { ClientAccount } from '@/config/clients';
-import { getClient } from '@/config/clients';
+import { getClient, authenticateClient } from '@/config/clients';
 
 const STORAGE_KEY = 'jq_client_id';
 
 interface ClientContextValue {
   client: ClientAccount | null;
-  login: (clientId: string) => void;
+  /** 用户名密码登录，返回错误信息或 null（成功） */
+  login: (username: string, password: string) => string | null;
   logout: () => void;
   isLoggedIn: boolean;
 }
@@ -24,12 +25,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     return savedId ? (getClient(savedId) ?? null) : null;
   });
 
-  const login = useCallback((clientId: string) => {
-    const c = getClient(clientId);
+  const login = useCallback((username: string, password: string): string | null => {
+    const c = authenticateClient(username, password);
     if (c) {
       setClient(c);
       localStorage.setItem(STORAGE_KEY, c.id);
+      return null; // 成功
     }
+    return '用户名或密码错误';
   }, []);
 
   const logout = useCallback(() => {
@@ -63,8 +66,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 export function useClient(): ClientContextValue {
   const ctx = useContext(ClientCtx);
   if (!ctx) {
-    // 如果没被 Provider 包裹，返回空的 safe default
-    return { client: null, login: () => {}, logout: () => {}, isLoggedIn: false };
+    return { client: null, login: () => '无法登录', logout: () => {}, isLoggedIn: false };
   }
   return ctx;
 }

@@ -8,6 +8,10 @@
 export interface ClientAccount {
   id: string;
   name: string;
+  /** 登录用户名 */
+  username: string;
+  /** 登录密码 */
+  password: string;
   /** 允许显示的传感器产品 label（与 SENSOR_PRODUCTS[].label 精确匹配） */
   allowedProducts: string[];
 }
@@ -16,6 +20,8 @@ export const CLIENTS: ClientAccount[] = [
   {
     id: 'jq',
     name: 'JQ 工业',
+    username: 'jq',
+    password: 'jq2024',
     allowedProducts: [
       '16×16 触觉传感器',
       '32×32 高密度传感器',
@@ -24,11 +30,19 @@ export const CLIENTS: ClientAccount[] = [
   {
     id: 'haocun',
     name: '灏存科技',
+    username: 'haocun',
+    password: 'hc2024',
     allowedProducts: [
       '灏存科技定制',
     ],
   },
 ];
+
+/** 根据用户名和密码验证客户 */
+export function authenticateClient(username: string, password: string): ClientAccount | null {
+  const c = CLIENTS.find(c => c.username === username && c.password === password);
+  return c ?? null;
+}
 
 /** 根据客户 ID 查找客户 */
 export function getClient(id: string): ClientAccount | undefined {
