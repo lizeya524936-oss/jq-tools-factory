@@ -71,6 +71,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.18（2026-06-10）
+
+**新增登录界面与客户产品隔离**
+
+- 登录页面：启动时显示客户选择卡片，点击进入系统
+- 客户账号配置白名单控制传感器产品可见范围
+- 不同客户登录后看到不同的传感器下拉选项（JQ 工业 / 灏存科技等）
+- 登录状态持久化（localStorage），右上角显示当前客户名 + 退出按钮
+- ClientContext 管理全局客户状态
+
+**修改文件：**
+
+- 新增 `client/src/config/clients.ts` — 客户账号白名单配置
+- 新增 `client/src/contexts/ClientContext.tsx` — 客户状态管理
+- 新增 `client/src/pages/LoginPage.tsx` — 登录页面
+- 修改 `client/src/App.tsx` — 登录态路由分发
+- 修改 `client/src/pages/Home.tsx` — 头部添加客户名 + 退出按钮
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 传感器下拉按客户过滤
+
 ### v1.9.17（2026-06-10）
 
 **新增传感器产品：灏存科技定制 (HC-16×16)**
