@@ -10,6 +10,7 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2, Hand } from 'lucide-react';
+import { useClient } from '@/contexts/ClientContext';
 import { isWebSerialSupported, SerialPortState, SerialStatus, type SensorProtocol } from '@/hooks/useSerialPort';
 
 interface SerialConnectPanelProps {
@@ -132,13 +133,21 @@ export default function SerialConnectPanel({
   const statusCfg = STATUS_CONFIG[state.status];
   const supported = isWebSerialSupported();
 
+  // 客户可见产品过滤
+  const { client } = useClient();
+  const visibleProducts = role === 'sensor'
+    ? (client ? SENSOR_PRODUCTS.filter(p => client.allowedProducts.includes(p.label)) : SENSOR_PRODUCTS)
+    : [];
+
   // force role 专用：检测设备选择（压力计 / 机械手）
   const [selectedDevice, setSelectedDevice] = useState<DetectionDevice>('pressure');
   const deviceCfg = role === 'force' ? DETECTION_DEVICES[selectedDevice] : null;
 
-  // sensor role 专用：传感器产品选择（下拉菜单，索引 0 = 默认触觉传感器）
+  // sensor role 专用：传感器产品选择（下拉菜单，索引 0 = 第一个可见产品）
   const [selectedSensorIdx, setSelectedSensorIdx] = useState(0);
-  const selectedSensor = SENSOR_PRODUCTS[selectedSensorIdx];
+  const effectiveProducts = role === 'sensor' && visibleProducts.length > 0 ? visibleProducts : SENSOR_PRODUCTS;
+  const safeIdx = Math.min(selectedSensorIdx, effectiveProducts.length - 1);
+  const selectedSensor = effectiveProducts[safeIdx >= 0 ? safeIdx : 0];
   const sensorCfg = role === 'sensor' ? selectedSensor : null;
 
   // 波特率
@@ -162,8 +171,11 @@ export default function SerialConnectPanel({
   // 切换传感器产品时同步波特率
   const handleSensorChange = useCallback((idx: number) => {
     setSelectedSensorIdx(idx);
-    setBaudInput(SENSOR_PRODUCTS[idx].defaultBaud.toString());
-  }, []);
+    const src = role === 'sensor' && visibleProducts.length > 0 ? visibleProducts : SENSOR_PRODUCTS;
+    if (idx < src.length) {
+      setBaudInput(src[idx].defaultBaud.toString());
+    }
+  }, [role, visibleProducts]);
 
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
@@ -322,11 +334,15 @@ export default function SerialConnectPanel({
                   color: cfg.accentColor,
                 }}
               >
-                {SENSOR_PRODUCTS.map((prod, idx) => (
-                  <option key={prod.label} value={idx} style={{ background: '#16213e', color: '#e0e0e0' }}>
-                    {prod.label}{prod.sublabel ? ` (${prod.sublabel})` : ''}
-                  </option>
-                ))}
+                {(visibleProducts.length > 0 ? visibleProducts : SENSOR_PRODUCTS).map((prod, idx) => {
+                  // 找到该产品在原始数组中的索引用于 value
+                  const originalIdx = SENSOR_PRODUCTS.findIndex(p => p.label === prod.label);
+                  return (
+                    <option key={prod.label} value={originalIdx >= 0 ? originalIdx : idx} style={{ background: '#16213e', color: '#e0e0e0' }}>
+                      {prod.label}{prod.sublabel ? ` (${prod.sublabel})` : ''}
+                    </option>
+                  );
+                })}
               </select>
               <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
                 {sensorCfg!.sublabel} · {sensorCfg!.hint}

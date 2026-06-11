@@ -9,6 +9,8 @@
  * - 使用 Web Serial API 实现真实硬件连接
  */
 import { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
+import { useClient } from '@/contexts/ClientContext';
+import { LogOut } from 'lucide-react';
 import Sidebar, { TabType } from '@/components/Sidebar';
 import TestPage from './TestPage';
 import ConsistencyPage from './ConsistencyPage';
@@ -100,6 +102,7 @@ const tabTitles: Record<TabType, { title: string; subtitle: string }> = {
 };
 
 export default function Home() {
+  const { client, logout } = useClient();
   const [activeTab, setActiveTab] = useState<TabType>('consistency');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [latestForceN, setLatestForceN] = useState<number | null>(null);
@@ -429,6 +432,30 @@ export default function Home() {
             <span className="text-xs font-mono" style={{ color: 'oklch(0.42 0.02 240)', fontSize: '10px' }}>
               {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
             </span>
+
+            {/* 分隔 */}
+            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+
+            {/* 当前客户 + 退出 */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+                {client?.name ?? '未知'}
+              </span>
+              <button
+                onClick={logout}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono transition-opacity hover:opacity-75"
+                style={{
+                  background: 'oklch(0.65 0.22 25 / 0.15)',
+                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
+                  color: 'oklch(0.65 0.22 25)',
+                  fontSize: '9px',
+                }}
+                title="退出登录"
+              >
+                <LogOut size={10} />
+                退出
+              </button>
+            </div>
           </div>
         </header>
 
