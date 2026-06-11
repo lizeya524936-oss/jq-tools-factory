@@ -11,8 +11,8 @@ const STORAGE_KEY = 'jq_client_id';
 
 interface ClientContextValue {
   client: ClientAccount | null;
-  /** 用户名密码登录，返回错误信息或 null（成功） */
-  login: (username: string, password: string) => string | null;
+  /** 用户名密码登录，remember 控制是否持久化，返回错误信息或 null（成功） */
+  login: (username: string, password: string, remember: boolean) => string | null;
   logout: () => void;
   isLoggedIn: boolean;
 }
@@ -21,15 +21,25 @@ const ClientCtx = createContext<ClientContextValue | null>(null);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<ClientAccount | null>(() => {
-    const savedId = localStorage.getItem(STORAGE_KEY);
-    return savedId ? (getClient(savedId) ?? null) : null;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    try {
+      const { id } = JSON.parse(saved);
+      return id ? (getClient(id) ?? null) : null;
+    } catch {
+      return null;
+    }
   });
 
-  const login = useCallback((username: string, password: string): string | null => {
+  const login = useCallback((username: string, password: string, remember: boolean): string | null => {
     const c = authenticateClient(username, password);
     if (c) {
       setClient(c);
-      localStorage.setItem(STORAGE_KEY, c.id);
+      if (remember) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: c.id }));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       return null; // 成功
     }
     return '用户名或密码错误';

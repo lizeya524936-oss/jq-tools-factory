@@ -10,6 +10,7 @@ export default function LoginPage() {
   const { login } = useClient();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: FormEvent) => {
@@ -21,7 +22,7 @@ export default function LoginPage() {
       return;
     }
 
-    const err = login(username.trim(), password);
+    const err = login(username.trim(), password, remember);
     if (err) {
       setError(err);
     }
@@ -136,6 +137,25 @@ export default function LoginPage() {
               {error}
             </p>
           )}
+
+          {/* 记住登录状态 */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={e => setRemember(e.target.checked)}
+              className="w-3.5 h-3.5 rounded cursor-pointer"
+              style={{
+                accentColor: 'oklch(0.72 0.20 145)',
+              }}
+            />
+            <span
+              className="text-xs"
+              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              记住登录状态
+            </span>
+          </label>
 
           {/* 登录按钮 */}
           <button
