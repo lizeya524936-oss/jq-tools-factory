@@ -21,7 +21,7 @@ export const CLIENTS: ClientAccount[] = [
     id: 'jq',
     name: 'JQ 工业',
     username: 'jq',
-    password: 'jq2024',
+    password: 'jq2026',
     allowedProducts: [
       '16×16 触觉传感器',
       '32×32 高密度传感器',
@@ -31,7 +31,7 @@ export const CLIENTS: ClientAccount[] = [
     id: 'haocun',
     name: '灏存科技',
     username: 'haocun',
-    password: 'hc2024',
+    password: 'hc2026',
     allowedProducts: [
       '灏存科技定制',
     ],
