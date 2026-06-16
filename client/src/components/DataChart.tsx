@@ -83,6 +83,7 @@ interface ChartDataPoint {
   index: number;
   seriesName?: string;
   seriesColor?: string;
+  sensorCount: number;
 }
 
 // （X轴范围预设已移至 PressureRangeBar 组件）
@@ -705,6 +706,8 @@ const DataChart = memo(function DataChart({
   const [internalShowFit, setInternalShowFit] = useState<boolean>(true);
   // 横纵坐标交换状态
   const [internalAxisSwapped, setInternalAxisSwapped] = useState<boolean>(false);
+  // SUM/AVG 切换状态
+  const [showAvg, setShowAvg] = useState<boolean>(false);
   const axisSwapped = externalAxisSwapped !== undefined ? externalAxisSwapped : internalAxisSwapped;
   const toggleAxisSwap = useCallback(() => {
     const next = !axisSwapped;
@@ -746,6 +749,7 @@ const DataChart = memo(function DataChart({
           index: i + 1,
           seriesName: s.name,
           seriesColor: s.color,
+          sensorCount: r.adcValues?.length || 1,
         }));
         // 降采样：每个系列最多显示 MAX_DISPLAY_POINTS_PER_SERIES 个点
         const displayData = downsampleForDisplay(allData, MAX_DISPLAY_POINTS_PER_SERIES);
@@ -760,12 +764,25 @@ const DataChart = memo(function DataChart({
         index: i + 1,
         seriesName: '实时采集',
         seriesColor: SERIES_COLORS[0],
+        sensorCount: r.adcValues?.length || 1,
       }));
       const displayData = downsampleForDisplay(allData, MAX_DISPLAY_POINTS_PER_SERIES);
       result.push({ name: '实时采集', color: SERIES_COLORS[0], data: displayData, totalCount: allData.length });
     }
     return result;
   }, [series, records]);
+
+  // SUM/AVG 切换：当 showAvg 时，将 adcSum 除以传感器数量
+  const displaySeries = useMemo(() => {
+    if (!showAvg) return visibleSeries;
+    return visibleSeries.map(s => ({
+      ...s,
+      data: s.data.map(d => ({
+        ...d,
+        adcSum: d.sensorCount > 0 ? d.adcSum / d.sensorCount : d.adcSum,
+      })),
+    }));
+  }, [visibleSeries, showAvg]);
 
   // Hill 拟合 / Inverse Hill 拟合 — 基于全部数据，带缓存机制
   // axisSwapped=false → Hill 正向: ADC = f(P)
@@ -905,7 +922,7 @@ const DataChart = memo(function DataChart({
               />
             </div>
           )}
-          {/* 横纵坐标切换按钮 */}
+          {/* 横纵坐标切换 + SUM/AVG 切换 */}
           <div className="flex items-center gap-2 mb-1.5">
             <button
               onClick={toggleAxisSwap}
@@ -925,9 +942,21 @@ const DataChart = memo(function DataChart({
               </svg>
               横纵切换
             </button>
+            <button
+              onClick={() => setShowAvg(v => !v)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
+              style={{
+                background: showAvg ? 'oklch(0.56 0.18 145 / 0.15)' : 'oklch(0.20 0.02 265)',
+                border: showAvg ? '1px solid oklch(0.56 0.18 145 / 0.4)' : '1px solid oklch(0.30 0.03 265)',
+                color: showAvg ? 'oklch(0.72 0.20 145)' : 'oklch(0.50 0.02 240)',
+                fontSize: '9px',
+              }}
+            >
+              {showAvg ? 'AVG' : 'SUM'}
+            </button>
             {axisSwapped && (
               <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
-                X: ADC Sum · Y: 压力 (N)
+                X: {showAvg ? 'ADC Avg' : 'ADC Sum'} · Y: 压力 (N)
               </span>
             )}
           </div>
@@ -976,7 +1005,7 @@ const DataChart = memo(function DataChart({
                   tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
                   tickFormatter={axisSwapped ? undefined : formatAdcTick}
                   label={{
-                    value: axisSwapped ? '压力 (N)' : 'ADC Sum',
+                    value: axisSwapped ? '压力 (N)' : (showAvg ? 'ADC Avg' : 'ADC Sum'),
                     angle: -90,
                     position: 'insideLeft',
                     fill: axisSwapped ? 'oklch(0.72 0.20 145)' : 'oklch(0.70 0.18 200)',
@@ -1010,7 +1039,7 @@ const DataChart = memo(function DataChart({
                   />
                 )}
                 {/* 多系列散点（已降采样） */}
-                {visibleSeries.map((s, idx) => (
+                {displaySeries.map((s, idx) => (
                   <Scatter
                     key={s.name + idx}
                     name={s.name}
