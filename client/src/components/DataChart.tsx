@@ -800,23 +800,25 @@ const DataChart = memo(function DataChart({
       fitSource.forEach(s => {
         s.records.forEach(r => {
           if (r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= pressureCeiling) {
+            const sensorCount = r.adcValues?.length || 1;
             allPressures.push(r.pressure);
-            allAdcValues.push(r.adcSum);
+            allAdcValues.push(showAvg ? r.adcSum / sensorCount : r.adcSum);
           }
         });
       });
     } else if (records && records.length > 0) {
       records.forEach(r => {
         if (r.pressure != null && r.adcSum != null && r.pressure > 0 && r.pressure <= pressureCeiling) {
+          const sensorCount = r.adcValues?.length || 1;
           allPressures.push(r.pressure);
-          allAdcValues.push(r.adcSum);
+          allAdcValues.push(showAvg ? r.adcSum / sensorCount : r.adcSum);
         }
       });
     }
 
     if (allPressures.length < 5) return null;
 
-    const signature = `range=${pressureCeiling}|swapped=${axisSwapped}|` + computeDataSignature(allPressures, allAdcValues);
+    const signature = `range=${pressureCeiling}|swapped=${axisSwapped}|avg=${showAvg}|` + computeDataSignature(allPressures, allAdcValues);
     if (signature === fitCacheRef.current.signature) {
       return fitCacheRef.current.result;
     }
@@ -847,7 +849,7 @@ const DataChart = memo(function DataChart({
       fitCacheRef.current = { signature, result: null };
       return null;
     }
-  }, [allSeriesForFit, series, records, enableFit, xMax, axisSwapped]);
+  }, [allSeriesForFit, series, records, enableFit, xMax, axisSwapped, showAvg]);
 
   // 通知父组件拟合结果
   useMemo(() => {
