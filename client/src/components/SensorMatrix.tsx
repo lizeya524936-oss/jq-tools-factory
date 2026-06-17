@@ -114,23 +114,23 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     onSelectionChange(updated);
   }, [sensors, onSelectionChange]);
 
-  // 统一交互：单击选点 / Ctrl+多选 / 拖拽框选 / 右键清除
+  // 统一交互：单击选点 / Ctrl+多选 / 拖拽框选 / Ctrl+拖拽追加框选 / 右键清除
   const handleMouseDown = (row: number, col: number, id: string, e: React.MouseEvent) => {
     e.preventDefault();
-    mouseDownRef.current = { row, col, ctrl: e.ctrlKey || e.metaKey };
+    const withCtrl = e.ctrlKey || e.metaKey;
+    mouseDownRef.current = { row, col, ctrl: withCtrl };
     dragDistanceRef.current = 0;
 
-    // Ctrl+单击 → 切换该点
-    if (e.ctrlKey || e.metaKey) {
+    if (withCtrl) {
+      // Ctrl+单击 → 切换该点（同时开始框选追踪，拖拽即转为追加框选）
       toggleSensor(id);
-      return;
+    } else {
+      // 普通单击 → 选中该点，清除其他
+      const updated = sensors.map(s => ({ ...s, selected: s.id === id }));
+      onSelectionChange(updated);
     }
 
-    // 普通单击 → 选中该点，清除其他
-    const updated = sensors.map(s => ({ ...s, selected: s.id === id }));
-    onSelectionChange(updated);
-
-    // 同时开始框选追踪
+    // 开始框选追踪
     setBoxSelect({ active: true, startRow: row, startCol: col, endRow: row, endCol: col });
   };
 
@@ -138,7 +138,6 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     if (!mouseDownRef.current || !boxSelect.active) return;
     dragDistanceRef.current += 1;
 
-    // 移动超过阈值 → 转为框选模式
     setBoxSelect(prev => {
       if (!prev.active) return prev;
       return { ...prev, endRow: row, endCol: col };
@@ -148,22 +147,32 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const handleMouseUp = () => {
     if (!mouseDownRef.current) return;
     const wasDragging = dragDistanceRef.current > 2;
+    const withCtrl = mouseDownRef.current.ctrl;
     mouseDownRef.current = null;
     dragDistanceRef.current = 0;
 
     if (boxSelect.active && wasDragging) {
-      // 框选：选中矩形区域内所有点
       const minR = Math.min(boxSelect.startRow, boxSelect.endRow);
       const maxR = Math.max(boxSelect.startRow, boxSelect.endRow);
       const minC = Math.min(boxSelect.startCol, boxSelect.endCol);
       const maxC = Math.max(boxSelect.startCol, boxSelect.endCol);
-      const updated = sensors.map(s => {
-        if (s.row >= minR && s.row <= maxR && s.col >= minC && s.col <= maxC) {
-          return { ...s, selected: true };
-        }
-        return s;
-      });
-      onSelectionChange(updated);
+      if (withCtrl) {
+        // Ctrl+拖拽 → 追加框选（不清除已有选择）
+        const updated = sensors.map(s => {
+          if (s.row >= minR && s.row <= maxR && s.col >= minC && s.col <= maxC) {
+            return { ...s, selected: true };
+          }
+          return s;
+        });
+        onSelectionChange(updated);
+      } else {
+        // 普通拖拽 → 替换框选
+        const updated = sensors.map(s => ({
+          ...s,
+          selected: s.row >= minR && s.row <= maxR && s.col >= minC && s.col <= maxC,
+        }));
+        onSelectionChange(updated);
+      }
     }
     setBoxSelect({ active: false, startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
   };
@@ -374,7 +383,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         <div className="flex items-center gap-1">
           {/* 交互提示 */}
           <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
-            拖拽框选 · Ctrl+多选 · 单击选点 · 右键清除
+            拖拽框选 · Ctrl+拖拽追加 · 单击选点 · 右键清除
           </span>
           {/* 尺寸按钮 */}
           {onResize && (
