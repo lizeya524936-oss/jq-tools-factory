@@ -8,7 +8,7 @@
  */
 import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { SensorPoint } from '@/lib/sensorData';
-import { Settings2, Grid3x3, MousePointer2, Square, ZoomIn, X } from 'lucide-react';
+import { Settings2, Grid3x3, ZoomIn, X } from 'lucide-react';
 
 interface TooltipState {
   visible: boolean;
@@ -43,9 +43,7 @@ export interface SensorMatrixProps {
 }
 
 export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, onResize, realtimeMatrix, isConnected }: SensorMatrixProps) {
-  const [selectMode, setSelectMode] = useState<'point' | 'box'>('point');
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragMode, setDragMode] = useState<'select' | 'deselect'>('select');
+  // 拖拽框选状态（统一交互模式：单击选点 / Ctrl+多选 / 拖拽框选 / 右键清除）
   const [boxSelect, setBoxSelect] = useState<BoxSelectState>({ active: false, startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
   const [showSizeEditor, setShowSizeEditor] = useState(false);
   const [editRows, setEditRows] = useState(rows);
@@ -54,6 +52,10 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, sensor: null });
   const [zoom, setZoom] = useState<ZoomState>({ active: false, centerRow: 0, centerCol: 0, radius: 3 });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 拖拽判定
+  const mouseDownRef = useRef<{ row: number; col: number; ctrl: boolean } | null>(null);
+  const dragDistanceRef = useRef(0);
 
   const selectedCount = sensors.filter(s => s.selected).length;
   const totalCount = sensors.length;
@@ -104,40 +106,53 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     return fallback;
   };
 
-  // 点选模式
-  const toggleSensor = useCallback((id: string, forceMode?: 'select' | 'deselect') => {
-    const updated = sensors.map(s => {
-      if (s.id === id) {
-        const newSelected = forceMode ? forceMode === 'select' : !s.selected;
-        return { ...s, selected: newSelected };
-      }
-      return s;
-    });
+  // 切换单个传感器选中状态（Ctrl+多选用）
+  const toggleSensor = useCallback((id: string) => {
+    const updated = sensors.map(s =>
+      s.id === id ? { ...s, selected: !s.selected } : s
+    );
     onSelectionChange(updated);
   }, [sensors, onSelectionChange]);
 
-  const handleMouseDown = (row: number, col: number, id: string) => {
-    if (selectMode === 'box') {
-      setBoxSelect({ active: true, startRow: row, startCol: col, endRow: row, endCol: col });
-    } else {
-      const sensor = sensors.find(s => s.id === id);
-      const mode = sensor?.selected ? 'deselect' : 'select';
-      setDragMode(mode);
-      setIsDragging(true);
-      toggleSensor(id, mode);
+  // 统一交互：单击选点 / Ctrl+多选 / 拖拽框选 / 右键清除
+  const handleMouseDown = (row: number, col: number, id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    mouseDownRef.current = { row, col, ctrl: e.ctrlKey || e.metaKey };
+    dragDistanceRef.current = 0;
+
+    // Ctrl+单击 → 切换该点
+    if (e.ctrlKey || e.metaKey) {
+      toggleSensor(id);
+      return;
     }
+
+    // 普通单击 → 选中该点，清除其他
+    const updated = sensors.map(s => ({ ...s, selected: s.id === id }));
+    onSelectionChange(updated);
+
+    // 同时开始框选追踪
+    setBoxSelect({ active: true, startRow: row, startCol: col, endRow: row, endCol: col });
   };
 
-  const handleMouseEnterCell = (row: number, col: number, id: string) => {
-    if (selectMode === 'box' && boxSelect.active) {
-      setBoxSelect(prev => ({ ...prev, endRow: row, endCol: col }));
-    } else if (isDragging) {
-      toggleSensor(id, dragMode);
-    }
+  const handleMouseEnterCell = (row: number, col: number, _id: string) => {
+    if (!mouseDownRef.current || !boxSelect.active) return;
+    dragDistanceRef.current += 1;
+
+    // 移动超过阈值 → 转为框选模式
+    setBoxSelect(prev => {
+      if (!prev.active) return prev;
+      return { ...prev, endRow: row, endCol: col };
+    });
   };
 
   const handleMouseUp = () => {
-    if (selectMode === 'box' && boxSelect.active) {
+    if (!mouseDownRef.current) return;
+    const wasDragging = dragDistanceRef.current > 2;
+    mouseDownRef.current = null;
+    dragDistanceRef.current = 0;
+
+    if (boxSelect.active && wasDragging) {
+      // 框选：选中矩形区域内所有点
       const minR = Math.min(boxSelect.startRow, boxSelect.endRow);
       const maxR = Math.max(boxSelect.startRow, boxSelect.endRow);
       const minC = Math.min(boxSelect.startCol, boxSelect.endCol);
@@ -149,10 +164,22 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         return s;
       });
       onSelectionChange(updated);
-      setBoxSelect({ active: false, startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
     }
-    setIsDragging(false);
+    setBoxSelect({ active: false, startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
   };
+
+  // 右键清除所有选择
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    clearAll();
+  };
+
+  // 全局 mouseup：拖拽超出矩阵区域时也能完成框选
+  useEffect(() => {
+    const onGlobalMouseUp = () => handleMouseUp();
+    window.addEventListener('mouseup', onGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', onGlobalMouseUp);
+  });
 
   const isInBoxSelection = (row: number, col: number) => {
     if (!boxSelect.active) return false;
@@ -277,11 +304,12 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           borderRadius: '2px',
           transition: 'background 0.08s, box-shadow 0.08s',
         }}
-        onMouseDown={() => handleMouseDown(r, c, sensor.id)}
+        onMouseDown={(e) => handleMouseDown(r, c, sensor.id, e)}
         onMouseEnter={(e) => { handleMouseEnterCell(r, c, sensor.id); if (!isZoomView) handleSensorHoverEnter(e, sensor); }}
         onMouseMove={!isZoomView ? handleSensorHoverMove : undefined}
         onMouseLeave={!isZoomView ? handleSensorHoverLeave : undefined}
         onDoubleClick={() => isZoomView ? handleZoomDoubleClick(r, c) : handleDoubleClick(r, c)}
+        onContextMenu={handleContextMenu}
       >
         {/* 放大视图：显示ADC值 */}
         {isZoomView && size >= 36 && (
@@ -344,36 +372,10 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           )}
         </div>
         <div className="flex items-center gap-1">
-          {/* 选择模式切换 */}
-          <div className="flex rounded overflow-hidden" style={{ border: '1px solid oklch(0.28 0.03 265)' }}>
-            <button
-              onClick={() => setSelectMode('point')}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-mono transition-colors"
-              style={{
-                background: selectMode === 'point' ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.18 0.025 265)',
-                color: selectMode === 'point' ? 'oklch(0.70 0.18 200)' : 'oklch(0.45 0.02 240)',
-                fontSize: '9px',
-              }}
-              title="单点选取/拖拽选取"
-            >
-              <MousePointer2 size={9} />
-              <span>点选</span>
-            </button>
-            <button
-              onClick={() => setSelectMode('box')}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-mono transition-colors"
-              style={{
-                background: selectMode === 'box' ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.18 0.025 265)',
-                color: selectMode === 'box' ? 'oklch(0.70 0.18 200)' : 'oklch(0.45 0.02 240)',
-                fontSize: '9px',
-                borderLeft: '1px solid oklch(0.28 0.03 265)',
-              }}
-              title="矩形框选"
-            >
-              <Square size={9} />
-              <span>框选</span>
-            </button>
-          </div>
+          {/* 交互提示 */}
+          <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+            拖拽框选 · Ctrl+多选 · 单击选点 · 右键清除
+          </span>
           {/* 尺寸按钮 */}
           {onResize && (
             <button
