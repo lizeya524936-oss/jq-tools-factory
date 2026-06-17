@@ -16,7 +16,6 @@ import TestPage from './TestPage';
 import ConsistencyPage from './ConsistencyPage';
 import RepeatabilityPage from './RepeatabilityPage';
 import DurabilityPage from './DurabilityPage';
-import DataLogPage from './DataLogPage';
 import AboutPage from './AboutPage';
 import SerialConnectPanel from '@/components/SerialConnectPanel';
 import { useSerialPort, isWebSerialSupported, type SensorProtocol } from '@/hooks/useSerialPort';
@@ -90,10 +89,6 @@ const tabTitles: Record<TabType, { title: string; subtitle: string }> = {
   durability: {
     title: '耐久性检测',
     subtitle: '机器人灵巧手套 · 反复抓握特定物体 · 验证ADC有效性和灵敏度变化',
-  },
-  data: {
-    title: '数据记录',
-    subtitle: 'CSV格式导出 · Time, Pressure, ADC Value, ADC Sum',
   },
   about: {
     title: '关于',
@@ -467,7 +462,6 @@ export default function Home() {
             {activeTab === 'consistency' && <ConsistencyPage />}
             {activeTab === 'repeatability' && <RepeatabilityPage />}
             {activeTab === 'durability' && <DurabilityPage />}
-            {activeTab === 'data' && <DataLogPage />}
             {activeTab === 'about' && <AboutPage />}
           </main>
         </div>

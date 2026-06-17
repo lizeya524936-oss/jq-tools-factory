@@ -2,9 +2,9 @@
  * Sidebar - 左侧导航栏
  * 设计风格：精密科学仪器，深色侧边栏
  */
-import { Activity, RotateCcw, Clock, Database, Info, Zap } from 'lucide-react';
+import { Activity, RotateCcw, Clock, Info, Zap } from 'lucide-react';
 
-export type TabType = 'test' | 'consistency' | 'repeatability' | 'durability' | 'data' | 'about';
+export type TabType = 'test' | 'consistency' | 'repeatability' | 'durability' | 'about';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -35,12 +35,6 @@ const navItems: { id: TabType; label: string; sublabel: string; icon: React.Reac
     label: '耐久性',
     sublabel: 'Durability',
     icon: <Clock size={16} />,
-  },
-  {
-    id: 'data',
-    label: '数据记录',
-    sublabel: 'Data Log',
-    icon: <Database size={16} />,
   },
   {
     id: 'about',
