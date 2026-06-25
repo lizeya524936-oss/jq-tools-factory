@@ -97,10 +97,11 @@ const HC_HAOCUN_SKIP_LEN = 2;     // 无效数据长度
 const HC_HAOCUN_TOTAL_LEN = FRAME_HEADER_LEN + HC_HAOCUN_SKIP_LEN + HC_HAOCUN_DATA_LEN + HC_HAOCUN_GYRO_LEN; // 278B
 
 // 单帧协议常量（极智动量小黑采集板 JZ-16×16）
-// 帧格式：帧头(4B) + 设备类型(1B) + 传感器(256B) = 261B
+// 帧格式：帧头(4B) + 0x01(1B) + 设备类型(1B) + 传感器(256B) = 262B
 const JZ_JIZHI_DATA_LEN = 256;   // 传感器数据长度
+const JZ_JIZHI_CMD_LEN = 1;      // 命令字节 0x01
 const JZ_JIZHI_DEVICE_LEN = 1;   // 设备类型字节长度
-const JZ_JIZHI_TOTAL_LEN = FRAME_HEADER_LEN + JZ_JIZHI_DEVICE_LEN + JZ_JIZHI_DATA_LEN; // 261B
+const JZ_JIZHI_TOTAL_LEN = FRAME_HEADER_LEN + JZ_JIZHI_CMD_LEN + JZ_JIZHI_DEVICE_LEN + JZ_JIZHI_DATA_LEN; // 262B
 
 /**
  * 32×32矩阵映射表（1-based索引 → 0-based索引）
@@ -494,11 +495,11 @@ export function useSerialPort(options: UseSerialPortOptions) {
       const sensorHex = Array.from(sensorData.slice(0, 16))
         .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
         .join(' ') + '...';
-      onDataRef.current(`JZ[261B] ${sensorHex}`);
+      onDataRef.current(`JZ[262B] ${sensorHex}`);
     }
 
     pendingBytesRef.current += JZ_JIZHI_DATA_LEN;
-    pendingLastDataRef.current = `JZ[261B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
+    pendingLastDataRef.current = `JZ[262B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
   }, []);
 
   // 处理传感器二进制缓冲区：根据协议模式解析帧数据
@@ -559,22 +560,22 @@ export function useSerialPort(options: UseSerialPortOptions) {
         buf = buf.slice(HC_HAOCUN_TOTAL_LEN);
       } else if (protocol === 'custom_jizhi') {
         // ===== 极智动量小黑采集板 单帧协议 =====
-        // 帧格式：帧头(4B) + 设备类型(1B) + 传感器(256B) = 261B
+        // 帧格式：帧头(4B) + 0x01(1B) + 设备类型(1B) + 传感器(256B) = 262B
         if (buf.length < JZ_JIZHI_TOTAL_LEN) {
           binaryBufRef.current = buf;
           return;
         }
 
-        // 设备类型
-        const deviceId = buf[FRAME_HEADER_LEN];
+        // 设备类型（跳过帧头4B + 命令0x01 1B）
+        const deviceId = buf[FRAME_HEADER_LEN + JZ_JIZHI_CMD_LEN];
         if (deviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
           const deviceType = DEVICE_TYPE_MAP[deviceId] ?? `DEV_${deviceId.toString(16).toUpperCase().padStart(2, '0')}`;
           lastDeviceIdRef.current = deviceId;
           onDeviceTypeRef.current(deviceType, deviceId);
         }
 
-        // 提取传感器数据（跳过帧头4B + 设备类型1B）
-        const jzDataStart = FRAME_HEADER_LEN + JZ_JIZHI_DEVICE_LEN;
+        // 提取传感器数据（跳过帧头4B + 命令1B + 设备类型1B）
+        const jzDataStart = FRAME_HEADER_LEN + JZ_JIZHI_CMD_LEN + JZ_JIZHI_DEVICE_LEN;
         const jzSensorData = buf.slice(jzDataStart, jzDataStart + JZ_JIZHI_DATA_LEN);
         processJizhiFrame(new Uint8Array(jzSensorData));
 

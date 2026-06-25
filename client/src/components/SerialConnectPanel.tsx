@@ -75,7 +75,7 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     sublabel: 'JZ-16×16',
     defaultBaud: 2000000,
     quickBauds: [2000000],
-    hint: '16×16点阵，256个ADC，单帧261B（4帧头+1设备类型+256数据），300Hz',
+    hint: '16×16点阵，256个ADC，单帧262B（4帧头+01+设备类型+256数据），300Hz',
     matrixSize: 16,
     protocol: 'custom_jizhi',
   },
