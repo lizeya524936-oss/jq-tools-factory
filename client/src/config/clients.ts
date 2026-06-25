@@ -36,6 +36,15 @@ export const CLIENTS: ClientAccount[] = [
       '灏存科技定制',
     ],
   },
+  {
+    id: 'jizhi',
+    name: '极智动量',
+    username: 'jizhi',
+    password: 'jz2026',
+    allowedProducts: [
+      '极智动量小黑采集板',
+    ],
+  },
 ];
 
 /** 根据用户名和密码验证客户 */

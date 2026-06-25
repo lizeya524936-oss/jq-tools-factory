@@ -96,6 +96,12 @@ const HC_HAOCUN_GYRO_LEN = 16;    // 陀螺仪数据长度
 const HC_HAOCUN_SKIP_LEN = 2;     // 无效数据长度
 const HC_HAOCUN_TOTAL_LEN = FRAME_HEADER_LEN + HC_HAOCUN_SKIP_LEN + HC_HAOCUN_DATA_LEN + HC_HAOCUN_GYRO_LEN; // 278B
 
+// 单帧协议常量（极智动量小黑采集板 JZ-16×16）
+// 帧格式：帧头(4B) + 设备类型(1B) + 传感器(256B) = 261B
+const JZ_JIZHI_DATA_LEN = 256;   // 传感器数据长度
+const JZ_JIZHI_DEVICE_LEN = 1;   // 设备类型字节长度
+const JZ_JIZHI_TOTAL_LEN = FRAME_HEADER_LEN + JZ_JIZHI_DEVICE_LEN + JZ_JIZHI_DATA_LEN; // 261B
+
 /**
  * 32×32矩阵映射表（1-based索引 → 0-based索引）
  * 数据域1024字节按此映射表重排到32行×32列矩阵
@@ -151,7 +157,7 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 }
 
 /** 传感器协议模式 */
-export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun';
+export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi';
 
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
@@ -468,6 +474,33 @@ export function useSerialPort(options: UseSerialPortOptions) {
     pendingLastDataRef.current = `HC[278B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
   }, []);
 
+  // ── 极智动量小黑采集板协议帧处理 ──
+  const processJizhiFrame = useCallback((sensorData: Uint8Array) => {
+    // 256 字节传感器数据 → 16×16 矩阵（行优先）
+    const matrix = buildMatrix(sensorData, 16, 16);
+    const adcValues = Array.from(sensorData);
+
+    // 设备类型由 processSensorBuffer 中解析并回调，此处负责数据分发
+
+    getSensorDataStreamV2().updateSensorData(matrix, adcValues, sensorData);
+
+    if (onSensorMatrixRef.current) {
+      onSensorMatrixRef.current(matrix, 16, 16);
+    }
+    if (onSensorDataRef.current) {
+      onSensorDataRef.current(adcValues);
+    }
+    if (onDataRef.current) {
+      const sensorHex = Array.from(sensorData.slice(0, 16))
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ') + '...';
+      onDataRef.current(`JZ[261B] ${sensorHex}`);
+    }
+
+    pendingBytesRef.current += JZ_JIZHI_DATA_LEN;
+    pendingLastDataRef.current = `JZ[261B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
+  }, []);
+
   // 处理传感器二进制缓冲区：根据协议模式解析帧数据
   const processSensorBuffer = useCallback(() => {
     let buf = binaryBufRef.current;
@@ -524,6 +557,29 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
         // 移动到下一帧
         buf = buf.slice(HC_HAOCUN_TOTAL_LEN);
+      } else if (protocol === 'custom_jizhi') {
+        // ===== 极智动量小黑采集板 单帧协议 =====
+        // 帧格式：帧头(4B) + 设备类型(1B) + 传感器(256B) = 261B
+        if (buf.length < JZ_JIZHI_TOTAL_LEN) {
+          binaryBufRef.current = buf;
+          return;
+        }
+
+        // 设备类型
+        const deviceId = buf[FRAME_HEADER_LEN];
+        if (deviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
+          const deviceType = DEVICE_TYPE_MAP[deviceId] ?? `DEV_${deviceId.toString(16).toUpperCase().padStart(2, '0')}`;
+          lastDeviceIdRef.current = deviceId;
+          onDeviceTypeRef.current(deviceType, deviceId);
+        }
+
+        // 提取传感器数据（跳过帧头4B + 设备类型1B）
+        const jzDataStart = FRAME_HEADER_LEN + JZ_JIZHI_DEVICE_LEN;
+        const jzSensorData = buf.slice(jzDataStart, jzDataStart + JZ_JIZHI_DATA_LEN);
+        processJizhiFrame(new Uint8Array(jzSensorData));
+
+        // 移动到下一帧
+        buf = buf.slice(JZ_JIZHI_TOTAL_LEN);
       } else {
         // ===== 16×16 双包协议 =====
         if (buf.length < FRAME_HEADER_LEN + 1) {
@@ -573,7 +629,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
 
     binaryBufRef.current = buf;
-  }, [processSensorPackets, process32x32Frame, processHaocunFrame]);
+  }, [processSensorPackets, process32x32Frame, processHaocunFrame, processJizhiFrame]);
 
   // 读取循环（二进制模式）
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
