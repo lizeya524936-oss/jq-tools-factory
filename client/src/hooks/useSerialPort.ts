@@ -695,7 +695,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
       const port = await navigator.serial.requestPort();
       portRef.current = port;
 
-      await port.open({ baudRate });
+      await port.open({ baudRate, bufferSize: 16384 });
 
       const portInfo = `${port.getInfo().usbProductId ?? 'Unknown'}`;
 

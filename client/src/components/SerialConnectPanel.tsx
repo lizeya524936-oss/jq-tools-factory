@@ -73,8 +73,8 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
   {
     label: '极智动量小黑采集板',
     sublabel: 'JZ-16×16',
-    defaultBaud: 2000000,
-    quickBauds: [2000000],
+    defaultBaud: 921600,
+    quickBauds: [921600],
     hint: '16×16点阵，256个ADC，单帧262B（4帧头+01+设备类型+256数据），300Hz',
     matrixSize: 16,
     protocol: 'custom_jizhi',
