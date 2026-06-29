@@ -204,6 +204,9 @@ export default function ConsistencyPage() {
 
     console.log(`[下压采集] 每${pressesPerCollection}次下压采集1次, 共${cycles}循环`);
 
+    // 开始前等待 1s
+    await new Promise(r => setTimeout(r, 1000));
+
     for (let cycle = 0; cycle < cycles && !pressAbortRef.current; cycle++) {
       // 下压 N 次
       for (let p = 0; p < pressesPerCollection && !pressAbortRef.current; p++) {

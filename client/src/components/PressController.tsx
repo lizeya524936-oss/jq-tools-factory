@@ -15,6 +15,14 @@ let gPressConnected = false;
 export function getPressWriter() { return gPressWriter; }
 export function isPressConnected() { return gPressConnected; }
 
+// 监听器列表
+let listeners: Array<() => void> = [];
+function subscribePressState(fn: () => void) {
+  listeners = [...listeners, fn];
+  return () => { listeners = listeners.filter(l => l !== fn); };
+}
+function notifyListeners() { listeners.forEach(fn => fn()); }
+
 /** 连接 Arduino (9600 baud)，返回是否成功 */
 export async function connectArduino(): Promise<boolean> {
   try {
@@ -28,7 +36,8 @@ export async function connectArduino(): Promise<boolean> {
       return true;
     }
     return false;
-  } catch {
+  } catch (e) {
+    console.warn('[PressController] connectArduino error:', e);
     return false;
   }
 }
@@ -36,20 +45,16 @@ export async function connectArduino(): Promise<boolean> {
 /** 断开 Arduino */
 export async function disconnectArduino(): Promise<void> {
   try {
-    gPressWriter?.close();
+    gPressWriter?.releaseLock();
     gPressWriter = null;
     gPressConnected = false;
     notifyListeners();
   } catch {}
 }
 
-// 监听器列表
-const listeners = new Set<() => void>();
 export function onPressStateChange(fn: () => void) {
-  listeners.add(fn);
-  return () => { listeners.delete(fn); };
+  return subscribePressState(fn);
 }
-function notifyListeners() { listeners.forEach(fn => fn()); }
 
 export interface PressConfig {
   pressesPerCollection: number;   // 每次采集前下压次数
