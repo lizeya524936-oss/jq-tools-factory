@@ -71,6 +71,15 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.23（2026-06-29）
+
+**Bugfix：下压次数=1 时无法停止采集**
+
+- SerialMonitor 的 isRecording 改用 ref 追踪，避免 React 闭包过期导致停止采集失效
+
+**修改文件：**
+- 修改 `client/src/components/SerialMonitor.tsx` — isRecordingRef 替换闭包依赖
+
 ### v1.9.22（2026-06-29）
 
 **修复：下压机与 SerialMonitor 数据采集联动**
