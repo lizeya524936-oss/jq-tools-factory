@@ -224,8 +224,8 @@ export default function ConsistencyPage() {
       const cycleRecords: DataRecord[] = [];
       let unsub: (() => void) | null = null;
 
-      unsub = pipeline.subscribeSensorFrame(() => {
-        if (pressAbortRef.current) { unsub?.(); return; }
+      // 辅助函数：采集一帧
+      const captureFrame = () => {
         const adcVals = pipeline.getLatestAdcValues();
         const forceN = pipeline.getLatestForce();
         const selectedAdc = showHandLayout && handIndicesSnapshot.length > 0
@@ -244,6 +244,15 @@ export default function ConsistencyPage() {
           sampleIndex: cycleRecords.length,
           productIndex: cycle,
         } as DataRecord);
+      };
+
+      // 先采集当前帧（快照）
+      captureFrame();
+
+      // 订阅新帧事件，持续采集
+      unsub = pipeline.subscribeSensorFrame(() => {
+        if (pressAbortRef.current) { unsub?.(); return; }
+        captureFrame();
       });
 
       // 发送第 N 次下压指令
@@ -251,8 +260,12 @@ export default function ConsistencyPage() {
       console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
       try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
 
-      // 采集持续 10s（下压周期）
-      await new Promise(r => setTimeout(r, 10000));
+      // 采集持续 10s（下压周期），每秒打印一次帧数
+      for (let sec = 1; sec <= 10; sec++) {
+        await new Promise(r => setTimeout(r, 1000));
+        if (pressAbortRef.current) break;
+        if (sec % 5 === 0) console.log(`  [采集中] 已采集 ${cycleRecords.length} 帧`);
+      }
 
       // 停止采集
       unsub?.();
@@ -260,14 +273,22 @@ export default function ConsistencyPage() {
       console.log(`[采集完成] 循环 ${cycle + 1}, 采集 ${cycleRecords.length} 帧 (累计 ${newRecords.length})`);
     }
 
-    // 全部循环结束后统一写入数据（避免中途渲染图表造成卡顿）
+    // 全部循环结束后统一写入数据 + 自动导出 CSV
     setIsRunning(false);
     pressAbortRef.current = false;
     setRecords(newRecords);
 
+    // 自动导出 CSV
+    if (newRecords.length > 0) {
+      try {
+        exportToCSV(newRecords, `press-collect-${Date.now()}`);
+        console.log(`[下压采集] CSV 已自动导出, ${newRecords.length} 帧`);
+      } catch {}
+    }
+
     const testResult = evaluateConsistency(newRecords, params.forceMin, params.forceMax, params.checkPoints, params.threshold);
     setResult(testResult);
-    toast.success(`下压采集完成，${cycles} 次循环，共 ${newRecords.length} 帧`);
+    toast.success(`下压采集完成，${cycles} 次循环，${newRecords.length} 帧已导出`);
   }, [pressConfig, selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
 
   const handleStart = useCallback(async () => {
