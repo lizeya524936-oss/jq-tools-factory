@@ -27,6 +27,7 @@ import {
 import { RefreshCw, Download, Upload, Hand, Grid3x3 } from 'lucide-react';
 import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
+import PressController, { type PressConfig, getPressWriter } from '@/components/PressController';
 
 const DEFAULT_PARAMS = {
   threshold: 8,
@@ -177,6 +178,71 @@ export default function ConsistencyPage() {
     localStorage.setItem('matrixCols', cols.toString());
   }, []);
 
+  // 下压机控制
+  const [pressConfig, setPressConfig] = useState<PressConfig>({ pressesPerCollection: 3, collectionsPerCycle: 1, cycles: 100 });
+  const [pressMode, setPressMode] = useState(false);
+  const pressAbortRef = useRef(false);
+
+  // ── 下压机模式：独立采集处理 ──
+  const handleStartPress = useCallback(async () => {
+    setRecords([]);
+    setResult(null);
+    setIsRunning(true);
+    pressAbortRef.current = false;
+
+    const { pressesPerCollection, cycles } = pressConfig;
+    const pressWriter = getPressWriter();
+    if (!pressWriter) {
+      toast.error('请先连接 Arduino 下压机');
+      setIsRunning(false);
+      return;
+    }
+
+    const pipeline = getRealtimeDataPipeline();
+    const newRecords: DataRecord[] = [];
+    const handIndicesSnapshot = [...handSelectedIndices];
+
+    console.log(`[下压采集] 每${pressesPerCollection}次下压采集1次, 共${cycles}循环`);
+
+    for (let cycle = 0; cycle < cycles && !pressAbortRef.current; cycle++) {
+      // 下压 N 次
+      for (let p = 0; p < pressesPerCollection && !pressAbortRef.current; p++) {
+        const pressNum = cycle * pressesPerCollection + p + 1;
+        console.log(`[下压] #${pressNum}/${pressesPerCollection * cycles}`);
+        try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
+        await new Promise(r => setTimeout(r, 10000));
+      }
+      if (pressAbortRef.current) break;
+
+      // 采集一次
+      const adcVals = pipeline.getLatestAdcValues();
+      const forceN = pipeline.getLatestForce();
+      const selectedAdc = showHandLayout && handIndicesSnapshot.length > 0
+        ? handIndicesSnapshot.map(idx => adcVals?.[idx - 1] ?? 0)
+        : selectedSensors.map(s => adcVals?.[s.row * matrixCols + s.col] ?? 0);
+      const adcSum = selectedAdc.reduce((a: number, b: number) => a + b, 0);
+      newRecords.push({
+        id: `record-${cycle}`,
+        timestamp: Date.now(),
+        time: new Date().toLocaleTimeString(),
+        pressure: forceN ?? 0,
+        adcValues: selectedAdc,
+        adcSum,
+        adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+        testMode: 'consistency',
+        sampleIndex: cycle,
+        productIndex: Math.floor(cycle / params.samplesPerProduct),
+      } as DataRecord);
+      setRecords([...newRecords]);
+    }
+
+    setIsRunning(false);
+    pressAbortRef.current = false;
+    const testResult = evaluateConsistency(newRecords, params.forceMin, params.forceMax, params.checkPoints, params.threshold);
+    setResult(testResult);
+    toast.success(`下压采集完成，${newRecords.length}/${cycles} 次采集`);
+  }, [pressConfig, selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
+
   const handleStart = useCallback(async () => {
     // 检查是否有选点：手掌布局模式用 handSelectedIndices，矩阵模式用 selectedSensors
     const hasSelection = showHandLayout
@@ -190,29 +256,53 @@ export default function ConsistencyPage() {
     setIsRunning(true);
     setRecords([]);
     setResult(null);
+    pressAbortRef.current = false;
 
     // 快照当前 HandMatrix 选点（避免闭包问题）
     const handIndicesSnapshot = [...handSelectedIndices];
 
+    // 记录一条数据的辅助函数
+    const collectOneRecord = (index: number, cycleIdx: number) => {
+      const pipeline = getRealtimeDataPipeline();
+      const currentAdcValues = pipeline.getLatestAdcValues();
+      const forceN = pipeline.getLatestForce();
+      const adcValues = showHandLayout && handIndicesSnapshot.length > 0
+        ? handIndicesSnapshot.map(idx => currentAdcValues?.[idx - 1] ?? 0)
+        : selectedSensors.map(s => currentAdcValues?.[s.row * matrixCols + s.col] ?? 0);
+      const adcSum = adcValues.reduce((a, b) => a + b, 0);
+      return {
+        id: `record-${index}`,
+        timestamp: Date.now(),
+        time: new Date().toLocaleTimeString(),
+        pressure: forceN ?? 0,
+        adcValues,
+        adcSum,
+        adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+        testMode: 'consistency' as const,
+        sampleIndex: index,
+        productIndex: Math.floor(index / params.samplesPerProduct),
+      };
+    };
+
     try {
       const pipeline = getRealtimeDataPipeline();
       const newRecords: DataRecord[] = [];
-      let collectionCount = 0;
       const targetSamples = params.productCount * params.samplesPerProduct;
+      let collectionCount = 0;
 
       // ===== 纯事件驱动采集（v1.8.8: pipeline 层已做帧去重） =====
       const detectedFps = pipeline.getSensorFps();
       console.log(`[一致性采集] 事件驱动模式启动(v1.8.8帧去重), 检测帧率: ${detectedFps}Hz, 目标: ${targetSamples}样本`);
-      
+
       // 采集频率统计
       let collectCount = 0;
       let collectStartTime = performance.now();
-      
+
       // 订阅传感器新帧事件（只在数据真正变化时触发，不会收到重复帧）
       const unsub = pipeline.subscribeSensorFrame((_snapshot) => {
         if (collectionCount >= targetSamples) {
           unsub();
-          
+
           // 评估一致性
           const testResult = evaluateConsistency(
             newRecords,
@@ -226,21 +316,21 @@ export default function ConsistencyPage() {
           toast.success(`一致性检测完成，采集 ${collectionCount} 个数据点 @${detectedFps}Hz`);
           return;
         }
-        
+
         const currentAdcValues = pipeline.getLatestAdcValues();
         const forceN = pipeline.getLatestForce();
-        
+
         if (currentAdcValues && currentAdcValues.length > 0) {
           let adcValues: number[];
           if (showHandLayout && handIndicesSnapshot.length > 0) {
             adcValues = handIndicesSnapshot.map(idx => currentAdcValues[idx - 1] ?? 0);
           } else {
-            adcValues = selectedSensors.map(sensor => 
+            adcValues = selectedSensors.map(sensor =>
               currentAdcValues[sensor.row * matrixCols + sensor.col] ?? 0
             );
           }
           const adcSum = adcValues.reduce((a, b) => a + b, 0);
-          
+
           const record: DataRecord = {
             id: `record-${collectionCount}`,
             timestamp: Date.now(),
@@ -256,7 +346,7 @@ export default function ConsistencyPage() {
           newRecords.push(record);
           collectionCount++;
           setRecords([...newRecords]);
-          
+
           // 每2秒输出一次采集频率统计
           collectCount++;
           const elapsed = performance.now() - collectStartTime;
@@ -282,7 +372,7 @@ export default function ConsistencyPage() {
       console.error(error);
       setIsRunning(false);
     }
-  }, [selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
+  }, [selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices, pressMode, pressConfig]);
 
   const handleReset = useCallback(async () => {
     // 向压力计发送 CMD_RESET 归零指令
@@ -666,6 +756,17 @@ export default function ConsistencyPage() {
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
           handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+        />
+
+        {/* 下压机控制面板 */}
+        <PressController
+          config={pressConfig}
+          onConfigChange={setPressConfig}
+          onCycleTick={() => {}}
+          onCollectionTrigger={async () => {}}
+          isRunning={isRunning}
+          onStart={() => { setPressMode(true); handleStartPress(); }}
+          onStop={() => { setPressMode(false); pressAbortRef.current = true; setIsRunning(false); }}
         />
       </div>
 
