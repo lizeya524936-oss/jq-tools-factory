@@ -71,6 +71,18 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.22（2026-06-29）
+
+**修复：下压机与 SerialMonitor 数据采集联动**
+
+- SerialMonitor 新增 `isRunning` prop 自动联动：外部触发时自动开始/停止采集
+- 下压机模式改为仅控制下压节奏，数据采集交由 SerialMonitor 处理
+- 每次采集循环自动导出 CSV
+
+**修改文件：**
+- 修改 `client/src/components/SerialMonitor.tsx` — 新增外部 isRunning 联动
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 简化下压采集逻辑
+
 ### v1.9.21（2026-06-29）
 
 **修复：下压机采集逻辑完善**
