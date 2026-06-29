@@ -69,6 +69,19 @@ export default function SerialMonitor({
   useEffect(() => { selectedSensorsRef.current = selectedSensors; }, [selectedSensors]);
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
   useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
+
+  // 联动外部 isRunning（下压机模式）：自动开始/停止采集
+  const prevRunningRef = useRef(false);
+  useEffect(() => {
+    if (isRunning && !prevRunningRef.current) {
+      // false→true: 自动开始采集
+      handleStartRecording();
+    } else if (!isRunning && prevRunningRef.current) {
+      // true→false: 自动停止采集
+      if (isRecording) handleStopRecording();
+    }
+    prevRunningRef.current = isRunning;
+  }, [isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // ===== 导出 CSV =====
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {

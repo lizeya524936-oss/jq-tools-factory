@@ -183,24 +183,18 @@ export default function ConsistencyPage() {
   const [pressMode, setPressMode] = useState(false);
   const pressAbortRef = useRef(false);
 
-  // ── 下压机模式：独立采集处理 ──
+  // ── 下压机模式：控制下压节奏，数据采集由 SerialMonitor 自动处理 ──
   const handleStartPress = useCallback(async () => {
     setRecords([]);
     setResult(null);
-    setIsRunning(true);
     pressAbortRef.current = false;
 
     const { pressesPerCollection, cycles } = pressConfig;
     const pressWriter = getPressWriter();
     if (!pressWriter) {
       toast.error('请先连接 Arduino 下压机');
-      setIsRunning(false);
       return;
     }
-
-    const pipeline = getRealtimeDataPipeline();
-    const newRecords: DataRecord[] = [];
-    const handIndicesSnapshot = [...handSelectedIndices];
 
     console.log(`[下压采集] 每${pressesPerCollection}次下压采集1次, 共${cycles}循环`);
 
@@ -219,77 +213,26 @@ export default function ConsistencyPage() {
       }
       if (pressAbortRef.current) break;
 
-      // 第 N 次下压前：开始采集
+      // 第 N 次下压前：启动 SerialMonitor 采集
+      setIsRunning(true);
       console.log(`[采集开始] 循环 ${cycle + 1}/${cycles}`);
-      const cycleRecords: DataRecord[] = [];
-      let unsub: (() => void) | null = null;
-
-      // 辅助函数：采集一帧
-      const captureFrame = () => {
-        const adcVals = pipeline.getLatestAdcValues();
-        const forceN = pipeline.getLatestForce();
-        const selectedAdc = showHandLayout && handIndicesSnapshot.length > 0
-          ? handIndicesSnapshot.map(idx => adcVals?.[idx - 1] ?? 0)
-          : selectedSensors.map(s => adcVals?.[s.row * matrixCols + s.col] ?? 0);
-        const adcSum = selectedAdc.reduce((a: number, b: number) => a + b, 0);
-        cycleRecords.push({
-          id: `record-c${cycle}-${cycleRecords.length}`,
-          timestamp: Date.now(),
-          time: new Date().toLocaleTimeString(),
-          pressure: forceN ?? 0,
-          adcValues: selectedAdc,
-          adcSum,
-          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
-          testMode: 'consistency',
-          sampleIndex: cycleRecords.length,
-          productIndex: cycle,
-        } as DataRecord);
-      };
-
-      // 先采集当前帧（快照）
-      captureFrame();
-
-      // 订阅新帧事件，持续采集
-      unsub = pipeline.subscribeSensorFrame(() => {
-        if (pressAbortRef.current) { unsub?.(); return; }
-        captureFrame();
-      });
 
       // 发送第 N 次下压指令
       const pressNum = cycle * pressesPerCollection + lastPressIdx + 1;
       console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
       try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
 
-      // 采集持续 10s（下压周期），每秒打印一次帧数
-      for (let sec = 1; sec <= 10; sec++) {
-        await new Promise(r => setTimeout(r, 1000));
-        if (pressAbortRef.current) break;
-        if (sec % 5 === 0) console.log(`  [采集中] 已采集 ${cycleRecords.length} 帧`);
-      }
+      // 采集持续 10s（SerialMonitor 的 setInterval 会自动采样并记录）
+      await new Promise(r => setTimeout(r, 10000));
 
-      // 停止采集
-      unsub?.();
-      newRecords.push(...cycleRecords);
-      console.log(`[采集完成] 循环 ${cycle + 1}, 采集 ${cycleRecords.length} 帧 (累计 ${newRecords.length})`);
+      // 停止 SerialMonitor 采集（会自动导出 CSV）
+      setIsRunning(false);
+      console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
     }
 
-    // 全部循环结束后统一写入数据 + 自动导出 CSV
-    setIsRunning(false);
     pressAbortRef.current = false;
-    setRecords(newRecords);
-
-    // 自动导出 CSV
-    if (newRecords.length > 0) {
-      try {
-        exportToCSV(newRecords, `press-collect-${Date.now()}`);
-        console.log(`[下压采集] CSV 已自动导出, ${newRecords.length} 帧`);
-      } catch {}
-    }
-
-    const testResult = evaluateConsistency(newRecords, params.forceMin, params.forceMax, params.checkPoints, params.threshold);
-    setResult(testResult);
-    toast.success(`下压采集完成，${cycles} 次循环，${newRecords.length} 帧已导出`);
-  }, [pressConfig, selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
+    toast.success(`下压采集完成，${cycles} 次循环`);
+  }, [pressConfig]);
 
   const handleStart = useCallback(async () => {
     // 检查是否有选点：手掌布局模式用 handSelectedIndices，矩阵模式用 selectedSensors
