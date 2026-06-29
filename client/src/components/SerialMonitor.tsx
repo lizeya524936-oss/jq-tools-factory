@@ -70,6 +70,9 @@ export default function SerialMonitor({
   useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
   useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
 
+  // 用 ref 追踪 isRecording，避免 effect 闭包过期
+  const isRecordingRef = useRef(false);
+
   // 联动外部 isRunning（下压机模式）：自动开始/停止采集
   const prevRunningRef = useRef(false);
   useEffect(() => {
@@ -78,7 +81,7 @@ export default function SerialMonitor({
       handleStartRecording();
     } else if (!isRunning && prevRunningRef.current) {
       // true→false: 自动停止采集
-      if (isRecording) handleStopRecording();
+      if (isRecordingRef.current) handleStopRecording();
     }
     prevRunningRef.current = isRunning;
   }, [isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,6 +166,7 @@ export default function SerialMonitor({
     setRecordCount(0);
     startTimeRef.current = Date.now();
     setIsRecording(true);
+    isRecordingRef.current = true;
     
     // 获取全局单例引用（在 setInterval 外部获取，避免重复调用）
     const sensorStream = getSensorDataStreamV2();
@@ -207,6 +211,7 @@ export default function SerialMonitor({
       countIntervalRef.current = null;
     }
     setIsRecording(false);
+    isRecordingRef.current = false;
     
     // 取出缓冲区数据
     const data = [...bufferRef.current];
