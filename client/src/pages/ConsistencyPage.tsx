@@ -257,12 +257,14 @@ export default function ConsistencyPage() {
       // 停止采集
       unsub?.();
       newRecords.push(...cycleRecords);
-      setRecords([...newRecords]);
-      console.log(`[采集完成] 循环 ${cycle + 1}, 采集 ${cycleRecords.length} 帧`);
+      console.log(`[采集完成] 循环 ${cycle + 1}, 采集 ${cycleRecords.length} 帧 (累计 ${newRecords.length})`);
     }
 
+    // 全部循环结束后统一写入数据（避免中途渲染图表造成卡顿）
     setIsRunning(false);
     pressAbortRef.current = false;
+    setRecords(newRecords);
+
     const testResult = evaluateConsistency(newRecords, params.forceMin, params.forceMax, params.checkPoints, params.threshold);
     setResult(testResult);
     toast.success(`下压采集完成，${cycles} 次循环，共 ${newRecords.length} 帧`);
@@ -762,13 +764,13 @@ export default function ConsistencyPage() {
           </button>
         </div>
 
-        {/* 检测结果 */}
-        <TestResultCard
+        {/* 检测结果 — 暂时禁用 */}
+        {/* <TestResultCard
           result={result}
           title="一致性判定"
           description={`判断方法A：平滑曲线${params.forceMin}N到${params.forceMax}N范围内，选取${params.checkPoints}个同隔一致的数值，判断误差范围是否在±${params.threshold}%范围内`}
           isRunning={isRunning}
-        />
+        /> */}
 
         {/* 数据采集控制面板 */}
         <SerialMonitor
