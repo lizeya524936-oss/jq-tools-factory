@@ -5,12 +5,51 @@
  * 两次下压之间至少间隔 10s（防止重复发送）。
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Usb, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Square, Zap } from 'lucide-react';
 
-/** 模块级 writer ref，供外部直接发送下压指令 */
+/** 模块级 writer ref + 连接状态，供外部直接发送下压指令 */
 let gPressWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
+let gPressConnected = false;
+
 export function getPressWriter() { return gPressWriter; }
+export function isPressConnected() { return gPressConnected; }
+
+/** 连接 Arduino (9600 baud)，返回是否成功 */
+export async function connectArduino(): Promise<boolean> {
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    const writer = port.writable?.getWriter() ?? null;
+    if (writer) {
+      gPressWriter = writer;
+      gPressConnected = true;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** 断开 Arduino */
+export async function disconnectArduino(): Promise<void> {
+  try {
+    gPressWriter?.close();
+    gPressWriter = null;
+    gPressConnected = false;
+    notifyListeners();
+  } catch {}
+}
+
+// 监听器列表
+const listeners = new Set<() => void>();
+export function onPressStateChange(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+function notifyListeners() { listeners.forEach(fn => fn()); }
 
 export interface PressConfig {
   pressesPerCollection: number;   // 每次采集前下压次数
@@ -32,65 +71,18 @@ export default function PressController({
   config, onConfigChange,
   isRunning, onStart, onStop,
 }: PressControllerProps) {
-  const [arduinoConnected, setArduinoConnected] = useState(false);
-  const [arduinoConnecting, setArduinoConnecting] = useState(false);
-  const [statusText, setStatusText] = useState('');
-  const portRef = useRef<SerialPort | null>(null);
-  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
+  const [arduinoConnected, setArduinoConnected] = useState(isPressConnected());
 
-  const isWebSerial = typeof navigator !== 'undefined' && 'serial' in navigator;
-
-  const connectArduino = useCallback(async () => {
-    setArduinoConnecting(true);
-    try {
-      const port = await navigator.serial.requestPort();
-      await port.open({ baudRate: 9600 });
-      portRef.current = port;
-      const writer = port.writable?.getWriter() ?? null;
-      writerRef.current = writer;
-      gPressWriter = writer;
-      setArduinoConnected(true);
-      setStatusText('Arduino 已连接 (9600 baud)');
-    } catch (e) {
-      setStatusText('连接失败: ' + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setArduinoConnecting(false);
-    }
+  useEffect(() => {
+    return onPressStateChange(() => setArduinoConnected(isPressConnected()));
   }, []);
-
-  const disconnectArduino = useCallback(async () => {
-    try {
-      writerRef.current?.close();
-      writerRef.current = null;
-      gPressWriter = null;
-      await portRef.current?.close();
-      portRef.current = null;
-    } catch {}
-    setArduinoConnected(false);
-    setStatusText('Arduino 已断开');
-  }, []);
-
-  const sendPress = useCallback(async (): Promise<boolean> => {
-    if (!writerRef.current) return false;
-    try {
-      await writerRef.current.write(new TextEncoder().encode('1'));
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const handleStart = useCallback(() => {
-    onStart();
-  }, [onStart]);
-
-  const handleStop = useCallback(() => {
-    onStop();
-  }, [onStop]);
 
   const updateConfig = (key: keyof PressConfig, val: number) => {
     onConfigChange({ ...config, [key]: Math.max(1, val) });
   };
+
+  const handleStart = () => onStart();
+  const handleStop = () => onStop();
 
   const totalPresses = config.pressesPerCollection * config.cycles;
   const totalCollections = config.cycles;
@@ -111,40 +103,13 @@ export default function PressController({
         </span>
       </div>
 
-      {/* Arduino 连接 */}
-      {!arduinoConnected ? (
-        <button
-          onClick={connectArduino}
-          disabled={arduinoConnecting || !isWebSerial}
-          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-opacity hover:opacity-80"
-          style={{
-            background: 'oklch(0.25 0.03 265)',
-            border: '1px solid oklch(0.30 0.03 265)',
-            color: isWebSerial ? 'oklch(0.65 0.02 240)' : 'oklch(0.40 0.02 240)',
-          }}
-        >
-          <Usb size={10} />
-          {arduinoConnecting ? '连接中...' : '连接 Arduino (9600)'}
-        </button>
-      ) : (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.72 0.20 145)' }} />
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.72 0.20 145)' }}>Arduino 已连接</span>
-          </div>
-          <button
-            onClick={disconnectArduino}
-            className="text-xs font-mono px-1.5 py-0.5 rounded"
-            style={{
-              background: 'oklch(0.65 0.22 25 / 0.15)',
-              color: 'oklch(0.65 0.22 25)',
-              fontSize: '9px',
-            }}
-          >
-            断开
-          </button>
-        </div>
-      )}
+      {/* Arduino 连接状态 */}
+      <div className="flex items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full" style={{ background: arduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.40 0.02 240)' }} />
+        <span className="text-xs font-mono" style={{ color: arduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.50 0.02 240)' }}>
+          {arduinoConnected ? '下压机已连接' : '下压机未连接'}
+        </span>
+      </div>
 
       {/* 参数设置 */}
       <div className="flex flex-col gap-1.5">
@@ -187,13 +152,6 @@ export default function PressController({
         <span>总下压: {totalPresses}</span>
         <span>总采集: {totalCollections}</span>
       </div>
-
-      {/* 状态 */}
-      {statusText && (
-        <div className="text-xs font-mono" style={{ color: 'oklch(0.42 0.02 240)', fontSize: '10px' }}>
-          {statusText}
-        </div>
-      )}
 
       {/* 开始/停止 */}
       <div className="flex gap-2">

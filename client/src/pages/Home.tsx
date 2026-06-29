@@ -10,7 +10,8 @@
  */
 import { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { useClient } from '@/contexts/ClientContext';
-import { LogOut } from 'lucide-react';
+import { connectArduino, disconnectArduino, isPressConnected, onPressStateChange } from '@/components/PressController';
+import { LogOut, Zap } from 'lucide-react';
 import Sidebar, { TabType } from '@/components/Sidebar';
 import TestPage from './TestPage';
 import ConsistencyPage from './ConsistencyPage';
@@ -110,7 +111,10 @@ export default function Home() {
   const sensorMatrixSize = sensorProtocol === '32x32' ? 32 : 16;
   const [sensorFps, setSensorFps] = useState<number>(0);
   const [forceFps, setForceFps] = useState<number>(0);
-  
+  const [pressArduinoConnected, setPressArduinoConnected] = useState(isPressConnected());
+
+  useEffect(() => onPressStateChange(() => setPressArduinoConnected(isPressConnected())), []);
+
   // 使用 Ref 来存储最新的传感器数据，避免不必要的重新渲染
   const latestAdcValuesRef = useRef<number[] | null>(null);
   
@@ -340,6 +344,23 @@ export default function Home() {
               onConnect={handleForceConnect}
               onDisconnect={handleForceDisconnect}
             />
+
+            {/* 分隔 */}
+            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+
+            {/* 下压机连接 */}
+            <button
+              onClick={() => pressArduinoConnected ? disconnectArduino() : connectArduino()}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-opacity hover:opacity-80"
+              style={{
+                background: pressArduinoConnected ? 'oklch(0.72 0.20 145 / 0.12)' : 'oklch(0.25 0.03 265)',
+                border: `1px solid ${pressArduinoConnected ? 'oklch(0.72 0.20 145 / 0.35)' : 'oklch(0.30 0.03 265)'}`,
+                color: pressArduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.55 0.02 240)',
+              }}
+            >
+              <Zap size={10} />
+              {pressArduinoConnected ? '下压机已连接' : '下压机连接'}
+            </button>
 
             {/* 分隔 */}
             <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
