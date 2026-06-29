@@ -71,6 +71,22 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.19（2026-06-29）
+
+**新增下压机自动控制 + 传感器矩阵选点交互重构**
+
+- Arduino 下压机串口控制：Header 一键连接，参数化设置（下压次数/采集、循环次数），自动循环采集
+- 传感器矩阵统一选点交互：拖拽框选、Ctrl+拖拽追加、Ctrl+单击切换、右键清除，移除点选/框选双模式
+- 极智动量小黑采集板协议适配（262B 单帧，1M baud）
+
+**修改文件：**
+
+- 新增 `client/src/components/PressController.tsx` — Arduino 下压机串口控制组件
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 集成下压机自动采集循环
+- 修改 `client/src/pages/Home.tsx` — Header 添加下压机连接按钮
+- 修改 `client/src/components/SensorMatrix.tsx` — 统一选点交互
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_jizhi 协议解析
+
 ### v1.9.18（2026-06-10）
 
 **新增登录界面与客户产品隔离**
