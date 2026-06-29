@@ -208,42 +208,64 @@ export default function ConsistencyPage() {
     await new Promise(r => setTimeout(r, 1000));
 
     for (let cycle = 0; cycle < cycles && !pressAbortRef.current; cycle++) {
-      // 下压 N 次
-      for (let p = 0; p < pressesPerCollection && !pressAbortRef.current; p++) {
+      const lastPressIdx = pressesPerCollection - 1;
+
+      // 前 N-1 次下压（仅下压，不采集）
+      for (let p = 0; p < lastPressIdx && !pressAbortRef.current; p++) {
         const pressNum = cycle * pressesPerCollection + p + 1;
-        console.log(`[下压] #${pressNum}/${pressesPerCollection * cycles}`);
+        console.log(`[下压] #${pressNum}/${pressesPerCollection * cycles} (仅下压)`);
         try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
         await new Promise(r => setTimeout(r, 10000));
       }
       if (pressAbortRef.current) break;
 
-      // 采集一次
-      const adcVals = pipeline.getLatestAdcValues();
-      const forceN = pipeline.getLatestForce();
-      const selectedAdc = showHandLayout && handIndicesSnapshot.length > 0
-        ? handIndicesSnapshot.map(idx => adcVals?.[idx - 1] ?? 0)
-        : selectedSensors.map(s => adcVals?.[s.row * matrixCols + s.col] ?? 0);
-      const adcSum = selectedAdc.reduce((a: number, b: number) => a + b, 0);
-      newRecords.push({
-        id: `record-${cycle}`,
-        timestamp: Date.now(),
-        time: new Date().toLocaleTimeString(),
-        pressure: forceN ?? 0,
-        adcValues: selectedAdc,
-        adcSum,
-        adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
-        testMode: 'consistency',
-        sampleIndex: cycle,
-        productIndex: Math.floor(cycle / params.samplesPerProduct),
-      } as DataRecord);
+      // 第 N 次下压前：开始采集
+      console.log(`[采集开始] 循环 ${cycle + 1}/${cycles}`);
+      const cycleRecords: DataRecord[] = [];
+      let unsub: (() => void) | null = null;
+
+      unsub = pipeline.subscribeSensorFrame(() => {
+        if (pressAbortRef.current) { unsub?.(); return; }
+        const adcVals = pipeline.getLatestAdcValues();
+        const forceN = pipeline.getLatestForce();
+        const selectedAdc = showHandLayout && handIndicesSnapshot.length > 0
+          ? handIndicesSnapshot.map(idx => adcVals?.[idx - 1] ?? 0)
+          : selectedSensors.map(s => adcVals?.[s.row * matrixCols + s.col] ?? 0);
+        const adcSum = selectedAdc.reduce((a: number, b: number) => a + b, 0);
+        cycleRecords.push({
+          id: `record-c${cycle}-${cycleRecords.length}`,
+          timestamp: Date.now(),
+          time: new Date().toLocaleTimeString(),
+          pressure: forceN ?? 0,
+          adcValues: selectedAdc,
+          adcSum,
+          adcSumHex: '0x' + adcSum.toString(16).toUpperCase(),
+          testMode: 'consistency',
+          sampleIndex: cycleRecords.length,
+          productIndex: cycle,
+        } as DataRecord);
+      });
+
+      // 发送第 N 次下压指令
+      const pressNum = cycle * pressesPerCollection + lastPressIdx + 1;
+      console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
+      try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
+
+      // 采集持续 10s（下压周期）
+      await new Promise(r => setTimeout(r, 10000));
+
+      // 停止采集
+      unsub?.();
+      newRecords.push(...cycleRecords);
       setRecords([...newRecords]);
+      console.log(`[采集完成] 循环 ${cycle + 1}, 采集 ${cycleRecords.length} 帧`);
     }
 
     setIsRunning(false);
     pressAbortRef.current = false;
     const testResult = evaluateConsistency(newRecords, params.forceMin, params.forceMax, params.checkPoints, params.threshold);
     setResult(testResult);
-    toast.success(`下压采集完成，${newRecords.length}/${cycles} 次采集`);
+    toast.success(`下压采集完成，${cycles} 次循环，共 ${newRecords.length} 帧`);
   }, [pressConfig, selectedSensors, params, matrixCols, showHandLayout, handSelectedIndices]);
 
   const handleStart = useCallback(async () => {
