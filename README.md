@@ -71,6 +71,34 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.21（2026-06-29）
+
+**修复：下压机采集逻辑完善**
+
+- 订阅前采集当前帧快照，确保至少 1 帧数据
+- 每 5 秒打印一次采集帧数，方便调试
+- 全部循环完成后自动导出 CSV
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 优化下压采集逻辑
+
+### v1.9.20（2026-06-29）
+
+**迭代：下压机控制 + 传感器选点 + 极智动量协议**
+
+- Arduino 下压机串口控制，Header 一键连接
+- 传感器矩阵统一选点：拖拽框选/Ctrl多选/右键清除
+- 极智动量小黑采集板协议适配
+- 下压采集优化：延迟渲染、隐藏一致性判定卡片
+
+**修改文件：**
+- 新增 `client/src/components/PressController.tsx` — 下压机控制组件
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 集成下压机
+- 修改 `client/src/pages/Home.tsx` — Header 下压机连接按钮
+- 修改 `client/src/components/SensorMatrix.tsx` — 统一选点交互
+- 修改 `client/src/hooks/useSerialPort.ts` — 极智动量协议
+- 修改 `client/src/config/clients.ts` — 极智动量客户账号
+
 ### v1.9.19（2026-06-29）
 
 **新增下压机自动控制 + 传感器矩阵选点交互重构**
