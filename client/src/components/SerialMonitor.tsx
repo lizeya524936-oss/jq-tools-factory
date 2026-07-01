@@ -74,21 +74,15 @@ export default function SerialMonitor({
   const isRecordingRef = useRef(false);
 
   // 联动外部 isRunning（下压机模式）：自动开始/停止采集
-  // 使用 ref 存储最新的 start/stop 函数，避免闭包过期
-  const startRecordingRef = useRef(handleStartRecording);
-  const stopRecordingRef = useRef(handleStopRecording);
-  startRecordingRef.current = handleStartRecording;
-  stopRecordingRef.current = handleStopRecording;
-
   const prevRunningRef = useRef(false);
   useEffect(() => {
     if (isRunning && !prevRunningRef.current) {
-      startRecordingRef.current();
+      handleStartRecording();
     } else if (!isRunning && prevRunningRef.current) {
-      stopRecordingRef.current();
+      if (isRecordingRef.current) handleStopRecording();
     }
     prevRunningRef.current = isRunning;
-  }, [isRunning]);
+  }, [isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // ===== 导出 CSV =====
   const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
