@@ -71,6 +71,17 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.24（2026-06-30）
+
+**Bugfix：下压次数=1 时无法停止采集（根本修复）**
+
+- 采集 8s + 停止后等 2s 缓冲，确保 React 状态更新和 CSV 导出完成后再进入下一循环
+- SerialMonitor 改用 ref 存储 start/stop 函数引用，彻底消除闭包过期
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 采集时序优化
+- 修改 `client/src/components/SerialMonitor.tsx` — 函数引用 ref 化
+
 ### v1.9.23（2026-06-29）
 
 **Bugfix：下压次数=1 时无法停止采集**

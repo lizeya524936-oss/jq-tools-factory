@@ -222,12 +222,15 @@ export default function ConsistencyPage() {
       console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
       try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
 
-      // 采集持续 10s（SerialMonitor 的 setInterval 会自动采样并记录）
-      await new Promise(r => setTimeout(r, 10000));
+      // 采集持续 8s
+      await new Promise(r => setTimeout(r, 8000));
 
-      // 停止 SerialMonitor 采集（会自动导出 CSV）
+      // 在下一次下压前 2s 停止采集，确保 CSV 导出完成
       setIsRunning(false);
       console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
+
+      // 等待 2s 让 React 处理状态 + CSV 导出
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     pressAbortRef.current = false;
