@@ -266,6 +266,8 @@ export default function ConsistencyPage() {
     // 开始前等待 1s（可中断）
     await sleepWithAbort(1000);
 
+    let completedCycles = 0;
+
     for (let cycle = 0; cycle < cycles && !pressAbortRef.current; cycle++) {
       const lastPressIdx = pressesPerCollection - 1;
 
@@ -323,10 +325,15 @@ export default function ConsistencyPage() {
       // 停止采集 → SerialMonitor 自动导出 CSV
       setIsRunning(false);
       console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
+      completedCycles++;
     }
 
     pressAbortRef.current = false;
-    toast.success(`下压采集完成，${cycles} 次循环`);
+    if (completedCycles === cycles) {
+      toast.success(`下压采集完成，${cycles} 次循环`);
+    } else {
+      toast.info(`下压已中止，已完成 ${completedCycles}/${cycles} 次循环`);
+    }
   }, [pressConfig, isForceConnected]);
 
   const handleStart = useCallback(async () => {
