@@ -74,7 +74,7 @@ function formatTime(seconds: number): string {
   return `${s}s`;
 }
 
-export default function PressureChart() {
+export default function PressureChart({ showControls = true }: { showControls?: boolean }) {
   const { isForceConnected, sendForceCommand } = useSerialData();
 
   // CL2 压力计归零/重置命令
@@ -191,7 +191,7 @@ export default function PressureChart() {
   return (
     <div className="flex flex-col gap-3 h-full">
       {/* 统计信息卡片 */}
-      {(hasData || isForceConnected) && (
+      {showControls && (hasData || isForceConnected) && (
         <div className="grid grid-cols-3 gap-2 flex-shrink-0">
           <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
             <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
@@ -223,6 +223,7 @@ export default function PressureChart() {
       )}
 
       {/* 标题栏 */}
+      {showControls && (
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.75 0.18 55)' }}>
@@ -261,6 +262,7 @@ export default function PressureChart() {
           )}
         </div>
       </div>
+      )}
 
       {/* 错误提示 */}
       {errorMsg && (

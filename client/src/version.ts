@@ -57,7 +57,9 @@
  * v1.9.6  - 压力范围可配置：(1)CV分析的关键压力点从固定7点改为动态生成；(2)滑块+输入框控制最大压力值(0-XXN)；(3)快捷按钮(50/100/200/500N)；(4)最大值上限由数据中最大压力值决定；(5)散点图X轴联动更新
  * v1.9.7  - 压力范围双向联动：(1)提取共享 PressureRangeBar 组件（滑块+输入框+快捷按钮+Max按钮）；(2)DataChart的X轴范围和ConsistencyAnalysis的分析范围由父组件统一控制，双向联动；(3)DataChart内的固定按钮替换为PressureRangeBar
  * v1.9.8  - 压力范围重新拟合：(1)调整滑块后只使用0~pressureMax范围内的数据重新进行Hill拟合，避免尾段对前段的影响；(2)滑块拖动防抖：拖动过程中只更新显示值，松手后才触发重新拟合
+ * v1.9.26 - 修复偶发性 insertBefore DOM 错误导致页面崩溃：(1)SensorMatrix 全局 mouseup 监听器改用 ref 代理模式；(2)ConsistencyPage 传感器轮询增加数据去重；(3)页面隐藏时自动暂停轮询
+ * v1.9.27 - 项目交接：Reasonix 正式接手项目维护，建立完整项目约束文档，为后续开发奠定规范化基础
  */
-export const APP_VERSION = 'v1.9.26';
+export const APP_VERSION = 'v1.9.27';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-23';

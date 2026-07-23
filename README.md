@@ -71,6 +71,17 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.27（2026-07-23）
+
+**Chore：项目交接 — Reasonix 正式接手维护**
+
+- 建立完整项目约束与核心逻辑文档（`docs/JQFactory-project-constraints.md`），涵盖部署约束、数据流架构、状态管理模式、文件上传/导出逻辑、UI 组件约束等
+- 版本号更新至 v1.9.27，为后续规范化开发奠定基础
+
+**修改文件：**
+- 新增 `docs/JQFactory-project-constraints.md` — 项目约束与核心逻辑参考文档
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.27
+
 ### v1.9.26（2026-07-23）
 
 **Bugfix：修复偶发性 insertBefore DOM 错误导致页面崩溃**
