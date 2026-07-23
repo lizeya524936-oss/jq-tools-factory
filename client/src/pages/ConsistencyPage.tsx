@@ -208,10 +208,17 @@ export default function ConsistencyPage() {
   const pressAbortRef = useRef(false);
 
   // ── 下压机模式：控制下压节奏，数据采集由 SerialMonitor 自动处理 ──
+  // 压力事件驱动版本：等待实际压力上升→释放→缓冲3s→下一次下压
   const handleStartPress = useCallback(async () => {
     setRecords([]);
     setResult(null);
     pressAbortRef.current = false;
+
+    // 压力计连接检查（压力事件驱动的前提条件）
+    if (!isForceConnected) {
+      toast.error('压力计未连接，无法使用压力事件驱动模式');
+      return;
+    }
 
     const { pressesPerCollection, cycles } = pressConfig;
     const pressWriter = getPressWriter();
@@ -220,46 +227,107 @@ export default function ConsistencyPage() {
       return;
     }
 
-    console.log(`[下压采集] 每${pressesPerCollection}次下压采集1次, 共${cycles}循环`);
+    const PRESSURE_THRESHOLD = 1.0;   // >1N 认为下压到位
+    const POLL_INTERVAL = 100;        // 每 100ms 轮询一次压力
+    const MAX_WAIT = 30000;           // 超时 30s 跳过本次
+    const RELEASE_BUFFER = 3000;      // 释放后缓冲 3s
 
-    // 开始前等待 1s
-    await new Promise(r => setTimeout(r, 1000));
+    const pipeline = getRealtimeDataPipeline();
+
+    // 等待压力到达预期状态（上升超过阈值 / 下降低于阈值）
+    const waitForPressure = async (expectAbove: boolean): Promise<boolean> => {
+      const start = Date.now();
+      while (Date.now() - start < MAX_WAIT && !pressAbortRef.current) {
+        const rawF = pipeline.getLatestForce();
+        // 压力计 null（断开/未连接）→ 立即返回失败，避免误判为"已释放"
+        if (rawF === null) {
+          console.warn('[下压] 压力计数据丢失（null），放弃等待');
+          return false;
+        }
+        if (expectAbove && rawF > PRESSURE_THRESHOLD) return true;
+        if (!expectAbove && rawF < PRESSURE_THRESHOLD) return true;
+        await new Promise(r => setTimeout(r, POLL_INTERVAL));
+      }
+      return false; // 超时
+    };
+
+    // 可中断的 sleep：每 200ms 检查一次中止标志
+    const sleepWithAbort = async (ms: number): Promise<void> => {
+      const step = 200;
+      let remaining = ms;
+      while (remaining > 0 && !pressAbortRef.current) {
+        await new Promise(r => setTimeout(r, Math.min(step, remaining)));
+        remaining -= step;
+      }
+    };
+
+    console.log(`[下压采集] 每${pressesPerCollection}次下压采集1次, 共${cycles}循环 (压力事件驱动)`);
+
+    // 开始前等待 1s（可中断）
+    await sleepWithAbort(1000);
 
     for (let cycle = 0; cycle < cycles && !pressAbortRef.current; cycle++) {
       const lastPressIdx = pressesPerCollection - 1;
 
-      // 前 N-1 次下压（仅下压，不采集）
+      // ── 前 N-1 次：热身下压（仅下压不采集）──
       for (let p = 0; p < lastPressIdx && !pressAbortRef.current; p++) {
         const pressNum = cycle * pressesPerCollection + p + 1;
         console.log(`[下压] #${pressNum}/${pressesPerCollection * cycles} (仅下压)`);
-        try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
-        await new Promise(r => setTimeout(r, 10000));
+        try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压] 发送指令失败', e); continue; }
+
+        // 等待压力上升（确认下压到位）
+        const pressed = await waitForPressure(true);
+        if (!pressed) {
+          console.warn(`[超时] 第${pressNum}次下压未检测到压力，跳过`);
+          continue;
+        }
+        // 等待压力释放
+        const released = await waitForPressure(false);
+        if (!released) {
+          console.warn(`[超时] 第${pressNum}次下压压力未释放，跳过`);
+          continue;
+        }
+        // 释放后缓冲 3s（可中断）
+        await sleepWithAbort(RELEASE_BUFFER);
       }
       if (pressAbortRef.current) break;
 
-      // 第 N 次下压前：启动 SerialMonitor 采集
+      // ── 第 N 次：采集下压 ──
       setIsRunning(true);
       console.log(`[采集开始] 循环 ${cycle + 1}/${cycles}`);
 
       // 发送第 N 次下压指令
       const pressNum = cycle * pressesPerCollection + lastPressIdx + 1;
       console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
-      try { await pressWriter.write(new TextEncoder().encode('1')); } catch {}
+      try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压+采集] 发送指令失败', e); setIsRunning(false); continue; }
 
-      // 采集持续 8s
-      await new Promise(r => setTimeout(r, 8000));
+      // 等待压力上升（确认下压到位）
+      const pressed = await waitForPressure(true);
+      if (!pressed) {
+        console.warn(`[超时] 采集循环${cycle + 1}未检测到压力，跳过`);
+        setIsRunning(false);
+        continue;
+      }
 
-      // 在下一次下压前 2s 停止采集，确保 CSV 导出完成
+      // 等待压力释放（确认卸力完成）
+      const released = await waitForPressure(false);
+      if (!released) {
+        console.warn(`[超时] 采集循环${cycle + 1}压力未释放，跳过`);
+        setIsRunning(false);
+        continue;
+      }
+
+      // 释放后缓冲 3s（继续采集释放后数据，用于完整曲线）
+      await sleepWithAbort(RELEASE_BUFFER);
+
+      // 停止采集 → SerialMonitor 自动导出 CSV
       setIsRunning(false);
       console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
-
-      // 等待 2s 让 React 处理状态 + CSV 导出
-      await new Promise(r => setTimeout(r, 2000));
     }
 
     pressAbortRef.current = false;
     toast.success(`下压采集完成，${cycles} 次循环`);
-  }, [pressConfig]);
+  }, [pressConfig, isForceConnected]);
 
   const handleStart = useCallback(async () => {
     // 检查是否有选点：手掌布局模式用 handSelectedIndices，矩阵模式用 selectedSensors
