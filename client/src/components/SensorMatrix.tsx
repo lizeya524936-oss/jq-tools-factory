@@ -183,12 +183,16 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     clearAll();
   };
 
-  // 全局 mouseup：拖拽超出矩阵区域时也能完成框选
+  // ref 代理：始终指向最新的 handleMouseUp，避免闭包过期
+  const handleMouseUpRef = useRef(handleMouseUp);
+  handleMouseUpRef.current = handleMouseUp;
+
+  // 全局 mouseup：拖拽超出矩阵区域时也能完成框选（只注册一次）
   useEffect(() => {
-    const onGlobalMouseUp = () => handleMouseUp();
+    const onGlobalMouseUp = () => handleMouseUpRef.current();
     window.addEventListener('mouseup', onGlobalMouseUp);
     return () => window.removeEventListener('mouseup', onGlobalMouseUp);
-  });
+  }, []);
 
   const isInBoxSelection = (row: number, col: number) => {
     if (!boxSelect.active) return false;

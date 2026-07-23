@@ -71,6 +71,28 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.26（2026-07-23）
+
+**Bugfix：修复偶发性 insertBefore DOM 错误导致页面崩溃**
+
+- SensorMatrix 全局 mouseup 监听器改用 ref 代理模式：单次注册 + 始终调用最新函数，消除高频渲染下的事件重复注册/注销
+- 根本修复 React `NotFoundError: Failed to execute 'insertBefore' on 'Node'` 竞态条件（polling 更新 + 用户框选同时触发导致 DOM 引用失效）
+- ConsistencyPage 传感器轮询增加数据去重：仅在数据实际变化时才触发 setSensors，减少无效渲染
+- 页面隐藏时自动暂停轮询，可见时恢复
+
+**修改文件：**
+- 修改 `client/src/components/SensorMatrix.tsx` — ref 代理 + 空依赖数组
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 数据去重 + visibility 保护
+
+### v1.9.25（2026-06-29）
+
+**Bugfix：移除 TDZ 错误**
+
+- SerialMonitor 恢复 effect 直接调用模式（移除 ref-callback 中间层），消除 Temporal Dead Zone 风险
+
+**修改文件：**
+- 修改 `client/src/components/SerialMonitor.tsx` — revert ref-callback to direct effect calls
+
 ### v1.9.24（2026-06-30）
 
 **Bugfix：下压次数=1 时无法停止采集（根本修复）**

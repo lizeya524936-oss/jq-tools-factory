@@ -138,12 +138,27 @@ export default function ConsistencyPage() {
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 缓存上次渲染的值，仅数据变化时才触发 setSensors（避免无效重渲染）
+  const lastSnapshotRef = useRef<string>('');
+  // 页面不可见时暂停轮询
+  const pageVisibleRef = useRef(true);
   useEffect(() => {
-    // 定期从 RealtimeDataPipeline 获取数据，而不是依赖 React State 变化
-    updateIntervalRef.current = setInterval(() => {
+    const tick = () => {
+      if (!pageVisibleRef.current) return;
       const pipeline = getRealtimeDataPipeline();
       const snapshot = pipeline.getCurrentSnapshot();
-      
+
+      // 数据去重：对比上次快照内容，无变化则跳过
+      let snapshotKey = '';
+      if (snapshot.sensorMatrix && snapshot.sensorMatrix.length > 0) {
+        // 取所有行列值的摘要作为指纹
+        snapshotKey = snapshot.sensorMatrix.flat().join(',');
+      } else if (snapshot.adcValues && snapshot.adcValues.length > 0) {
+        snapshotKey = snapshot.adcValues.join(',');
+      }
+      if (snapshotKey === lastSnapshotRef.current) return;
+      lastSnapshotRef.current = snapshotKey;
+
       if (snapshot.sensorMatrix && snapshot.sensorMatrix.length > 0) {
         // 优先使用二维矩阵：按行列坐标精确映射
         setSensors(prev => prev.map(s => ({
@@ -157,12 +172,21 @@ export default function ConsistencyPage() {
           adcValue: snapshot.adcValues![s.row * matrixCols + s.col] ?? 0,
         })));
       }
-    }, 50); // 每50ms更新一次UI
-    
+    };
+
+    updateIntervalRef.current = setInterval(tick, 50);
+
+    // 页面隐藏时暂停轮询，可见时恢复
+    const onVisibilityChange = () => {
+      pageVisibleRef.current = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
       }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [matrixCols]);
 
