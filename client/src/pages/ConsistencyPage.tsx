@@ -332,6 +332,7 @@ export default function ConsistencyPage() {
 
     // 循环结束后统一复位
     setIsRunning(false);
+    setPressMode(false);
     pressAbortRef.current = false;
     if (completedCycles === cycles) {
       toast.success(`下压采集完成，${cycles} 次循环`);
