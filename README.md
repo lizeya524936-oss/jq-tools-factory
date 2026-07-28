@@ -71,6 +71,17 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.30（2026-07-28）
+
+**Fix：下压机启动前增加选点前置校验**
+
+- 在下压机"开始"按钮触发的 `handleStartPress` 中增加传感器点位检查
+- 未选择点位时弹出 toast 提示并阻止下压循环启动，避免空跑
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — handleStartPress 新增选点检查
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.30
+
 ### v1.9.29（2026-07-28）
 
 **Fix：下压机循环优化与状态修复**

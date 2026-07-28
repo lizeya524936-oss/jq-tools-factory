@@ -227,6 +227,15 @@ export default function ConsistencyPage() {
       return;
     }
 
+    // 检查是否选择了传感器点位（下压前校验，避免空跑）
+    const hasSelection = showHandLayout
+      ? handSelectedIndices.size > 0
+      : selectedSensors.length > 0;
+    if (!hasSelection) {
+      toast.error('请先在传感器矩阵中选择至少一个点位后再开始');
+      return;
+    }
+
     const PRESSURE_THRESHOLD = 1.0;   // >1N 认为下压到位
     const POLL_INTERVAL = 100;        // 每 100ms 轮询一次压力
     const MAX_WAIT_PRESS = 15000;     // 等待压力上升超时 15s
@@ -339,7 +348,7 @@ export default function ConsistencyPage() {
     } else {
       toast.info(`下压已中止，已完成 ${completedCycles}/${cycles} 次循环`);
     }
-  }, [pressConfig, isForceConnected]);
+  }, [pressConfig, isForceConnected, showHandLayout, handSelectedIndices, selectedSensors]);
 
   const handleStart = useCallback(async () => {
     // 检查是否有选点：手掌布局模式用 handSelectedIndices，矩阵模式用 selectedSensors

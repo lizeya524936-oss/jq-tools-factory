@@ -60,7 +60,8 @@
  * v1.9.26 - 修复偶发性 insertBefore DOM 错误导致页面崩溃：(1)SensorMatrix 全局 mouseup 监听器改用 ref 代理模式；(2)ConsistencyPage 传感器轮询增加数据去重；(3)页面隐藏时自动暂停轮询
  * v1.9.28 - (1)下压机改为压力事件驱动：等待实际压力上升→释放→缓冲3s→下一次下压，非固定时间间隔；(2)循环次数默认值优化：下压次数3→1、循环次数100→5；(3)开始采集时自动发送压力计CMD_RESET归零指令确保数据准确性
  * v1.9.29 - 下压机循环优化：(1)释放缓冲3s→7s确保数据完整分离；(2)压力上升超时30s→15s并弹出警告提示压头对位；(3)修复缓冲期间isRunning翻转导致的热身误采/中止卡死/pressMode不复位等状态bug
+ * v1.9.30 - 下压机启动前增加选点前置校验：未选择传感器点位时阻止下压循环启动，避免空跑浪费
  */
-export const APP_VERSION = 'v1.9.29';
+export const APP_VERSION = 'v1.9.30';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-28';
