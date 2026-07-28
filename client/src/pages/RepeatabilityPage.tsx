@@ -440,6 +440,11 @@ export default function RepeatabilityPage() {
           latestAdcValues={latestAdcValues}
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
+          onStartRecording={() => {
+            if (isForceConnected && sendForceCommand) {
+              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+            }
+          }}
         />
 
         {/* 实时统计 */}

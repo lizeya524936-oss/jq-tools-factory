@@ -39,6 +39,8 @@ interface SerialMonitorProps {
   matrixCols?: number;
   /** HandMatrix 模式下的选中数组编号集合 */
   handSelectedIndices?: Set<number>;
+  /** 开始采集前的回调（用于发送压力计重置命令等） */
+  onStartRecording?: () => void;
 }
 
 export default function SerialMonitor({
@@ -50,6 +52,7 @@ export default function SerialMonitor({
   selectedSensors = [],
   matrixCols = 8,
   handSelectedIndices,
+  onStartRecording,
 }: SerialMonitorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
@@ -151,6 +154,9 @@ export default function SerialMonitor({
   
   // ===== 开始采集 =====
   const handleStartRecording = useCallback(() => {
+    // 开始采集前回调（如压力计重置命令）
+    onStartRecording?.();
+
     const handIndices = handSelectedIndicesRef.current;
     const hasHandSelection = handIndices && handIndices.size > 0;
     const hasMatrixSelection = selectedSensorsRef.current.length > 0;

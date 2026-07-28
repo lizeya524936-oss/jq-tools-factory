@@ -594,6 +594,11 @@ export default function DurabilityPage() {
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
           handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+          onStartRecording={() => {
+            if (isForceConnected && sendForceCommand) {
+              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+            }
+          }}
         />
       </div>
 

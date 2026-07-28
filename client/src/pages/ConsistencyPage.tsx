@@ -203,7 +203,7 @@ export default function ConsistencyPage() {
   }, []);
 
   // 下压机控制
-  const [pressConfig, setPressConfig] = useState<PressConfig>({ pressesPerCollection: 3, collectionsPerCycle: 1, cycles: 100 });
+  const [pressConfig, setPressConfig] = useState<PressConfig>({ pressesPerCollection: 1, collectionsPerCycle: 1, cycles: 5 });
   const [pressMode, setPressMode] = useState(false);
   const pressAbortRef = useRef(false);
 
@@ -849,6 +849,11 @@ export default function ConsistencyPage() {
           selectedSensors={selectedSensors}
           matrixCols={matrixCols}
           handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+          onStartRecording={() => {
+            if (isForceConnected && sendForceCommand) {
+              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+            }
+          }}
         />
 
         {/* 下压机控制面板 */}

@@ -58,7 +58,7 @@
  * v1.9.7  - 压力范围双向联动：(1)提取共享 PressureRangeBar 组件（滑块+输入框+快捷按钮+Max按钮）；(2)DataChart的X轴范围和ConsistencyAnalysis的分析范围由父组件统一控制，双向联动；(3)DataChart内的固定按钮替换为PressureRangeBar
  * v1.9.8  - 压力范围重新拟合：(1)调整滑块后只使用0~pressureMax范围内的数据重新进行Hill拟合，避免尾段对前段的影响；(2)滑块拖动防抖：拖动过程中只更新显示值，松手后才触发重新拟合
  * v1.9.26 - 修复偶发性 insertBefore DOM 错误导致页面崩溃：(1)SensorMatrix 全局 mouseup 监听器改用 ref 代理模式；(2)ConsistencyPage 传感器轮询增加数据去重；(3)页面隐藏时自动暂停轮询
- * v1.9.28 - 下压机改为压力事件驱动：等待实际压力上升→释放→缓冲3s→下一次下压，非固定时间间隔
+ * v1.9.28 - (1)下压机改为压力事件驱动：等待实际压力上升→释放→缓冲3s→下一次下压，非固定时间间隔；(2)循环次数默认值优化：下压次数3→1、循环次数100→5；(3)开始采集时自动发送压力计CMD_RESET归零指令确保数据准确性
  */
 export const APP_VERSION = 'v1.9.28';
 export const APP_NAME = 'JQ Tools Factory';
