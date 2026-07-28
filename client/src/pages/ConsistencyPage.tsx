@@ -311,7 +311,7 @@ export default function ConsistencyPage() {
       // 发送第 N 次下压指令
       const pressNum = cycle * pressesPerCollection + lastPressIdx + 1;
       console.log(`[下压+采集] #${pressNum}/${pressesPerCollection * cycles}`);
-      try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压+采集] 发送指令失败', e); setIsRunning(false); continue; }
+      try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压+采集] 发送指令失败', e); setIsRunning(false); await new Promise(r => setTimeout(r, 100)); continue; }
 
       // 等待压力上升（确认下压到位）
       const pressed = await waitForPressure(true, MAX_WAIT_PRESS);
@@ -319,6 +319,7 @@ export default function ConsistencyPage() {
         toast.warning('压力机未正确压到压力计上，请检查下压机与压力计的对位', { duration: 6000 });
         console.warn(`[超时] 采集循环${cycle + 1}未检测到压力，跳过`);
         setIsRunning(false);
+        await new Promise(r => setTimeout(r, 100));
         continue;
       }
 
@@ -327,6 +328,7 @@ export default function ConsistencyPage() {
       if (!released) {
         console.warn(`[超时] 采集循环${cycle + 1}压力未释放，跳过`);
         setIsRunning(false);
+        await new Promise(r => setTimeout(r, 100));
         continue;
       }
 
