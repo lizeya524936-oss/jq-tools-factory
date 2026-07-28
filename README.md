@@ -71,6 +71,18 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.31（2026-07-28）
+
+**Fix：修复连续循环中数据合并为一个文件的问题**
+
+- 根因：React 18 自动批处理合并了连续两轮的 `setIsRunning(false)` 和 `setIsRunning(true)`
+- SerialMonitor 的 start/stop effect 未触发 → 所有循环数据写入同一个 buffer → 只导出一个 CSV
+- 修复：`setIsRunning(false)` 后 `await 100ms` 强制 React 刷新状态，确保每轮独立采集导出
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 循环间增加状态刷新等待
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.31
+
 ### v1.9.30（2026-07-28）
 
 **Fix：下压机启动前增加选点前置校验**

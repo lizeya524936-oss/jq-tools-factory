@@ -61,7 +61,8 @@
  * v1.9.28 - (1)下压机改为压力事件驱动：等待实际压力上升→释放→缓冲3s→下一次下压，非固定时间间隔；(2)循环次数默认值优化：下压次数3→1、循环次数100→5；(3)开始采集时自动发送压力计CMD_RESET归零指令确保数据准确性
  * v1.9.29 - 下压机循环优化：(1)释放缓冲3s→7s确保数据完整分离；(2)压力上升超时30s→15s并弹出警告提示压头对位；(3)修复缓冲期间isRunning翻转导致的热身误采/中止卡死/pressMode不复位等状态bug
  * v1.9.30 - 下压机启动前增加选点前置校验：未选择传感器点位时阻止下压循环启动，避免空跑浪费
+ * v1.9.31 - 修复连续循环中数据合并：React 18 批处理导致 setIsRunning(false/true) 被合并，SerialMonitor 未触发停止采集；在 setIsRunning(false) 后增加 100ms 等待确保状态刷新
  */
-export const APP_VERSION = 'v1.9.30';
+export const APP_VERSION = 'v1.9.31';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-28';

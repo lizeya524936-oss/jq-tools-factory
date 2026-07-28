@@ -335,6 +335,10 @@ export default function ConsistencyPage() {
       if (pressAbortRef.current) break;
       setIsRunning(false);
 
+      // 等待 React 刷新状态，确保 SerialMonitor 停止采集并导出本次 CSV
+      // （避免 React 18 自动批处理合并下一轮的 setIsRunning(true)，导致 start/stop 不触发）
+      await new Promise(r => setTimeout(r, 100));
+
       completedCycles++;
       console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
     }
