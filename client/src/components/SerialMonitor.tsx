@@ -67,6 +67,10 @@ export default function SerialMonitor({
   const selectedSensorsRef = useRef(selectedSensors);
   const matrixColsRef = useRef(matrixCols);
   const handSelectedIndicesRef = useRef(handSelectedIndices);
+  const onStartRecordingRef = useRef(onStartRecording);
+  
+  // ref 代理：直接赋值确保始终调用最新回调（不延迟一帧）
+  onStartRecordingRef.current = onStartRecording;
   
   // 同步低频 props 到 Ref（这两个变化频率很低，不会造成延迟）
   useEffect(() => { selectedSensorsRef.current = selectedSensors; }, [selectedSensors]);
@@ -154,9 +158,6 @@ export default function SerialMonitor({
   
   // ===== 开始采集 =====
   const handleStartRecording = useCallback(() => {
-    // 开始采集前回调（如压力计重置命令）
-    onStartRecording?.();
-
     const handIndices = handSelectedIndicesRef.current;
     const hasHandSelection = handIndices && handIndices.size > 0;
     const hasMatrixSelection = selectedSensorsRef.current.length > 0;
@@ -164,6 +165,9 @@ export default function SerialMonitor({
       alert('请先在传感器矩阵中选择至少一个点位后再开始采集');
       return;
     }
+    
+    // 开始采集前回调（如压力计重置命令）—— 在传感器检查之后调用，避免无效发送
+    onStartRecordingRef.current?.();
     
     // 清空上一次的数据
     bufferRef.current = [];
