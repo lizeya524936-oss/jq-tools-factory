@@ -321,20 +321,17 @@ export default function ConsistencyPage() {
         continue;
       }
 
-      // 缓冲 5s 后停止采集（截断当前数据，触发 CSV 导出）
-      await sleepWithAbort(5000);
+      // 缓冲 7s 后停止采集（截断当前数据，触发 CSV 导出）
+      await sleepWithAbort(7000);
+      if (pressAbortRef.current) break;
       setIsRunning(false);
 
-      // 1s 后重新开始采集（为下一次下压准备独立数据文件）
-      await sleepWithAbort(1000);
-      setIsRunning(true);
-
-      // 再等 1s 确保采集已启动（总共缓冲 7s）
-      await sleepWithAbort(1000);
-      console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
       completedCycles++;
+      console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
     }
 
+    // 循环结束后统一复位
+    setIsRunning(false);
     pressAbortRef.current = false;
     if (completedCycles === cycles) {
       toast.success(`下压采集完成，${cycles} 次循环`);
