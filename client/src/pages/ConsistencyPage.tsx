@@ -208,7 +208,7 @@ export default function ConsistencyPage() {
   const pressAbortRef = useRef(false);
 
   // ── 下压机模式：控制下压节奏，数据采集由 SerialMonitor 自动处理 ──
-  // 压力事件驱动版本：等待实际压力上升→释放→缓冲3s→下一次下压
+  // 压力事件驱动版本：等待实际压力上升→释放→缓冲7s（5s停止采集/6s重新采集）→下一次下压
   const handleStartPress = useCallback(async () => {
     setRecords([]);
     setResult(null);
@@ -229,15 +229,15 @@ export default function ConsistencyPage() {
 
     const PRESSURE_THRESHOLD = 1.0;   // >1N 认为下压到位
     const POLL_INTERVAL = 100;        // 每 100ms 轮询一次压力
-    const MAX_WAIT = 30000;           // 超时 30s 跳过本次
-    const RELEASE_BUFFER = 3000;      // 释放后缓冲 3s
+    const MAX_WAIT_PRESS = 15000;     // 等待压力上升超时 15s
+    const MAX_WAIT_RELEASE = 30000;   // 等待压力释放超时 30s
 
     const pipeline = getRealtimeDataPipeline();
 
     // 等待压力到达预期状态（上升超过阈值 / 下降低于阈值）
-    const waitForPressure = async (expectAbove: boolean): Promise<boolean> => {
+    const waitForPressure = async (expectAbove: boolean, timeoutMs: number): Promise<boolean> => {
       const start = Date.now();
-      while (Date.now() - start < MAX_WAIT && !pressAbortRef.current) {
+      while (Date.now() - start < timeoutMs && !pressAbortRef.current) {
         const rawF = pipeline.getLatestForce();
         // 压力计 null（断开/未连接）→ 立即返回失败，避免误判为"已释放"
         if (rawF === null) {
@@ -278,19 +278,20 @@ export default function ConsistencyPage() {
         try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压] 发送指令失败', e); continue; }
 
         // 等待压力上升（确认下压到位）
-        const pressed = await waitForPressure(true);
+        const pressed = await waitForPressure(true, MAX_WAIT_PRESS);
         if (!pressed) {
+          toast.warning('压力机未正确压到压力计上，请检查下压机与压力计的对位', { duration: 6000 });
           console.warn(`[超时] 第${pressNum}次下压未检测到压力，跳过`);
           continue;
         }
         // 等待压力释放
-        const released = await waitForPressure(false);
+        const released = await waitForPressure(false, MAX_WAIT_RELEASE);
         if (!released) {
           console.warn(`[超时] 第${pressNum}次下压压力未释放，跳过`);
           continue;
         }
         // 释放后缓冲 3s（可中断）
-        await sleepWithAbort(RELEASE_BUFFER);
+        await sleepWithAbort(3000);
       }
       if (pressAbortRef.current) break;
 
@@ -304,26 +305,32 @@ export default function ConsistencyPage() {
       try { await pressWriter.write(new TextEncoder().encode('1')); } catch (e) { console.warn('[下压+采集] 发送指令失败', e); setIsRunning(false); continue; }
 
       // 等待压力上升（确认下压到位）
-      const pressed = await waitForPressure(true);
+      const pressed = await waitForPressure(true, MAX_WAIT_PRESS);
       if (!pressed) {
+        toast.warning('压力机未正确压到压力计上，请检查下压机与压力计的对位', { duration: 6000 });
         console.warn(`[超时] 采集循环${cycle + 1}未检测到压力，跳过`);
         setIsRunning(false);
         continue;
       }
 
       // 等待压力释放（确认卸力完成）
-      const released = await waitForPressure(false);
+      const released = await waitForPressure(false, MAX_WAIT_RELEASE);
       if (!released) {
         console.warn(`[超时] 采集循环${cycle + 1}压力未释放，跳过`);
         setIsRunning(false);
         continue;
       }
 
-      // 释放后缓冲 3s（继续采集释放后数据，用于完整曲线）
-      await sleepWithAbort(RELEASE_BUFFER);
-
-      // 停止采集 → SerialMonitor 自动导出 CSV
+      // 缓冲 5s 后停止采集（截断当前数据，触发 CSV 导出）
+      await sleepWithAbort(5000);
       setIsRunning(false);
+
+      // 1s 后重新开始采集（为下一次下压准备独立数据文件）
+      await sleepWithAbort(1000);
+      setIsRunning(true);
+
+      // 再等 1s 确保采集已启动（总共缓冲 7s）
+      await sleepWithAbort(1000);
       console.log(`[采集完成] 循环 ${cycle + 1}/${cycles}`);
       completedCycles++;
     }
