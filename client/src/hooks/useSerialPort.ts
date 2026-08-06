@@ -103,6 +103,14 @@ const JZ_JIZHI_CMD_LEN = 1;      // 命令字节 0x01
 const JZ_JIZHI_DEVICE_LEN = 1;   // 设备类型字节长度
 const JZ_JIZHI_TOTAL_LEN = FRAME_HEADER_LEN + JZ_JIZHI_CMD_LEN + JZ_JIZHI_DEVICE_LEN + JZ_JIZHI_DATA_LEN; // 262B
 
+// 单帧协议常量（灵心巧手定制 LX-16×16）
+// 帧格式：帧头(4B) + 0x01(1B) + 左右手(1B, 01=LH/02=RH) + 传感器(256B) + 四元数(16B) = 278B
+const LX_LINGXIN_DATA_LEN = 256;   // 传感器数据长度
+const LX_LINGXIN_QUAT_LEN = 16;    // 四元数数据长度
+const LX_LINGXIN_CMD_LEN = 1;      // 命令字节 0x01
+const LX_LINGXIN_DEVICE_LEN = 1;   // 左右手字节长度
+const LX_LINGXIN_TOTAL_LEN = FRAME_HEADER_LEN + LX_LINGXIN_CMD_LEN + LX_LINGXIN_DEVICE_LEN + LX_LINGXIN_DATA_LEN + LX_LINGXIN_QUAT_LEN; // 278B
+
 /**
  * 32×32矩阵映射表（1-based索引 → 0-based索引）
  * 数据域1024字节按此映射表重排到32行×32列矩阵
@@ -158,7 +166,7 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 }
 
 /** 传感器协议模式 */
-export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi';
+export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi' | 'custom_lingxin';
 
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
@@ -502,6 +510,36 @@ export function useSerialPort(options: UseSerialPortOptions) {
     pendingLastDataRef.current = `JZ[262B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
   }, []);
 
+  // ── 灵心巧手定制协议帧处理 ──
+  const processLingxinFrame = useCallback((sensorData: Uint8Array, quatData: Uint8Array) => {
+    // 256 字节传感器数据 → 16×16 矩阵（行优先）
+    const matrix = buildMatrix(sensorData, 16, 16);
+    const adcValues = Array.from(sensorData);
+
+    // 设备类型由 processSensorBuffer 中解析并回调，此处负责数据分发
+
+    getSensorDataStreamV2().updateSensorData(matrix, adcValues, sensorData);
+
+    if (onSensorMatrixRef.current) {
+      onSensorMatrixRef.current(matrix, 16, 16);
+    }
+    if (onSensorDataRef.current) {
+      onSensorDataRef.current(adcValues);
+    }
+    if (onDataRef.current) {
+      const sensorHex = Array.from(sensorData.slice(0, 16))
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ') + '...';
+      const quatHex = Array.from(quatData)
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ');
+      onDataRef.current(`LX[278B] ${sensorHex} | quat: ${quatHex}`);
+    }
+
+    pendingBytesRef.current += LX_LINGXIN_DATA_LEN;
+    pendingLastDataRef.current = `LX[278B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
+  }, []);
+
   // 处理传感器二进制缓冲区：根据协议模式解析帧数据
   const processSensorBuffer = useCallback(() => {
     let buf = binaryBufRef.current;
@@ -581,8 +619,33 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
         // 移动到下一帧
         buf = buf.slice(JZ_JIZHI_TOTAL_LEN);
+      } else if (protocol === 'custom_lingxin') {
+        // ===== 灵心巧手定制 单帧协议 =====
+        // 帧格式：帧头(4B) + 0x01(1B) + 左右手(1B, 01=LH/02=RH) + 传感器(256B) + 四元数(16B) = 278B
+        if (buf.length < LX_LINGXIN_TOTAL_LEN) {
+          binaryBufRef.current = buf;
+          return;
+        }
+
+        // 设备类型（跳过帧头4B + 命令0x01 1B）
+        const deviceId = buf[FRAME_HEADER_LEN + LX_LINGXIN_CMD_LEN];
+        if (deviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
+          const deviceType = DEVICE_TYPE_MAP[deviceId] ?? `DEV_${deviceId.toString(16).toUpperCase().padStart(2, '0')}`;
+          lastDeviceIdRef.current = deviceId;
+          onDeviceTypeRef.current(deviceType, deviceId);
+        }
+
+        // 提取传感器数据（跳过帧头4B + 命令1B + 设备类型1B）
+        const lxDataStart = FRAME_HEADER_LEN + LX_LINGXIN_CMD_LEN + LX_LINGXIN_DEVICE_LEN;
+        const lxSensorData = buf.slice(lxDataStart, lxDataStart + LX_LINGXIN_DATA_LEN);
+        // 提取四元数数据
+        const lxQuatData = buf.slice(lxDataStart + LX_LINGXIN_DATA_LEN, lxDataStart + LX_LINGXIN_DATA_LEN + LX_LINGXIN_QUAT_LEN);
+
+        processLingxinFrame(new Uint8Array(lxSensorData), new Uint8Array(lxQuatData));
+
+        // 移动到下一帧
+        buf = buf.slice(LX_LINGXIN_TOTAL_LEN);
       } else {
-        // ===== 16×16 双包协议 =====
         if (buf.length < FRAME_HEADER_LEN + 1) {
           binaryBufRef.current = buf;
           return;
@@ -630,7 +693,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
 
     binaryBufRef.current = buf;
-  }, [processSensorPackets, process32x32Frame, processHaocunFrame, processJizhiFrame]);
+  }, [processSensorPackets, process32x32Frame, processHaocunFrame, processJizhiFrame, processLingxinFrame]);
 
   // 读取循环（二进制模式）
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {

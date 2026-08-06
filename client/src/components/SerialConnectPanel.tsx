@@ -79,6 +79,15 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     matrixSize: 16,
     protocol: 'custom_jizhi',
   },
+  {
+    label: '灵心巧手 16×16',
+    sublabel: 'LX-16×16',
+    defaultBaud: 921600,
+    quickBauds: [921600],
+    hint: '16×16点阵，256个ADC，单帧278B（4帧头+01+左右手+256数据+16四元数），921600bps',
+    matrixSize: 16,
+    protocol: 'custom_lingxin',
+  },
 ];
 
 // 检测设备类型

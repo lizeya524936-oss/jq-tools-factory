@@ -71,6 +71,21 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.32（2026-07-28）
+
+**Feat：新增客户灵心巧手 + 新传感器协议**
+
+- 新增客户账号：`lingxin` / `lx2026`（灵心巧手）
+- 新增传感器产品"灵心巧手 16×16"（LX-16×16）
+- 新增协议 `custom_lingxin`：帧格式 `AA 55 03 99 01 左右手(01=LH/02=RH) + 256B传感器 + 16B四元数 = 278B`
+- 波特率 921600，单帧模式，设备类型复用 `DEVICE_TYPE_MAP`（0x01=LH/0x02=RH）
+
+**修改文件：**
+- 修改 `client/src/config/clients.ts` — 新增灵心巧手账号
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增灵心巧手产品
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_lingxin 协议解析
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.32
+
 ### v1.9.31（2026-07-28）
 
 **Fix：修复连续循环中数据合并为一个文件的问题**

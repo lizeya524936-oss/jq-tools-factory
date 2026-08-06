@@ -45,6 +45,15 @@ export const CLIENTS: ClientAccount[] = [
       '极智动量小黑采集板',
     ],
   },
+  {
+    id: 'lingxin',
+    name: '灵心巧手',
+    username: 'lingxin',
+    password: 'lx2026',
+    allowedProducts: [
+      '灵心巧手 16×16',
+    ],
+  },
 ];
 
 /** 根据用户名和密码验证客户 */

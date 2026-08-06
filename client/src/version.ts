@@ -62,7 +62,8 @@
  * v1.9.29 - 下压机循环优化：(1)释放缓冲3s→7s确保数据完整分离；(2)压力上升超时30s→15s并弹出警告提示压头对位；(3)修复缓冲期间isRunning翻转导致的热身误采/中止卡死/pressMode不复位等状态bug
  * v1.9.30 - 下压机启动前增加选点前置校验：未选择传感器点位时阻止下压循环启动，避免空跑浪费
  * v1.9.31 - 修复连续循环中数据合并：React 18 批处理导致 setIsRunning(false/true) 被合并，SerialMonitor 未触发停止采集；在 setIsRunning(false) 后增加 100ms 等待确保状态刷新
+ * v1.9.32 - 新增客户灵心巧手(lingxin/lx2026)及新传感器协议 custom_lingxin：帧格式 AA 55 03 99 01 左右手(01=LH/02=RH) + 256B 传感器 + 16B 四元数 = 278B，波特率 921600
  */
-export const APP_VERSION = 'v1.9.31';
+export const APP_VERSION = 'v1.9.32';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-28';
