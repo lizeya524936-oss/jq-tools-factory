@@ -48,6 +48,8 @@ export interface SerialDataContext {
   sensorProtocol?: SensorProtocol;
   /** 当前传感器矩阵尺寸 */
   sensorMatrixSize?: number;
+  /** 当前传感器矩阵列数（非正方形矩阵用，默认等于 sensorMatrixSize） */
+  sensorMatrixCols?: number;
   /** 传感器实时帧率 (Hz) */
   sensorFps?: number;
   /** 压力计实时帧率 (Hz) */
@@ -66,6 +68,7 @@ export const SerialCtx = createContext<SerialDataContext>({
   forceDeviceMode: null,
   sensorProtocol: '16x16' as SensorProtocol,
   sensorMatrixSize: 16,
+  sensorMatrixCols: 16,
   sensorFps: 0,
   forceFps: 0,
 });
@@ -108,7 +111,8 @@ export default function Home() {
   const [sensorDeviceType, setSensorDeviceType] = useState<string | null>(null);
   const [forceDeviceMode, setForceDeviceMode] = useState<'pressure' | 'robot' | null>(null);
   const [sensorProtocol, setSensorProtocol] = useState<SensorProtocol>('16x16');
-  const sensorMatrixSize = sensorProtocol === '32x32' ? 32 : 16;
+  const sensorMatrixSize = sensorProtocol === '32x32' ? 32 : sensorProtocol === 'custom_xingchen' ? 14 : 16;
+  const sensorMatrixCols = sensorProtocol === '32x32' ? 32 : sensorProtocol === 'custom_xingchen' ? 20 : 16;
   const [sensorFps, setSensorFps] = useState<number>(0);
   const [forceFps, setForceFps] = useState<number>(0);
   const [pressArduinoConnected, setPressArduinoConnected] = useState(isPressConnected());
@@ -283,7 +287,7 @@ export default function Home() {
   const effectiveAdcValues = latestAdcValuesRef.current || latestAdcValues;
 
   return (
-    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize, sensorFps, forceFps }}>
+    <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
         style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}

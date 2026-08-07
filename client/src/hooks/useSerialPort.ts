@@ -111,6 +111,18 @@ const LX_LINGXIN_CMD_LEN = 1;      // 命令字节 0x01
 const LX_LINGXIN_DEVICE_LEN = 1;   // 左右手字节长度
 const LX_LINGXIN_TOTAL_LEN = FRAME_HEADER_LEN + LX_LINGXIN_CMD_LEN + LX_LINGXIN_DEVICE_LEN + LX_LINGXIN_DATA_LEN + LX_LINGXIN_QUAT_LEN; // 278B
 
+// 双包协议常量（星尘科技定制 XC-20×14）
+// 帧格式：帧头(4B) + 包顺序(1B, 01=PKT01/02=PKT02) + 传感器类型(1B) + 数据
+// PKT01: 140B 压力数据 | PKT02: 140B 压力数据 + 16B 四元数
+const XC_XINGCHEN_PKT01_DATA_LEN = 140;  // PKT01 压力数据长度
+const XC_XINGCHEN_PKT02_DATA_LEN = 140;  // PKT02 压力数据长度
+const XC_XINGCHEN_QUAT_LEN = 16;         // 四元数长度（4 个 float32）
+const XC_XINGCHEN_ROWS = 14;             // 矩阵行数
+const XC_XINGCHEN_COLS = 20;             // 矩阵列数
+const XC_XINGCHEN_TOTAL_POINTS = 280;    // 总点数 14×20
+const XC_XINGCHEN_PKT01_TOTAL = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + XC_XINGCHEN_PKT01_DATA_LEN; // 146B
+const XC_XINGCHEN_PKT02_TOTAL = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + XC_XINGCHEN_PKT02_DATA_LEN + XC_XINGCHEN_QUAT_LEN; // 162B
+
 /**
  * 32×32矩阵映射表（1-based索引 → 0-based索引）
  * 数据域1024字节按此映射表重排到32行×32列矩阵
@@ -166,7 +178,7 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 }
 
 /** 传感器协议模式 */
-export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi' | 'custom_lingxin';
+export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi' | 'custom_lingxin' | 'custom_xingchen';
 
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
@@ -237,6 +249,9 @@ export function useSerialPort(options: UseSerialPortOptions) {
   // 双包缓冲区：存储PKT01和PKT02的数据
   const pkt01DataRef = useRef<Uint8Array | null>(null);
   const pkt02DataRef = useRef<Uint8Array | null>(null);
+  // 星尘科技双包缓冲区（140B + 140B+16B四元数）
+  const xingchenPkt01Ref = useRef<Uint8Array | null>(null);
+  const xingchenPkt02Ref = useRef<Uint8Array | null>(null);
 
   // 当前矩阵尺寸（通过ref保持最新值，避免闭包陈旧问题）
   const matrixRowsRef = useRef(matrixRows);
@@ -387,6 +402,56 @@ export function useSerialPort(options: UseSerialPortOptions) {
     // 清空缓冲区，等待下一对包
     pkt01DataRef.current = null;
     pkt02DataRef.current = null;
+  }, []);
+
+  /**
+   * 星尘科技双包协议：当两个包都收到时，拼合为完整的280字节传感器数据并触发回调
+   * 帧格式：帧头(4B) + 包顺序(1B) + 传感器类型(1B) + 数据
+   * PKT01(140B) + PKT02(140B) = 280B → 14×20 矩阵；PKT02 尾部 16B 为四元数
+   */
+  const processXingchenPackets = useCallback(() => {
+    if (!xingchenPkt01Ref.current || !xingchenPkt02Ref.current) {
+      return; // 还有包未收到
+    }
+
+    // 拼合：PKT01 (140B) + PKT02 前140B = 280B
+    const fullData = new Uint8Array(XC_XINGCHEN_TOTAL_POINTS);
+    fullData.set(xingchenPkt01Ref.current, 0);
+    fullData.set(xingchenPkt02Ref.current.slice(0, XC_XINGCHEN_PKT02_DATA_LEN), XC_XINGCHEN_PKT01_DATA_LEN);
+
+    // 构建 14×20 矩阵（行优先）
+    const matrix = buildMatrix(fullData, XC_XINGCHEN_ROWS, XC_XINGCHEN_COLS);
+    const adcValues = Array.from(fullData);
+
+    // 四元数数据（PKT02 尾部 16B）
+    const quatData = xingchenPkt02Ref.current.slice(XC_XINGCHEN_PKT02_DATA_LEN);
+
+    // 使用新的数据流架构
+    getSensorDataStreamV2().updateSensorData(matrix, adcValues, fullData);
+
+    if (onSensorMatrixRef.current) {
+      onSensorMatrixRef.current(matrix, XC_XINGCHEN_ROWS, XC_XINGCHEN_COLS);
+    }
+    if (onSensorDataRef.current) {
+      onSensorDataRef.current(adcValues);
+    }
+    if (onDataRef.current) {
+      const sensorHex = Array.from(fullData.slice(0, 32))
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ') + '...';
+      const quatHex = Array.from(quatData)
+        .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+        .join(' ');
+      onDataRef.current(`XC[280B] ${sensorHex} | quat: ${quatHex}`);
+    }
+
+    // 性能优化：只写入 Ref，不触发 React 重渲染
+    pendingBytesRef.current += XC_XINGCHEN_TOTAL_POINTS;
+    pendingLastDataRef.current = `XC[280B] ${Array.from(fullData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
+
+    // 清空缓冲区，等待下一对包
+    xingchenPkt01Ref.current = null;
+    xingchenPkt02Ref.current = null;
   }, []);
 
   // 追加字节到二进制缓冲区
@@ -645,6 +710,53 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
         // 移动到下一帧
         buf = buf.slice(LX_LINGXIN_TOTAL_LEN);
+      } else if (protocol === 'custom_xingchen') {
+        // ===== 星尘科技定制 双包协议 =====
+        // 帧格式：帧头(4B) + 包顺序(1B, 01/02) + 传感器类型(1B) + 数据
+        // PKT01: 140B 压力数据 | PKT02: 140B 压力数据 + 16B 四元数
+        if (buf.length < FRAME_HEADER_LEN + 1) {
+          binaryBufRef.current = buf;
+          return;
+        }
+
+        const pktType = buf[FRAME_HEADER_LEN];
+
+        if (pktType === PKT01_TYPE) {
+          const minLen = XC_XINGCHEN_PKT01_TOTAL;
+          if (buf.length < minLen) {
+            binaryBufRef.current = buf;
+            return;
+          }
+
+          const deviceId = buf[FRAME_HEADER_LEN + 1];
+          if (deviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
+            const deviceType = DEVICE_TYPE_MAP[deviceId] ?? `DEV_${deviceId.toString(16).toUpperCase().padStart(2, '0')}`;
+            lastDeviceIdRef.current = deviceId;
+            onDeviceTypeRef.current(deviceType, deviceId);
+          }
+
+          const dataStart = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD;
+          const pkt01Data = buf.slice(dataStart, dataStart + XC_XINGCHEN_PKT01_DATA_LEN);
+          xingchenPkt01Ref.current = new Uint8Array(pkt01Data);
+
+          processXingchenPackets();
+          buf = buf.slice(minLen);
+        } else if (pktType === PKT02_TYPE) {
+          const minLen = XC_XINGCHEN_PKT02_TOTAL;
+          if (buf.length < minLen) {
+            binaryBufRef.current = buf;
+            return;
+          }
+
+          const dataStart = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD;
+          const pkt02Data = buf.slice(dataStart, dataStart + XC_XINGCHEN_PKT02_DATA_LEN + XC_XINGCHEN_QUAT_LEN);
+          xingchenPkt02Ref.current = new Uint8Array(pkt02Data);
+
+          processXingchenPackets();
+          buf = buf.slice(minLen);
+        } else {
+          buf = buf.slice(1);
+        }
       } else {
         if (buf.length < FRAME_HEADER_LEN + 1) {
           binaryBufRef.current = buf;
@@ -693,7 +805,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
 
     binaryBufRef.current = buf;
-  }, [processSensorPackets, process32x32Frame, processHaocunFrame, processJizhiFrame, processLingxinFrame]);
+  }, [processSensorPackets, processXingchenPackets, process32x32Frame, processHaocunFrame, processJizhiFrame, processLingxinFrame]);
 
   // 读取循环（二进制模式）
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
@@ -703,6 +815,8 @@ export function useSerialPort(options: UseSerialPortOptions) {
     textBufRef.current = '';
     pkt01DataRef.current = null;
     pkt02DataRef.current = null;
+    xingchenPkt01Ref.current = null;
+    xingchenPkt02Ref.current = null;
 
     try {
       while (readLoopRef.current) {

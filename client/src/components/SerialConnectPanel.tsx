@@ -34,6 +34,8 @@ export interface SensorProductConfig {
   quickBauds: number[];
   hint: string;
   matrixSize: number;
+  /** 矩阵列数（非正方形矩阵用；默认等于 matrixSize） */
+  matrixCols?: number;
   /** 协议类型，用于帧解析分支 */
   protocol: SensorProtocol;
   /** custom 协议的自定义帧头（可选） */
@@ -87,6 +89,16 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     hint: '16×16点阵，256个ADC，单帧278B（4帧头+01+左右手+256数据+16四元数），921600bps',
     matrixSize: 16,
     protocol: 'custom_lingxin',
+  },
+  {
+    label: '星尘科技 20×14',
+    sublabel: 'XC-20×14',
+    defaultBaud: 921600,
+    quickBauds: [921600],
+    hint: '20×14点阵，280个ADC，双包协议（PKT01 140B + PKT02 140B+16四元数），921600bps',
+    matrixSize: 14,
+    matrixCols: 20,
+    protocol: 'custom_xingchen',
   },
 ];
 

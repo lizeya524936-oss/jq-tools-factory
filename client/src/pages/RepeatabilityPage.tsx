@@ -57,7 +57,7 @@ export default function RepeatabilityPage() {
   const [activeView, setActiveView] = useState<'timeline' | 'scatter' | 'table'>('timeline');
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps } = useSerialData();
 
   // 实时将串口ADC数据按行列坐标精确注入传感器矩阵
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function RepeatabilityPage() {
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
     if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
-      handleMatrixResize(sensorMatrixSize, sensorMatrixSize);
+      handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
   }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
 

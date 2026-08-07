@@ -71,6 +71,26 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.33（2026-07-28）
+
+**Feat：新增客户星尘科技 + 20×14 双包协议 + 非正方形矩阵支持**
+
+- 新增客户账号：`xingchen` / `xc2026`（星尘科技）
+- 新增传感器产品"星尘科技 20×14"（XC-20×14），280 点阵
+- 新增协议 `custom_xingchen`：双包拼接
+  - PKT01：`AA 55 03 99 01 设备类型 + 140B` = 146B
+  - PKT02：`AA 55 03 99 02 设备类型 + 140B + 16B四元数` = 162B
+- 支持非正方形矩阵显示：新增 `sensorMatrixCols`（14×20），各页面矩阵尺寸联动适配
+- 波特率 921600，设备类型复用 `DEVICE_TYPE_MAP`
+
+**修改文件：**
+- 修改 `client/src/config/clients.ts` — 新增星尘科技账号
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增星尘科技产品 + matrixCols 字段
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_xingchen 双包协议解析
+- 修改 `client/src/pages/Home.tsx` — SerialDataContext 新增 sensorMatrixCols
+- 修改 `client/src/pages/ConsistencyPage.tsx` / `DurabilityPage.tsx` / `RepeatabilityPage.tsx` / `TestPage.tsx` — 矩阵尺寸适配
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.33
+
 ### v1.9.32（2026-07-28）
 
 **Feat：新增客户灵心巧手 + 新传感器协议**

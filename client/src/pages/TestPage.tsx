@@ -50,7 +50,7 @@ export default function TestPage() {
     } catch {}
     return matrix;
   });
-  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
+  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps } = useSerialData();
 
   // ===== 手掌布局/矩阵显示切换 =====
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -98,7 +98,7 @@ export default function TestPage() {
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
     if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
-      handleMatrixSizeChange(sensorMatrixSize, sensorMatrixSize);
+      handleMatrixSizeChange(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
   }, [sensorMatrixSize]);
 

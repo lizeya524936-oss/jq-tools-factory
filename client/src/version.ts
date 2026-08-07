@@ -63,7 +63,8 @@
  * v1.9.30 - 下压机启动前增加选点前置校验：未选择传感器点位时阻止下压循环启动，避免空跑浪费
  * v1.9.31 - 修复连续循环中数据合并：React 18 批处理导致 setIsRunning(false/true) 被合并，SerialMonitor 未触发停止采集；在 setIsRunning(false) 后增加 100ms 等待确保状态刷新
  * v1.9.32 - 新增客户灵心巧手(lingxin/lx2026)及新传感器协议 custom_lingxin：帧格式 AA 55 03 99 01 左右手(01=LH/02=RH) + 256B 传感器 + 16B 四元数 = 278B，波特率 921600
+ * v1.9.33 - 新增客户星尘科技(xingchen/xc2026)及新传感器协议 custom_xingchen：20×14 非正方形矩阵(280点)，双包拼接 PKT01(140B) + PKT02(140B+16B四元数)，波特率 921600；支持非正方形矩阵显示
  */
-export const APP_VERSION = 'v1.9.32';
+export const APP_VERSION = 'v1.9.33';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-28';

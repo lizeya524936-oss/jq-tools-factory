@@ -87,7 +87,7 @@ export default function DurabilityPage() {
   const [progress, setProgress] = useState(0);
 
   const selectedSensors = sensors.filter(s => s.selected);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, forceDeviceMode, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, forceDeviceMode, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps } = useSerialData();
 
   // ─── HandMatrix 选点状态 ───
   const [handSelectedIndices, setHandSelectedIndices] = useState<Set<number>>(() => {
@@ -160,7 +160,7 @@ export default function DurabilityPage() {
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
     if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
-      handleMatrixResize(sensorMatrixSize, sensorMatrixSize);
+      handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
   }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
 

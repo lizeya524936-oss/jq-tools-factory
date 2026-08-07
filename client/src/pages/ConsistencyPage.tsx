@@ -103,7 +103,7 @@ export default function ConsistencyPage() {
       return next;
     });
   }, []);
-  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, sensorMatrixSize, sensorFps, forceFps } = useSerialData();
+  const { latestSensorMatrix, latestAdcValues, latestRawFrame, isForceConnected, isSensorConnected, latestForceN, sendForceCommand, sensorDeviceType, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps } = useSerialData();
 
   // LH/RH 时自动切换为 16×16 矩阵
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -132,7 +132,7 @@ export default function ConsistencyPage() {
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
     if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
-      handleMatrixResize(sensorMatrixSize, sensorMatrixSize);
+      handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
   }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
 

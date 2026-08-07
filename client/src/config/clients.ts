@@ -54,6 +54,15 @@ export const CLIENTS: ClientAccount[] = [
       '灵心巧手 16×16',
     ],
   },
+  {
+    id: 'xingchen',
+    name: '星尘科技',
+    username: 'xingchen',
+    password: 'xc2026',
+    allowedProducts: [
+      '星尘科技 20×14',
+    ],
+  },
 ];
 
 /** 根据用户名和密码验证客户 */
