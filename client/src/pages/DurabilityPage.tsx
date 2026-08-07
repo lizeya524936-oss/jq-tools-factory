@@ -162,7 +162,7 @@ export default function DurabilityPage() {
     if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sensorMatrixSize, sensorMatrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── 灵巧手控制状态 ───
   const [availableActions, setAvailableActions] = useState<HandAction[]>(DEFAULT_ACTIONS);

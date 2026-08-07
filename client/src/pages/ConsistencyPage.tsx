@@ -134,7 +134,7 @@ export default function ConsistencyPage() {
     if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sensorMatrixSize, sensorMatrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);

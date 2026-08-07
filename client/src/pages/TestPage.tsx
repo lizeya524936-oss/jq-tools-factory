@@ -100,7 +100,7 @@ export default function TestPage() {
     if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixSizeChange(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);
+  }, [sensorMatrixSize, sensorMatrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // LH/RH 时自动切换为 16×16 矩阵
   useEffect(() => {
