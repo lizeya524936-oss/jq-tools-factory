@@ -159,10 +159,10 @@ export default function DurabilityPage() {
 
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
-    if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
+    if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── 灵巧手控制状态 ───
   const [availableActions, setAvailableActions] = useState<HandAction[]>(DEFAULT_ACTIONS);

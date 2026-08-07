@@ -97,10 +97,10 @@ export default function TestPage() {
 
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
-    if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
+    if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixSizeChange(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize]);
+  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);
 
   // LH/RH 时自动切换为 16×16 矩阵
   useEffect(() => {

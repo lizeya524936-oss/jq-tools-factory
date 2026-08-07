@@ -131,10 +131,10 @@ export default function ConsistencyPage() {
 
   // 当传感器协议变化时，自动切换矩阵尺寸
   useEffect(() => {
-    if (sensorMatrixSize && sensorMatrixSize !== matrixRows) {
+    if (sensorMatrixSize && (sensorMatrixSize !== matrixRows || (sensorMatrixCols ?? sensorMatrixSize) !== matrixCols)) {
       handleMatrixResize(sensorMatrixSize, sensorMatrixCols ?? sensorMatrixSize);
     }
-  }, [sensorMatrixSize]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sensorMatrixSize, sensorMatrixCols, matrixRows, matrixCols]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 使用 RealtimeDataPipeline 获取数据，避免频繁的 React 重新渲染
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
