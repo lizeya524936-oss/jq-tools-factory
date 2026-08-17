@@ -9,16 +9,20 @@
  * 3. 压力数据通过 Ref 同步（更新频率低，useEffect 足够）
  * 
  * v1.8.2 新增：手掌布局/矩阵显示切换开关，连接手套(LH/RH)时可自由选择显示模式
+ * v1.9.34 重构：移除顶部自研采集按钮，统一下移接入 SerialMonitor「数据采集控制」面板，
+ *   停止采集后右侧显示采集区间压力曲线并生成 Hill 拟合参数（与一致性页面行为一致）
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import SensorMatrix from '@/components/SensorMatrix';
 import HandMatrix, { getHandIndices } from '@/components/HandMatrix';
 import type { HandSide } from '@/components/HandMatrix';
 import PressureChart from '@/components/PressureChart';
+import SerialMonitor from '@/components/SerialMonitor';
 import { useSerialData } from './Home';
-import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { generateSensorMatrix, SensorPoint } from '@/lib/sensorData';
-import { CheckCircle2, AlertCircle, Zap, Circle, Square, Download, Hand, Grid3x3 } from 'lucide-react';
+import { fitHill, formatHillEquation, formatInverseEquation } from '@/lib/hillFit';
+import type { HillFitResult } from '@/lib/hillFit';
+import { CheckCircle2, AlertCircle, Zap, Hand, Grid3x3 } from 'lucide-react';
 
 interface DataRecord {
   timestamp: number;
@@ -50,7 +54,7 @@ export default function TestPage() {
     } catch {}
     return matrix;
   });
-  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps } = useSerialData();
+  const { latestForceN, latestSensorMatrix, latestAdcValues, isForceConnected, isSensorConnected, sensorDeviceType, sensorProtocol, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps, sendForceCommand } = useSerialData();
 
   // ===== 手掌布局/矩阵显示切换 =====
   const handSide: HandSide | null = (sensorDeviceType === 'LH' || sensorDeviceType === 'RH') ? sensorDeviceType : null;
@@ -109,12 +113,37 @@ export default function TestPage() {
     }
   }, [handSide]);
 
-  // 数据采集状态
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedData, setRecordedData] = useState<DataRecord[]>([]);
-  // 事件驱动采集：使用 subscribeSensorFrame 取消订阅函数
-  const unsubSensorFrameRef = useRef<(() => void) | null>(null);
-  const isRecordingRef = useRef(false); // 用于在回调中判断是否正在采集
+  // 采集区间状态（由 SerialMonitor 回调驱动）
+  const [recordingActive, setRecordingActive] = useState(false);
+  const [recordingRecords, setRecordingRecords] = useState<DataRecord[]>([]);
+  const [hillFit, setHillFit] = useState<HillFitResult | null>(null);
+
+  // 开始采集：清空上一轮区间数据
+  const handleSMStart = useCallback(() => {
+    setRecordingActive(true);
+    setRecordingRecords([]);
+    setHillFit(null);
+  }, []);
+
+  // 停止采集：回传区间数据 → 压力曲线 + Hill 拟合
+  const handleSMComplete = useCallback((records: DataRecord[]) => {
+    setRecordingActive(false);
+    setRecordingRecords(records);
+
+    // Hill 拟合：过滤有效数据（压力>0 且有 ADC）
+    const pressures: number[] = [];
+    const adcSums: number[] = [];
+    records.forEach(r => {
+      if (r.pressure !== null && r.pressure > 0 && r.adcValues.length > 0) {
+        pressures.push(r.pressure);
+        adcSums.push(r.adcValues.reduce((a, b) => a + b, 0));
+      }
+    });
+    setHillFit(pressures.length >= 3 ? fitHill(pressures, adcSums) : null);
+  }, []);
+
+  // 矩阵模式下 SerialMonitor 需要的选点（row/col 列表）
+  const selectedSensors = sensors.filter(s => s.selected).map(s => ({ row: s.row, col: s.col }));
 
   // 更新矩阵尺寸并保存到 localStorage
   const handleMatrixSizeChange = (rows: number, cols: number) => {
@@ -134,250 +163,20 @@ export default function TestPage() {
     localStorage.setItem('selectedSensorPoints', JSON.stringify(selectedKeys));
   };
 
-  // 采集数据缓冲区（不用 React State，避免频繁重新渲染）
-  const recordBufferRef = useRef<DataRecord[]>([]);
-  
-  // ===== 导出CSV（使用 useCallback 确保引用稳定） =====
-  // 使用 Ref 保存 sensors 和 matrixCols 的最新值，供 exportCSV 使用
-  const sensorsRef = useRef(sensors);
-  const matrixColsRef = useRef(matrixCols);
-  const handSelectedIndicesRef = useRef(handSelectedIndices);
-  const showHandLayoutRef = useRef(showHandLayout);
-
-  useEffect(() => { sensorsRef.current = sensors; }, [sensors]);
-  useEffect(() => { matrixColsRef.current = matrixCols; }, [matrixCols]);
-  useEffect(() => { handSelectedIndicesRef.current = handSelectedIndices; }, [handSelectedIndices]);
-  useEffect(() => { showHandLayoutRef.current = showHandLayout; }, [showHandLayout]);
-
-  
-  const doExportCSV = useCallback((dataToExport: DataRecord[]) => {
-    if (dataToExport.length === 0) {
-      alert('暂无采集数据');
-      return;
-    }
-
-    // 根据当前显示模式选择不同的选点索引
-    let selectedIndices: number[];
-    if (showHandLayoutRef.current) {
-      // 手掌布局模式：使用 handSelectedIndices（数组编号从1开始）
-      selectedIndices = [...handSelectedIndicesRef.current];
-    } else {
-      // 矩阵模式：使用 SensorMatrix 的选点
-      const currentSensors = sensorsRef.current;
-      const currentMatrixCols = matrixColsRef.current;
-      const selectedSensors = currentSensors.filter(s => s.selected);
-      selectedIndices = selectedSensors.map(s => s.row * currentMatrixCols + s.col + 1);
-    }
-
-    // 时间戳格式化函数：将 Date.now() 毫秒时间戳转为 xxh.xxm.xxs.xxxms
-    const formatTimestamp = (ts: number) => {
-      const d = new Date(ts);
-      const h = String(d.getHours()).padStart(2, '0');
-      const m = String(d.getMinutes()).padStart(2, '0');
-      const s = String(d.getSeconds()).padStart(2, '0');
-      const ms = String(d.getMilliseconds()).padStart(3, '0');
-      return `${h}h.${m}m.${s}s.${ms}ms`;
-    };
-
-    // 构建CSV内容 (BOM + 表头)
-    let csv = '\uFEFF时间,压力(N)';
-    if (selectedIndices.length > 0) {
-      csv += ',' + selectedIndices.map(idx => `传感器#${idx}`).join(',');
-    }
-    csv += '\n';
-
-    dataToExport.forEach(data => {
-      const pressure = data.pressure !== null ? data.pressure.toFixed(2) : '';
-      csv += `${formatTimestamp(data.timestamp)},${pressure}`;
-      
-      if (selectedIndices.length > 0) {
-        selectedIndices.forEach(idx => {
-          const adcIdx = idx - 1;
-          const adcVal = adcIdx < data.adcValues.length ? data.adcValues[adcIdx] : '';
-          csv += `,${adcVal}`;
-        });
-      }
-      csv += '\n';
-    });
-
-    // 下载CSV
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `test-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, []);
-
-  // 手动导出按钮
-  const handleExportCSV = useCallback(() => {
-    const dataToExport = recordBufferRef.current.length > 0 ? recordBufferRef.current : recordedData;
-    doExportCSV(dataToExport);
-  }, [recordedData, doExportCSV]);
-
-  // 开始采集
-  const handleStartRecording = useCallback(() => {
-    // 清理上一次的缓冲区和状态
-    recordBufferRef.current = [];
-    setRecordedData([]);
-    setIsRecording(true);
-    isRecordingRef.current = true;
-    
-    // 获取全局单例引用
-    const dataPipeline = getRealtimeDataPipeline();
-    const detectedFps = dataPipeline.getSensorFps();
-    console.log(`[采集] 事件驱动模式启动(v1.8.8帧去重), 当前检测帧率: ${detectedFps}Hz`);
-    
-    // 采集频率统计
-    let collectCount = 0;
-    let collectStartTime = performance.now();
-    
-    // ===== 纯事件驱动采集（v1.8.8: pipeline 层已做帧去重，此处只记录新帧） =====
-    // subscribeSensorFrame 只在数据真正变化时触发，不会收到重复帧
-    const unsub = dataPipeline.subscribeSensorFrame((_snapshot) => {
-      if (!isRecordingRef.current) return;
-      
-      const pressure = dataPipeline.getLatestForce();
-      const currentAdcValues = dataPipeline.getLatestAdcValues();
-      
-      recordBufferRef.current.push({
-        timestamp: Date.now(),
-        pressure,
-        adcValues: currentAdcValues ? [...currentAdcValues] : [],
-      });
-      
-      // 每2秒输出一次采集频率统计
-      collectCount++;
-      const elapsed = performance.now() - collectStartTime;
-      if (elapsed >= 2000) {
-        const actualHz = Math.round((collectCount / elapsed) * 1000 * 10) / 10;
-        console.log(`[采集统计] ${collectCount}帧/2s, 实际采集频率: ${actualHz}Hz`);
-        collectCount = 0;
-        collectStartTime = performance.now();
-      }
-    });
-    
-    unsubSensorFrameRef.current = unsub;
-  }, []);
-
-  // 停止采集（停止后自动导出）
-  const handleStopRecording = useCallback(() => {
-    // 取消订阅传感器新帧事件
-    isRecordingRef.current = false;
-    if (unsubSensorFrameRef.current) {
-      unsubSensorFrameRef.current();
-      unsubSensorFrameRef.current = null;
-    }
-    setIsRecording(false);
-    
-    // 取出缓冲区数据
-    const data = [...recordBufferRef.current];
-    setRecordedData(data);
-    
-    // 直接导出（不依赖 state 更新，直接传入数据）
-    if (data.length > 0) {
-      // 使用 setTimeout 确保浏览器有时间处理 UI 更新
-      setTimeout(() => {
-        doExportCSV(data);
-      }, 50);
-    }
-  }, [doExportCSV]);
-
-  // 清理
-  useEffect(() => {
-    return () => {
-      isRecordingRef.current = false;
-      if (unsubSensorFrameRef.current) {
-        unsubSensorFrameRef.current();
-        unsubSensorFrameRef.current = null;
-      }
-    };
-  }, []);
-
   const selectedCount = showHandLayout ? handSelectedIndices.size : sensors.filter(s => s.selected).length;
   const adcSum = latestAdcValues ? latestAdcValues.reduce((a, b) => a + b, 0) : 0;
-  const recordCount = recordedData.length;
+
+  // 采集区间压力曲线数据（停止采集后传递给 PressureChart）
+  const recordingPressureData = !recordingActive && recordingRecords.length > 0
+    ? recordingRecords.map(r => ({
+        index: 0,
+        pressure: r.pressure ?? 0,
+        time: new Date(r.timestamp).toLocaleTimeString('zh-CN'),
+      }))
+    : undefined;
 
   return (
     <div className="flex flex-col h-full p-4 gap-4" style={{ background: 'oklch(0.13 0.02 265)' }}>
-      {/* 采集控制按钮 */}
-      <div className="flex items-center gap-2">
-        {!isRecording ? (
-          <button
-            onClick={handleStartRecording}
-            disabled={!isSensorConnected}
-            className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors disabled:opacity-50"
-            style={{
-              background: isSensorConnected ? 'oklch(0.72 0.20 145 / 0.15)' : 'oklch(0.20 0.025 265)',
-              border: `1px solid ${isSensorConnected ? 'oklch(0.72 0.20 145 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
-              color: isSensorConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.45 0.02 240)',
-            }}
-            title="开始采集数据"
-          >
-            <Circle size={12} />
-            <span>采集</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleStopRecording}
-            className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors"
-            style={{
-              background: 'oklch(0.65 0.22 25 / 0.15)',
-              border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-              color: 'oklch(0.65 0.22 25)',
-            }}
-            title="停止采集"
-          >
-            <Square size={12} />
-            <span>停止</span>
-          </button>
-        )}
-        
-        {recordCount > 0 && !isRecording && (
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors"
-            style={{
-              background: 'oklch(0.75 0.18 55 / 0.15)',
-              border: '1px solid oklch(0.75 0.18 55 / 0.3)',
-              color: 'oklch(0.75 0.18 55)',
-            }}
-            title="导出CCSV文件"
-          >
-            <Download size={12} />
-            <span>导出</span>
-          </button>
-        )}
-
-        {/* 帧率显示和采集状态 */}
-        <div className="flex items-center gap-3 ml-auto">
-          {isSensorConnected && (
-            <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: 'oklch(0.20 0.025 265)', color: 'oklch(0.58 0.18 200)', border: '1px solid oklch(0.28 0.03 265)' }}>
-              传感器: {sensorFps}Hz
-            </span>
-          )}
-          {isForceConnected && (
-            <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: 'oklch(0.20 0.025 265)', color: 'oklch(0.72 0.20 145)', border: '1px solid oklch(0.28 0.03 265)' }}>
-              压力计: {forceFps}Hz
-            </span>
-          )}
-          {isRecording && (
-            <span className="text-xs font-mono px-2 py-1 rounded animate-pulse" style={{ background: 'oklch(0.65 0.22 25 / 0.15)', color: 'oklch(0.65 0.22 25)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}>
-              采集中 @{sensorFps || '?'}Hz… {recordBufferRef.current.length} 帧
-            </span>
-          )}
-          {recordCount > 0 && !isRecording && (
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-              已采集 {recordCount} 帧
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* 顶部设备连接状态卡片 */}
       <div className="grid grid-cols-2 gap-3">
         {/* 力学仪器连接状态 */}
@@ -594,13 +393,74 @@ export default function TestPage() {
           </div>
         </div>
 
-        {/* 压力图表显示（右侧） */}
+        {/* 压力图表显示（右侧）+ Hill 拟合参数 */}
         <div
-          className="rounded p-4 flex flex-col min-h-0"
+          className="rounded p-4 flex flex-col min-h-0 gap-3"
           style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flex: '1' }}
         >
-          <PressureChart />
+          <div className="flex-1 min-h-0">
+            <PressureChart externalData={recordingPressureData} />
+          </div>
+
+          {/* Hill 拟合参数（停止采集后显示） */}
+          {!recordingActive && recordingRecords.length > 0 && (
+            <div
+              className="rounded p-3 flex-shrink-0"
+              style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+            >
+              <div className="text-xs font-mono font-medium mb-2" style={{ color: 'oklch(0.70 0.18 200)' }}>
+                Hill 拟合参数
+              </div>
+              {hillFit ? (
+                <div className="space-y-1 text-xs font-mono">
+                  <div style={{ color: 'oklch(0.75 0.18 55)' }}>
+                    正向: {formatHillEquation(hillFit)}
+                  </div>
+                  <div style={{ color: 'oklch(0.70 0.18 200)' }}>
+                    反推: {formatInverseEquation(hillFit)}
+                  </div>
+                  <div style={{ color: 'oklch(0.55 0.02 240)' }}>
+                    a = {hillFit.a.toFixed(2)} · b = {hillFit.b.toFixed(2)} · n = {hillFit.n.toFixed(4)}
+                  </div>
+                  <div style={{ color: 'oklch(0.55 0.02 240)' }}>
+                    R² = {hillFit.r2.toFixed(4)} · RMSE = {hillFit.rmse.toFixed(4)} · 采样点 = {recordingRecords.length}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+                  有效数据不足（需 ≥3 组压力&gt;0 且有 ADC 的数据）才能拟合 Hill 方程
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* 数据采集控制面板 */}
+      <div
+        className="rounded p-3"
+        style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+      >
+        <div className="text-xs font-mono font-medium mb-2" style={{ color: 'oklch(0.72 0.20 145)' }}>
+          数据采集控制
+        </div>
+        <SerialMonitor
+          isForceConnected={isForceConnected}
+          isSensorConnected={isSensorConnected}
+          latestForceN={latestForceN}
+          latestAdcValues={latestAdcValues}
+          selectedSensors={selectedSensors}
+          matrixCols={matrixCols}
+          handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+          onStartRecording={() => {
+            // 开始采集前发送压力计 CMD_RESET 归零指令
+            if (isForceConnected && sendForceCommand) {
+              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+            }
+          }}
+          onRecordingStart={handleSMStart}
+          onRecordingComplete={handleSMComplete}
+        />
       </div>
 
       {/* 实时数据面板 */}

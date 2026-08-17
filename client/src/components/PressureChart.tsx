@@ -74,7 +74,7 @@ function formatTime(seconds: number): string {
   return `${s}s`;
 }
 
-export default function PressureChart({ showControls = true }: { showControls?: boolean }) {
+export default function PressureChart({ showControls = true, externalData }: { showControls?: boolean; externalData?: ChartDataPoint[] }) {
   const { isForceConnected, sendForceCommand } = useSerialData();
 
   // CL2 压力计归零/重置命令
@@ -186,7 +186,13 @@ export default function PressureChart({ showControls = true }: { showControls?: 
     setLatestPressure(null);
   }, [isForceConnected, sendForceCommand]);
 
-  const hasData = pressureData.length > 0;
+  // 外部数据模式：传入采集区间数据时显示固定曲线（停止实时滚动）
+  const isExternalMode = !!externalData && externalData.length > 0;
+  const displayData = isExternalMode
+    ? externalData!.map((p, idx) => ({ ...p, index: idx + 1 }))
+    : pressureData;
+
+  const hasData = displayData.length > 0;
 
   return (
     <div className="flex flex-col gap-3 h-full">
@@ -227,19 +233,23 @@ export default function PressureChart({ showControls = true }: { showControls?: 
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.75 0.18 55)' }}>
-            压力数据可视化
+            {isExternalMode ? '压力数据可视化 · 采集区间' : '压力数据可视化'}
           </span>
-          {isForceConnected && (
+          {isExternalMode ? (
+            <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+              {displayData.length} 点
+            </span>
+          ) : isForceConnected ? (
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 55)' }} />
               <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>
                 实时采集中
               </span>
             </div>
-          )}
-          {latestPressure !== null && (
+          ) : null}
+          {(isExternalMode ? displayData[displayData.length - 1]?.pressure : latestPressure) !== null && (isExternalMode ? displayData.length > 0 : latestPressure !== null) && (
             <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
-              {latestPressure.toFixed(2)} N
+              {(isExternalMode ? displayData[displayData.length - 1]?.pressure : latestPressure)!.toFixed(2)} N
             </span>
           )}
         </div>
@@ -290,7 +300,7 @@ export default function PressureChart({ showControls = true }: { showControls?: 
       ) : (
         <div className="flex-1 rounded" style={{ background: 'oklch(0.14 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={pressureData} margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
+            <ComposedChart data={displayData} margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
               <defs>
                 <linearGradient id="pressureGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(0.75 0.18 55)" stopOpacity={0.3} />

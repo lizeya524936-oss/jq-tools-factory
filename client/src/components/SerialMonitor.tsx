@@ -41,6 +41,10 @@ interface SerialMonitorProps {
   handSelectedIndices?: Set<number>;
   /** 开始采集前的回调（用于发送压力计重置命令等） */
   onStartRecording?: () => void;
+  /** 开始采集时的回调 */
+  onRecordingStart?: () => void;
+  /** 停止采集时的回调，回传本次采集的全部记录 */
+  onRecordingComplete?: (records: Array<{ timestamp: number; pressure: number | null; adcValues: number[] }>) => void;
 }
 
 export default function SerialMonitor({
@@ -53,6 +57,8 @@ export default function SerialMonitor({
   matrixCols = 8,
   handSelectedIndices,
   onStartRecording,
+  onRecordingStart,
+  onRecordingComplete,
 }: SerialMonitorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
@@ -68,9 +74,13 @@ export default function SerialMonitor({
   const matrixColsRef = useRef(matrixCols);
   const handSelectedIndicesRef = useRef(handSelectedIndices);
   const onStartRecordingRef = useRef(onStartRecording);
+  const onRecordingStartRef = useRef(onRecordingStart);
+  const onRecordingCompleteRef = useRef(onRecordingComplete);
   
   // ref 代理：直接赋值确保始终调用最新回调（不延迟一帧）
   onStartRecordingRef.current = onStartRecording;
+  onRecordingStartRef.current = onRecordingStart;
+  onRecordingCompleteRef.current = onRecordingComplete;
   
   // 同步低频 props 到 Ref（这两个变化频率很低，不会造成延迟）
   useEffect(() => { selectedSensorsRef.current = selectedSensors; }, [selectedSensors]);
@@ -176,6 +186,9 @@ export default function SerialMonitor({
     setIsRecording(true);
     isRecordingRef.current = true;
     
+    // 通知外部：采集已开始
+    onRecordingStartRef.current?.();
+    
     // 获取全局单例引用（在 setInterval 外部获取，避免重复调用）
     const sensorStream = getSensorDataStreamV2();
     const dataPipeline = getRealtimeDataPipeline();
@@ -224,6 +237,9 @@ export default function SerialMonitor({
     // 取出缓冲区数据
     const data = [...bufferRef.current];
     setRecordCount(data.length);
+    
+    // 通知外部：本次采集完成（供测试页压力曲线 + Hill 拟合）
+    onRecordingCompleteRef.current?.(data);
     
     // 自动导出 CSV
     if (data.length > 0) {

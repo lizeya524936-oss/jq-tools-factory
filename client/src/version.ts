@@ -64,7 +64,8 @@
  * v1.9.31 - 修复连续循环中数据合并：React 18 批处理导致 setIsRunning(false/true) 被合并，SerialMonitor 未触发停止采集；在 setIsRunning(false) 后增加 100ms 等待确保状态刷新
  * v1.9.32 - 新增客户灵心巧手(lingxin/lx2026)及新传感器协议 custom_lingxin：帧格式 AA 55 03 99 01 左右手(01=LH/02=RH) + 256B 传感器 + 16B 四元数 = 278B，波特率 921600
  * v1.9.33 - 新增客户星尘科技(xingchen/xc2026)及新传感器协议 custom_xingchen：20×14 非正方形矩阵(280点)，双包拼接 PKT01(140B) + PKT02(140B+16B四元数)，波特率 921600；支持非正方形矩阵显示
+ * v1.9.34 - 测试页重构：移除顶部自研采集按钮，统一下移接入 SerialMonitor「数据采集控制」面板（与一致性页面一致）；停止采集后右侧显示采集区间压力曲线并生成 Hill 拟合参数（a/b/n/R²/RMSE+公式）
  */
-export const APP_VERSION = 'v1.9.33';
+export const APP_VERSION = 'v1.9.34';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-07-28';

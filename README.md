@@ -71,6 +71,22 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.34（2026-07-28）
+
+**Refactor：测试页采集功能重构**
+
+- 移除测试页顶部自研「采集/停止/导出」按钮及独立采集逻辑
+- 统一下移接入 `SerialMonitor`「数据采集控制」面板，与一致性页面行为一致（停止自动下载 CSV）
+- 新增 `SerialMonitor.onRecordingStart/onRecordingComplete` 回调，回传采集区间数据
+- 右侧压力图支持 `externalData` 区间模式：采集时实时滚动，停止后显示「开始采集→停止采集」压力曲线
+- 停止采集后在压力曲线下方显示 Hill 拟合参数（a/b/n/R²/RMSE + 正向/反推公式）
+
+**修改文件：**
+- 修改 `client/src/components/SerialMonitor.tsx` — 新增采集开始/完成回调
+- 修改 `client/src/components/PressureChart.tsx` — 新增 externalData 区间模式
+- 修改 `client/src/pages/TestPage.tsx` — 移除自研采集，接入 SerialMonitor + Hill 参数
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.34
+
 ### v1.9.33（2026-07-28）
 
 **Feat：新增客户星尘科技 + 20×14 双包协议 + 非正方形矩阵支持**
