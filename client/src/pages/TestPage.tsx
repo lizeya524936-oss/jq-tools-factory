@@ -166,13 +166,15 @@ export default function TestPage() {
   const selectedCount = showHandLayout ? handSelectedIndices.size : sensors.filter(s => s.selected).length;
   const adcSum = latestAdcValues ? latestAdcValues.reduce((a, b) => a + b, 0) : 0;
 
-  // 采集区间压力曲线数据（停止采集后传递给 PressureChart）
+  // 采集区间压力曲线数据（停止采集后传递给 PressureChart；过滤 null 压力避免 0.00 N 误导）
   const recordingPressureData = !recordingActive && recordingRecords.length > 0
-    ? recordingRecords.map(r => ({
-        index: 0,
-        pressure: r.pressure ?? 0,
-        time: new Date(r.timestamp).toLocaleTimeString('zh-CN'),
-      }))
+    ? recordingRecords
+        .filter(r => r.pressure !== null)
+        .map(r => ({
+          index: 0,
+          pressure: r.pressure as number,
+          time: new Date(r.timestamp).toLocaleTimeString('zh-CN'),
+        }))
     : undefined;
 
   return (
