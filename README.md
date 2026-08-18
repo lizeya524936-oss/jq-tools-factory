@@ -71,6 +71,17 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.35（2026-07-28）
+
+**Fix：测试页布局调整**
+
+- 数据采集控制面板（SerialMonitor）从底部全宽移入左侧列，与传感器数组实时监控模块对齐
+- 传感器数组卡片改为占满左侧列剩余高度，采集面板固定高度（flex-shrink-0）
+
+**修改文件：**
+- 修改 `client/src/pages/TestPage.tsx` — 布局调整
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.35
+
 ### v1.9.34（2026-07-28）
 
 **Refactor：测试页采集功能重构**

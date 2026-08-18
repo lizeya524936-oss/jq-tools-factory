@@ -244,10 +244,12 @@ export default function TestPage() {
 
       {/* 中间主区域：传感器矩阵 + 压力图表 */}
       <div className="flex-1 min-h-0 flex gap-4">
-        {/* 传感器数组显示（左侧，增加1.5倍） */}
+        {/* 左侧纵向容器：传感器数组 + 数据采集控制（对齐） */}
+        <div className="flex flex-col min-h-0 gap-4" style={{ flex: '1.3' }}>
+        {/* 传感器数组显示（左侧列，占剩余高度） */}
         <div
-          className="rounded p-4 flex flex-col min-h-0"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flex: '1.3' }}
+          className="rounded p-4 flex flex-col min-h-0 flex-1"
+          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -395,6 +397,28 @@ export default function TestPage() {
           </div>
         </div>
 
+        {/* 数据采集控制（与传感器数组左对齐，不跨全宽） */}
+        <div className="flex-shrink-0">
+          <SerialMonitor
+            isForceConnected={isForceConnected}
+            isSensorConnected={isSensorConnected}
+            latestForceN={latestForceN}
+            latestAdcValues={latestAdcValues}
+            selectedSensors={selectedSensors}
+            matrixCols={matrixCols}
+            handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+            onStartRecording={() => {
+              // 开始采集前发送压力计 CMD_RESET 归零指令
+              if (isForceConnected && sendForceCommand) {
+                sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+              }
+            }}
+            onRecordingStart={handleSMStart}
+            onRecordingComplete={handleSMComplete}
+          />
+        </div>
+        </div>
+
         {/* 压力图表显示（右侧）+ Hill 拟合参数 */}
         <div
           className="rounded p-4 flex flex-col min-h-0 gap-3"
@@ -436,33 +460,6 @@ export default function TestPage() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* 数据采集控制面板 */}
-      <div
-        className="rounded p-3"
-        style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
-      >
-        <div className="text-xs font-mono font-medium mb-2" style={{ color: 'oklch(0.72 0.20 145)' }}>
-          数据采集控制
-        </div>
-        <SerialMonitor
-          isForceConnected={isForceConnected}
-          isSensorConnected={isSensorConnected}
-          latestForceN={latestForceN}
-          latestAdcValues={latestAdcValues}
-          selectedSensors={selectedSensors}
-          matrixCols={matrixCols}
-          handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
-          onStartRecording={() => {
-            // 开始采集前发送压力计 CMD_RESET 归零指令
-            if (isForceConnected && sendForceCommand) {
-              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
-            }
-          }}
-          onRecordingStart={handleSMStart}
-          onRecordingComplete={handleSMComplete}
-        />
       </div>
 
       {/* 实时数据面板 */}
