@@ -397,8 +397,8 @@ export default function TestPage() {
           </div>
         </div>
 
-        {/* 数据采集控制（与传感器数组左对齐，不跨全宽） */}
-        <div className="flex-shrink-0">
+        {/* 数据采集控制（与传感器数组左对齐，不跨全宽；空间不足时内部滚动） */}
+        <div className="min-h-0 overflow-auto">
           <SerialMonitor
             isForceConnected={isForceConnected}
             isSensorConnected={isSensorConnected}
