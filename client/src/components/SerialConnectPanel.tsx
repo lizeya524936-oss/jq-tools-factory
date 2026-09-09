@@ -55,6 +55,15 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     protocol: '16x16',
   },
   {
+    label: '机器人足底 16×16',
+    sublabel: 'JQ-FOOT-16 (宇树G1)',
+    defaultBaud: 921600,
+    quickBauds: [921600],
+    hint: '宇树G1机器人足底，16×16点阵(120传感点)，双包协议(128+128+16)，LF/RF识别，921600bps',
+    matrixSize: 16,
+    protocol: '16x16',
+  },
+  {
     label: '32×32 高密度传感器',
     sublabel: 'JQGY-YL-09',
     defaultBaud: 1000000,

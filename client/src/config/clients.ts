@@ -25,6 +25,7 @@ export const CLIENTS: ClientAccount[] = [
     allowedProducts: [
       '16×16 触觉传感器',
       '32×32 高密度传感器',
+      '机器人足底 16×16',
     ],
   },
   {

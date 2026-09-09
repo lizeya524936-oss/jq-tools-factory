@@ -71,6 +71,20 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.36（2026-07-28）
+
+**Feat：新增机器人足底传感器产品**
+
+- 新增传感器产品「机器人足底 16×16」（JQ-FOOT-16，宇树G1 织物电子皮肤足底部分，120 传感点）
+- 通信协议复用现有 16×16 双包协议（帧头 `AA 55 03 99`，PKT01 128B + PKT02 128B+16B四元数）
+- 设备类型 `0x03`=LF(左足) / `0x04`=RF(右足)，波特率 921600 bps
+- 产品在 **jq** 账户（jq/jq2026）的传感器产品下拉中可见
+
+**修改文件：**
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增机器人足底产品
+- 修改 `client/src/config/clients.ts` — jq 账户 allowedProducts 追加
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.36
+
 ### v1.9.35（2026-07-28）
 
 **Fix：测试页布局调整**
