@@ -71,6 +71,20 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.37（2026-09-22）
+
+**Feat：图表区域支持拖拽 CSV 上传**
+
+- 一致性检测 / 重复性检测页面的图表区域支持直接拖拽 CSV 文件导入
+- 拖拽悬停时显示高亮覆盖层提示「松开以导入 CSV 文件」
+- 抽取公共 `processCSVFiles` 处理函数，按钮上传与拖拽上传共用同一逻辑（含 20 文件上限、解析与提示）
+- 拖入非 CSV 文件时提示「请拖入 CSV 文件」
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 抽取 processCSVFiles + 拖拽上传
+- 修改 `client/src/pages/RepeatabilityPage.tsx` — 抽取 processCSVFiles + 拖拽上传（散点图视图）
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.37
+
 ### v1.9.36（2026-07-28）
 
 **Feat：新增机器人足底传感器产品**
@@ -78,7 +92,7 @@ pnpm deploy:prod
 - 新增传感器产品「机器人足底 16×16」（JQ-FOOT-16，宇树G1 织物电子皮肤足底部分，120 传感点）
 - 通信协议复用现有 16×16 双包协议（帧头 `AA 55 03 99`，PKT01 128B + PKT02 128B+16B四元数）
 - 设备类型 `0x03`=LF(左足) / `0x04`=RF(右足)，波特率 921600 bps
-- 产品在 **jq** 账户（jq/jq2026）的传感器产品下拉中可见
+- 产品在 **jq** 账户的传感器产品下拉中可见
 
 **修改文件：**
 - 修改 `client/src/components/SerialConnectPanel.tsx` — 新增机器人足底产品

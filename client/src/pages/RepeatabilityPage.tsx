@@ -242,11 +242,9 @@ export default function RepeatabilityPage() {
     return parsed.slice(0, peakIdx + 1);
   }, []);
 
-  const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const fileArray = Array.from(files);
+  // 核心：处理一批 CSV 文件（按钮上传与拖拽上传共用）
+  const processCSVFiles = useCallback((fileArray: File[]) => {
+    if (!fileArray || fileArray.length === 0) return;
 
     setUploadedSeries(prev => {
       const remaining = 20 - prev.length;
@@ -302,8 +300,54 @@ export default function RepeatabilityPage() {
       });
       return prev;
     });
-    e.target.value = '';
   }, [parseCSVText]);
+
+  const handleCSVUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) processCSVFiles(Array.from(files));
+    e.target.value = '';
+  }, [processCSVFiles]);
+
+  // ===== 图表区域拖拽 CSV 上传 =====
+  const dragDepthRef = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current++;
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current--;
+    if (dragDepthRef.current <= 0) {
+      dragDepthRef.current = 0;
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    const csvFiles = files.filter(f => /\.csv$/i.test(f.name));
+    if (csvFiles.length === 0) {
+      toast.error('请拖入 CSV 文件');
+      return;
+    }
+    processCSVFiles(csvFiles);
+  }, [processCSVFiles]);
 
   const handleToggleSeriesVisible = useCallback((id: string) => {
     setUploadedSeries(prev => prev.map(s => s.id === id ? { ...s, visible: !s.visible } : s));
@@ -660,16 +704,34 @@ export default function RepeatabilityPage() {
           )}
 
           {activeView === 'scatter' && (
-            <DataChart
-              series={chartSeries}
-              allSeriesForFit={allSeriesForFit}
-              showFitCurve={showFitCurve}
-              onFitCurveToggle={setShowFitCurve}
-              title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
-              pressureMax={pressureMax}
-              onPressureMaxChange={setPressureMax}
-              dataMaxPressure={dataMaxPressure}
-            />
+            <div
+              className="relative h-full"
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <DataChart
+                series={chartSeries}
+                allSeriesForFit={allSeriesForFit}
+                showFitCurve={showFitCurve}
+                onFitCurveToggle={setShowFitCurve}
+                title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
+                pressureMax={pressureMax}
+                onPressureMaxChange={setPressureMax}
+                dataMaxPressure={dataMaxPressure}
+              />
+              {isDragOver && (
+                <div
+                  className="absolute inset-0 z-50 flex items-center justify-center rounded pointer-events-none"
+                  style={{ background: 'oklch(0.70 0.18 200 / 0.12)', border: '2px dashed oklch(0.70 0.18 200 / 0.65)' }}
+                >
+                  <div className="text-sm font-mono px-4 py-2 rounded" style={{ color: 'oklch(0.88 0.14 200)', background: 'oklch(0.15 0.03 265 / 0.9)' }}>
+                    松开以导入 CSV 文件
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {activeView === 'table' && (

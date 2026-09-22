@@ -67,7 +67,8 @@
  * v1.9.34 - 测试页重构：移除顶部自研采集按钮，统一下移接入 SerialMonitor「数据采集控制」面板（与一致性页面一致）；停止采集后右侧显示采集区间压力曲线并生成 Hill 拟合参数（a/b/n/R²/RMSE+公式）
  * v1.9.35 - 测试页布局调整：数据采集控制面板移入左侧列与传感器数组实时监控对齐，不再横跨全宽
  * v1.9.36 - 新增机器人足底传感器产品(宇树G1/JQ-FOOT-16)：复用 16×16 双包协议，设备类型 LF(0x03)/RF(0x04) 识别，921600bps；jq 账户可见
+ * v1.9.37 - 一致性/重复性页面图表区域支持直接拖拽 CSV 文件上传（无数据时可拖入识别，高亮提示），提升导入效率
  */
-export const APP_VERSION = 'v1.9.36';
+export const APP_VERSION = 'v1.9.37';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-07-28';
+export const BUILD_DATE = '2026-09-22';
