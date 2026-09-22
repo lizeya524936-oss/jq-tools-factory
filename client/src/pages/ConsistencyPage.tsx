@@ -681,9 +681,22 @@ export default function ConsistencyPage() {
   const dragDepthRef = useRef(0);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // 全局拖拽保护：防止文件被拖到图表区域外时浏览器导航到该文件（丢失内存中数据）
+  useEffect(() => {
+    const prevent = (e: DragEvent) => { e.preventDefault(); };
+    window.addEventListener('dragover', prevent);
+    window.addEventListener('drop', prevent);
+    return () => {
+      window.removeEventListener('dragover', prevent);
+      window.removeEventListener('drop', prevent);
+    };
+  }, []);
+
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // 只响应文件拖拽（忽略文本/图片等）
+    if (!e.dataTransfer.types.includes('Files')) return;
     dragDepthRef.current++;
     setIsDragOver(true);
   }, []);
@@ -712,8 +725,11 @@ export default function ConsistencyPage() {
     const files = Array.from(e.dataTransfer.files ?? []);
     const csvFiles = files.filter(f => /\.csv$/i.test(f.name));
     if (csvFiles.length === 0) {
-      toast.error('请拖入 CSV 文件');
+      toast.error(files.length > 0 ? '仅支持 CSV 文件' : '请拖入 CSV 文件');
       return;
+    }
+    if (csvFiles.length < files.length) {
+      toast.warning(`已忽略 ${files.length - csvFiles.length} 个非 CSV 文件`);
     }
     processCSVFiles(csvFiles);
   }, [processCSVFiles]);
