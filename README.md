@@ -129,37 +129,37 @@ pnpm deploy:prod
 
 ### v1.9.33（2026-07-28）
 
-**Feat：新增客户星尘科技 + 20×14 双包协议 + 非正方形矩阵支持**
+**Feat：新增客户 + 20×14 双包协议 + 非正方形矩阵支持**
 
-- 新增客户账号：`xingchen` / `xc2026`（星尘科技）
-- 新增传感器产品"星尘科技 20×14"（XC-20×14），280 点阵
-- 新增协议 `custom_xingchen`：双包拼接
+- 新增客户账号（凭据见内部配置，不在此公开）
+- 新增传感器产品 XC-20×14（280 点阵）
+- 新增客户定制双包协议：
   - PKT01：`AA 55 03 99 01 设备类型 + 140B` = 146B
   - PKT02：`AA 55 03 99 02 设备类型 + 140B + 16B四元数` = 162B
 - 支持非正方形矩阵显示：新增 `sensorMatrixCols`（14×20），各页面矩阵尺寸联动适配
 - 波特率 921600，设备类型复用 `DEVICE_TYPE_MAP`
 
 **修改文件：**
-- 修改 `client/src/config/clients.ts` — 新增星尘科技账号
-- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增星尘科技产品 + matrixCols 字段
-- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_xingchen 双包协议解析
+- 修改 `client/src/config/clients.ts` — 新增客户账号
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增客户产品 + matrixCols 字段
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增客户定制双包协议解析
 - 修改 `client/src/pages/Home.tsx` — SerialDataContext 新增 sensorMatrixCols
 - 修改 `client/src/pages/ConsistencyPage.tsx` / `DurabilityPage.tsx` / `RepeatabilityPage.tsx` / `TestPage.tsx` — 矩阵尺寸适配
 - 修改 `client/src/version.ts` — 版本号更新为 v1.9.33
 
 ### v1.9.32（2026-07-28）
 
-**Feat：新增客户灵心巧手 + 新传感器协议**
+**Feat：新增客户 + 新传感器协议**
 
-- 新增客户账号：`lingxin` / `lx2026`（灵心巧手）
-- 新增传感器产品"灵心巧手 16×16"（LX-16×16）
-- 新增协议 `custom_lingxin`：帧格式 `AA 55 03 99 01 左右手(01=LH/02=RH) + 256B传感器 + 16B四元数 = 278B`
+- 新增客户账号（凭据见内部配置，不在此公开）
+- 新增传感器产品 LX-16×16
+- 新增客户定制单帧协议：帧格式 `AA 55 03 99 01 左右手(01=LH/02=RH) + 256B传感器 + 16B四元数 = 278B`
 - 波特率 921600，单帧模式，设备类型复用 `DEVICE_TYPE_MAP`（0x01=LH/0x02=RH）
 
 **修改文件：**
-- 修改 `client/src/config/clients.ts` — 新增灵心巧手账号
-- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增灵心巧手产品
-- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_lingxin 协议解析
+- 修改 `client/src/config/clients.ts` — 新增客户账号
+- 修改 `client/src/components/SerialConnectPanel.tsx` — 新增客户产品
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增客户定制协议解析
 - 修改 `client/src/version.ts` — 版本号更新为 v1.9.32
 
 ### v1.9.31（2026-07-28）
@@ -297,11 +297,11 @@ pnpm deploy:prod
 
 ### v1.9.20（2026-06-29）
 
-**迭代：下压机控制 + 传感器选点 + 极智动量协议**
+**迭代：下压机控制 + 传感器选点 + 小黑采集板协议**
 
 - Arduino 下压机串口控制，Header 一键连接
 - 传感器矩阵统一选点：拖拽框选/Ctrl多选/右键清除
-- 极智动量小黑采集板协议适配
+- 小黑采集板协议适配
 - 下压采集优化：延迟渲染、隐藏一致性判定卡片
 
 **修改文件：**
@@ -309,8 +309,8 @@ pnpm deploy:prod
 - 修改 `client/src/pages/ConsistencyPage.tsx` — 集成下压机
 - 修改 `client/src/pages/Home.tsx` — Header 下压机连接按钮
 - 修改 `client/src/components/SensorMatrix.tsx` — 统一选点交互
-- 修改 `client/src/hooks/useSerialPort.ts` — 极智动量协议
-- 修改 `client/src/config/clients.ts` — 极智动量客户账号
+- 修改 `client/src/hooks/useSerialPort.ts` — 小黑采集板协议
+- 修改 `client/src/config/clients.ts` — 客户账号
 
 ### v1.9.19（2026-06-29）
 
@@ -318,7 +318,7 @@ pnpm deploy:prod
 
 - Arduino 下压机串口控制：Header 一键连接，参数化设置（下压次数/采集、循环次数），自动循环采集
 - 传感器矩阵统一选点交互：拖拽框选、Ctrl+拖拽追加、Ctrl+单击切换、右键清除，移除点选/框选双模式
-- 极智动量小黑采集板协议适配（262B 单帧，1M baud）
+- 小黑采集板协议适配（262B 单帧，1M baud）
 
 **修改文件：**
 
@@ -326,7 +326,7 @@ pnpm deploy:prod
 - 修改 `client/src/pages/ConsistencyPage.tsx` — 集成下压机自动采集循环
 - 修改 `client/src/pages/Home.tsx` — Header 添加下压机连接按钮
 - 修改 `client/src/components/SensorMatrix.tsx` — 统一选点交互
-- 修改 `client/src/hooks/useSerialPort.ts` — 新增 custom_jizhi 协议解析
+- 修改 `client/src/hooks/useSerialPort.ts` — 新增客户定制协议解析
 
 ### v1.9.18（2026-06-10）
 
