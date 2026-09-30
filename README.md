@@ -90,14 +90,14 @@ pnpm deploy:prod
 
 **Feat：新增机器人足底传感器产品**
 
-- 新增传感器产品「机器人足底 16×16」（JQ-FOOT-16，宇树G1 织物电子皮肤足底部分，120 传感点）
+- 新增传感器产品「机器人足底 16×16」（JQ-FOOT-16，搭配 16×16 织物电子皮肤足底部分，120 传感点）
 - 通信协议复用现有 16×16 双包协议（帧头 `AA 55 03 99`，PKT01 128B + PKT02 128B+16B四元数）
 - 设备类型 `0x03`=LF(左足) / `0x04`=RF(右足)，波特率 921600 bps
-- 产品在 **jq** 账户的传感器产品下拉中可见
+- 产品在指定客户账户的传感器产品下拉中可见
 
 **修改文件：**
 - 修改 `client/src/components/SerialConnectPanel.tsx` — 新增机器人足底产品
-- 修改 `client/src/config/clients.ts` — jq 账户 allowedProducts 追加
+- 修改 `client/src/config/clients.ts` — 指定客户账户 allowedProducts 追加
 - 修改 `client/src/version.ts` — 版本号更新为 v1.9.36
 
 ### v1.9.35（2026-07-28）
@@ -131,7 +131,7 @@ pnpm deploy:prod
 
 **Feat：新增客户 + 20×14 双包协议 + 非正方形矩阵支持**
 
-- 新增客户账号（凭据见内部配置，不在此公开）
+- 新增客户账号（账号密码位于 `client/src/config/clients.ts`）
 - 新增传感器产品 XC-20×14（280 点阵）
 - 新增客户定制双包协议：
   - PKT01：`AA 55 03 99 01 设备类型 + 140B` = 146B
@@ -151,7 +151,7 @@ pnpm deploy:prod
 
 **Feat：新增客户 + 新传感器协议**
 
-- 新增客户账号（凭据见内部配置，不在此公开）
+- 新增客户账号（账号密码位于 `client/src/config/clients.ts`）
 - 新增传感器产品 LX-16×16
 - 新增客户定制单帧协议：帧格式 `AA 55 03 99 01 左右手(01=LH/02=RH) + 256B传感器 + 16B四元数 = 278B`
 - 波特率 921600，单帧模式，设备类型复用 `DEVICE_TYPE_MAP`（0x01=LH/0x02=RH）
