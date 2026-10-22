@@ -203,7 +203,20 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[], useA
   const residualVariance = allResiduals.length > 0
     ? allResiduals.reduce((sum, v) => sum + (v - residualMean) ** 2, 0) / allResiduals.length : 0;
   const residualStd = Math.sqrt(residualVariance);
-  const residualScore = Math.max(0, Math.min(100, ((30 - residualStd) / 25) * 100));
+  // AVG 模式下残差被按传感器数量归一化，评分阈值需同比例缩放（否则评分恒为 100）
+  const avgSensorCount = (() => {
+    if (!useAvg) return 1;
+    const counts: number[] = [];
+    for (const series of validSeries) {
+      for (const r of series.records) counts.push(r.adcValues?.length || 1);
+    }
+    if (counts.length === 0) return 1;
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    return mean > 0 ? mean : 1;
+  })();
+  const residualGoodThreshold = 30 / avgSensorCount;
+  const residualThresholdRange = 25 / avgSensorCount;
+  const residualScore = Math.max(0, Math.min(100, ((residualGoodThreshold - residualStd) / residualThresholdRange) * 100));
 
   return {
     cvPoints, avgCV, cvScore,

@@ -718,6 +718,8 @@ export default function RepeatabilityPage() {
               records={records}
               title={`重复性 - 时间序列（间隔${params.repeatInterval}分钟采样）`}
               showBrush={records.length > 20}
+              showAvg={showAvg}
+              onShowAvgChange={setShowAvg}
             />
           )}
 
