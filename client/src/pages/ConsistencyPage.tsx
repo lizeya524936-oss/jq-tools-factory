@@ -751,6 +751,8 @@ export default function ConsistencyPage() {
 
   // 共享的压力范围状态（DataChart 和 ConsistencyAnalysis 双向联动）
   const [pressureMax, setPressureMax] = useState<number>(100);
+  // SUM/AVG 显示模式（与图表和 CV 分析联动）
+  const [showAvg, setShowAvg] = useState(false);
 
   // 计算数据中的最大压力值
   const dataMaxPressure = useMemo(() => {
@@ -1135,6 +1137,8 @@ export default function ConsistencyPage() {
                 allSeriesForFit={allSeriesForFit}
                 showFitCurve={showFitCurve}
                 onFitCurveToggle={setShowFitCurve}
+                showAvg={showAvg}
+                onShowAvgChange={setShowAvg}
                 pressureMax={pressureMax}
                 onPressureMaxChange={setPressureMax}
                 dataMaxPressure={dataMaxPressure}
@@ -1153,7 +1157,7 @@ export default function ConsistencyPage() {
 
             {/* 一致性评估：CV 分析 + 残差分布 */}
             <div className="mt-3">
-              <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} />
+              <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} useAvg={showAvg} />
             </div>
           </div>
         </div>

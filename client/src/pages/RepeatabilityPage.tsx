@@ -406,6 +406,8 @@ export default function RepeatabilityPage() {
 
   // 共享的压力范围状态（DataChart 和 ConsistencyAnalysis 双向联动）
   const [pressureMax, setPressureMax] = useState<number>(100);
+  // SUM/AVG 显示模式（与图表和 CV 分析联动）
+  const [showAvg, setShowAvg] = useState(false);
 
   // 计算数据中的最大压力值
   const dataMaxPressure = useMemo(() => {
@@ -732,6 +734,8 @@ export default function RepeatabilityPage() {
                 allSeriesForFit={allSeriesForFit}
                 showFitCurve={showFitCurve}
                 onFitCurveToggle={setShowFitCurve}
+                showAvg={showAvg}
+                onShowAvgChange={setShowAvg}
                 title="压力 vs ADC Sum 散点图（含 Hill 拟合）"
                 pressureMax={pressureMax}
                 onPressureMaxChange={setPressureMax}
@@ -757,7 +761,7 @@ export default function RepeatabilityPage() {
 
         {/* 一致性评估：CV 分析 + 残差分布 */}
         <div className="mt-3">
-          <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} />
+          <ConsistencyAnalysis allSeries={allSeriesForFit} pressureMax={pressureMax} useAvg={showAvg} />
         </div>
       </div>
     </div>

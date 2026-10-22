@@ -68,7 +68,8 @@
  * v1.9.35 - 测试页布局调整：数据采集控制面板移入左侧列与传感器数组实时监控对齐，不再横跨全宽
  * v1.9.36 - 新增机器人足底传感器产品(JQ-FOOT-16)：复用 16×16 双包协议，设备类型 LF(0x03)/RF(0x04) 识别，921600bps；指定客户账户可见
  * v1.9.37 - 一致性/重复性页面图表区域支持直接拖拽 CSV 文件上传（无数据时可拖入识别，高亮提示），提升导入效率
+ * v1.9.38 - 修复 SUM/AVG 切换后 CV 分析不更新：showAvg 状态提升到页面级并联动 CV 分析，AVG 模式按传感器数量归一化，避免传感器数不一致导致 CV 虚大
  */
-export const APP_VERSION = 'v1.9.37';
+export const APP_VERSION = 'v1.9.38';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-09-22';
+export const BUILD_DATE = '2026-10-10';

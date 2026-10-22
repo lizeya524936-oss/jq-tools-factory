@@ -25,6 +25,7 @@ import {
   ZAxis,
 } from 'recharts';
 import type { DataSeries } from './DataChart';
+import type { DataRecord } from '@/lib/sensorData';
 import { fitHill, hillFunc, type HillFitResult } from '@/lib/hillFit';
 
 // ─── 常量 ────────────────────────────────────────────────────────────────────
@@ -122,15 +123,22 @@ interface AnalysisResult {
 
 // ─── 计算引擎 ────────────────────────────────────────────────────────────────
 
-function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): AnalysisResult | null {
+function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[], useAvg: boolean = false): AnalysisResult | null {
   const validSeries = allSeries.filter(s => s.records.length >= 5);
   if (validSeries.length < 2) return null;
   if (pressurePoints.length === 0) return null;
 
+  // ADC 取值：AVG 模式下按每条的传感器数量归一化（避免传感器数不同导致 CV 虚大）
+  const adcOf = (r: DataRecord) => {
+    if (!useAvg) return r.adcSum;
+    const n = r.adcValues?.length || 0;
+    return n > 0 ? r.adcSum / n : r.adcSum;
+  };
+
   const perFileFits: { fileName: string; fit: HillFitResult }[] = [];
   for (const series of validSeries) {
     const pressures = series.records.map(r => r.pressure);
-    const adcSums = series.records.map(r => r.adcSum);
+    const adcSums = series.records.map(r => adcOf(r));
     const fit = fitHill(pressures, adcSums);
     if (fit) {
       perFileFits.push({ fileName: series.name, fit });
@@ -144,7 +152,7 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
   for (const series of validSeries) {
     for (const r of series.records) {
       allPressures.push(r.pressure);
-      allAdcSums.push(r.adcSum);
+      allAdcSums.push(adcOf(r));
     }
   }
   const globalFit = fitHill(allPressures, allAdcSums);
@@ -177,7 +185,7 @@ function computeAnalysis(allSeries: DataSeries[], pressurePoints: number[]): Ana
       const pressures: number[] = [];
       for (const r of series.records) {
         const predicted = hillFunc(r.pressure, globalFit.a, globalFit.b, globalFit.n);
-        const residual = r.adcSum - predicted;
+        const residual = adcOf(r) - predicted;
         residuals.push(residual);
         pressures.push(r.pressure);
         allResiduals.push(residual);
@@ -233,6 +241,8 @@ interface ConsistencyAnalysisProps {
   allSeries: DataSeries[];
   /** 外部控制的压力范围最大值（与 DataChart 联动） */
   pressureMax: number;
+  /** 是否使用 AVG 模式（按传感器数量归一化，与 DataChart 的 SUM/AVG 联动） */
+  useAvg?: boolean;
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
@@ -250,7 +260,7 @@ const SERIES_COLORS = [
   'oklch(0.68 0.18 120)',
 ];
 
-function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysisProps) {
+function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: ConsistencyAnalysisProps) {
   const [expanded, setExpanded] = useState(true);
 
   // 动态生成关键压力点（基于外部传入的 pressureMax）
@@ -263,11 +273,11 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax }: ConsistencyAnalysi
 
   // 数据签名缓存
   const dataSignature = useMemo(() => {
-    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${pressureMax}`;
-  }, [allSeries, pressureMax]);
+    return allSeries.map(s => `${s.id}:${s.records.length}`).join('|') + `|max:${pressureMax}|avg:${useAvg}`;
+  }, [allSeries, pressureMax, useAvg]);
 
   const analysis = useMemo(() => {
-    return computeAnalysis(allSeries, pressurePoints);
+    return computeAnalysis(allSeries, pressurePoints, useAvg);
   }, [dataSignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 自定义压力点 CV 计算结果

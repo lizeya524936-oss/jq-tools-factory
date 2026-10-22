@@ -71,6 +71,22 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.38（2026-10-10）
+
+**Fix：SUM/AVG 切换后 CV 分析未联动更新**
+
+- 根因：`DataChart` 的 SUM/AVG 是组件内部状态，`ConsistencyAnalysis` 的 CV 分析独立计算且直接使用原始 `adcSum`；不同文件传感器数量不一致时 sum 被放大，导致 CV 虚大误判
+- 修复：`showAvg` 状态提升到页面级，`DataChart` 受控化（`showAvg` / `onShowAvgChange`），`ConsistencyAnalysis` 新增 `useAvg` 参数
+- AVG 模式下 CV 分析按每条记录的传感器数量归一化（`adcSum / adcValues.length`），覆盖 per-file 拟合、全局拟合与残差计算三处
+- 数据签名加入 `avg` 标记，切换 SUM/AVG 时 CV 面板立即重算
+
+**修改文件：**
+- 修改 `client/src/components/DataChart.tsx` — SUM/AVG 受控化
+- 修改 `client/src/components/ConsistencyAnalysis.tsx` — CV 分析支持 AVG 归一化
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 提升 showAvg 状态并接线
+- 修改 `client/src/pages/RepeatabilityPage.tsx` — 同上
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.38
+
 ### v1.9.37（2026-09-22）
 
 **Feat：图表区域支持拖拽 CSV 上传**

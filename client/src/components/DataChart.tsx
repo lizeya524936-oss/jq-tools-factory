@@ -73,6 +73,10 @@ interface DataChartProps {
   axisSwapped?: boolean;
   /** 横纵坐标交换回调 */
   onAxisSwap?: (v: boolean) => void;
+  /** SUM/AVG 显示模式（外部控制，可选） */
+  showAvg?: boolean;
+  /** SUM/AVG 模式变更回调 */
+  onShowAvgChange?: (v: boolean) => void;
 }
 
 interface ChartDataPoint {
@@ -691,6 +695,8 @@ const DataChart = memo(function DataChart({
   dataMaxPressure,
   axisSwapped: externalAxisSwapped,
   onAxisSwap,
+  showAvg: externalShowAvg,
+  onShowAvgChange,
 }: DataChartProps) {
   // X轴范围状态：优先使用外部控制
   const [internalXMax, setInternalXMax] = useState<number>(100);
@@ -706,8 +712,17 @@ const DataChart = memo(function DataChart({
   const [internalShowFit, setInternalShowFit] = useState<boolean>(true);
   // 横纵坐标交换状态
   const [internalAxisSwapped, setInternalAxisSwapped] = useState<boolean>(false);
-  // SUM/AVG 切换状态
-  const [showAvg, setShowAvg] = useState<boolean>(false);
+  // SUM/AVG 切换状态（优先使用外部控制）
+  const [internalShowAvg, setInternalShowAvg] = useState<boolean>(false);
+  const showAvg = externalShowAvg !== undefined ? externalShowAvg : internalShowAvg;
+  const toggleShowAvg = useCallback(() => {
+    const next = !showAvg;
+    if (onShowAvgChange) {
+      onShowAvgChange(next);
+    } else {
+      setInternalShowAvg(next);
+    }
+  }, [showAvg, onShowAvgChange]);
   const axisSwapped = externalAxisSwapped !== undefined ? externalAxisSwapped : internalAxisSwapped;
   const toggleAxisSwap = useCallback(() => {
     const next = !axisSwapped;
@@ -945,7 +960,7 @@ const DataChart = memo(function DataChart({
               横纵切换
             </button>
             <button
-              onClick={() => setShowAvg(v => !v)}
+              onClick={toggleShowAvg}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
               style={{
                 background: showAvg ? 'oklch(0.56 0.18 145 / 0.15)' : 'oklch(0.20 0.02 265)',
