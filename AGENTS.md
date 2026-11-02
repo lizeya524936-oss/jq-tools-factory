@@ -89,7 +89,40 @@ pnpm.ps1 cannot be loaded because running scripts is disabled on this system.
 
 **结论**：执行 `deploy:test` / `deploy:prod` 需要**提升沙箱权限**（`danger-full-access`）。遇到 EPERM 时向用户请求提权，不要反复换写法重试。
 
-### 2.3 其他
+### 2.3 `git push` 有两个必须处理的问题（已实测）
+
+**问题 1：`schannel` TLS 后端不可用，必须改用 openssl**
+
+默认 `http.sslBackend=schannel`（Windows 原生 TLS）在本机环境下会失败：
+
+```
+schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x8009030e)
+```
+
+连 `git ls-remote` 都跑不通。**解决：命令行临时覆盖后端**
+
+```powershell
+git -c http.sslBackend=openssl push origin master
+```
+
+已实测：同一命令换 openssl 后 `ls-remote` / `push` 均正常。
+
+**问题 2：push 需要提升沙箱权限**
+
+`credential.helper=manager`（Git Credential Manager）取凭证时会 spawn `sh.exe` + 管道，
+在仅允许写工作区的沙箱下报：
+
+```
+fatal error - couldn't create signal pipe, Win32 error 5
+fatal: could not read Username for 'https://github.com': terminal prompts disabled
+```
+
+**结论**：`git push` 需要 `danger-full-access`；`git add` / `git commit`（纯本地）不需要。
+
+> 另注：仓库 `.git/config` 里配了本地代理 `http.proxy=http://127.0.0.1:7897`。
+> 代理没开时 push 同样会失败 —— 先确认 7897 端口在监听。
+
+### 2.4 其他
 
 - Node **v24.15.0**，git **2.54.0**，可直接用。
 - 类型检查：`& pnpm.cmd run check`（`tsc --noEmit`），当前**通过**。改完代码必须跑一次。
@@ -364,7 +397,7 @@ useSerialPort('force', callbacks, options);
 
 - **线上版本**：`v1.9.38`（`BUILD_DATE` = 2026-10-10）。
 - **最近完成**：SUM/AVG 切换联动 CV 分析（v1.9.38）、图表区拖拽 CSV 上传（v1.9.37）、机器人足底传感器产品（v1.9.36）。
-- **Git**：分支 `master`，工作区干净，最新提交 `7513c5c chore: ignore .reasonix/ session state to keep deploy diffs clean`。
+- **Git**：分支 `master`，本地与远端同步于 `ef74210 docs: migrate agent memory and project rules from Reasonix into AGENTS.md`。
 
 ### 10.1 上一轮未竟事项：「非线性度」指标
 
