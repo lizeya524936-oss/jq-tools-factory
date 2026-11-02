@@ -2,8 +2,8 @@
 
 > **面向 AI Agent 的项目级规则文件。** 本文件由 DeepSeek Harness（DSH）在每次会话自动加载。
 >
-> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（v1.9.27 基线）。
-> - **最后同步**：2026-10-26 | **对应代码版本**：`v1.9.38`
+> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（已对齐 v1.9.38）。
+> - **最后同步**：2026-11-02 | **对应代码版本**：`v1.9.38`
 > - **维护约定**：规则变更直接改本文件；需要保留出处的历史决策放到 `docs/agent-memory/`。
 
 ---
@@ -383,7 +383,7 @@ useSerialPort('force', callbacks, options);
 |---------|------|
 | **Agent 规则**（本文件） | `AGENTS.md` |
 | 上一任 agent 的原始记忆 | `docs/agent-memory/` |
-| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（v1.9.27 基线，**部分已过时**） |
+| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（**已对齐 v1.9.38，全文不引用行号**） |
 | 相对约束文档的**代码漂移审计** | `docs/agent-handoff/codebase-drift-audit.md` |
 | 版本变动全部历史 | `README.md` 的「版本变动记录」（倒序） |
 | 版本号 + 构建日期 | `client/src/version.ts` |
@@ -393,7 +393,7 @@ useSerialPort('force', callbacks, options);
 
 ---
 
-## 10. 当前状态（交接快照 · 2026-10-26）
+## 10. 当前状态（交接快照 · 2026-11-02）
 
 - **线上版本**：`v1.9.38`（`BUILD_DATE` = 2026-10-10）。
 - **最近完成**：SUM/AVG 切换联动 CV 分析（v1.9.38）、图表区拖拽 CSV 上传（v1.9.37）、机器人足底传感器产品（v1.9.36）。
@@ -430,7 +430,7 @@ useSerialPort('force', callbacks, options);
 | # | 事项 | 用户决定 | 后续怎么做 |
 |---|------|---------|-----------|
 | 1 | 「非线性度」做成前端指标（v1.9.39） | **暂不做**（选 C） | ⛔ **不要再主动问**。用户明确说了"需要非线性度时会主动提"。§10.1 已留全部公式、实测参数与结果表，真要做时照它落地即可。 |
-| 2 | `docs/JQFactory-project-constraints.md` 落后 11 个版本 | **不动**（选 C） | 保持原样。它是**历史参考**，现行规则一律以本文件（`AGENTS.md`）为准；两者冲突时信本文件。 |
+| 2 | `docs/JQFactory-project-constraints.md` 落后 11 个版本 | **先选 C（不动），后改为 B（全面更新）** | ✅ **已于 2026-11-02 按审计结果重写到 v1.9.38 基线**。全文改为「文件路径 + 符号名」定位，**不再引用行号**（行号正是上一版失效的主因）。两份文档分工：`AGENTS.md` = Agent 规则总纲，约束文档 = 详细技术参考。 |
 | 3 | `calc_nonlinearity.py` 在 gitignore 目录里 | **不挪**（随 #1 一同搁置） | 风险已可接受：§10.1 已完整记录算法、参数与结果，脚本丢了也能重建。**注意：不要清理 `.reasonix/` 目录**。 |
 
 **仍然开放（用户尚未表态）**：
