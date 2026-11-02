@@ -397,7 +397,7 @@ useSerialPort('force', callbacks, options);
 
 - **线上版本**：`v1.9.38`（`BUILD_DATE` = 2026-10-10）。
 - **最近完成**：SUM/AVG 切换联动 CV 分析（v1.9.38）、图表区拖拽 CSV 上传（v1.9.37）、机器人足底传感器产品（v1.9.36）。
-- **Git**：分支 `master`，本地与远端同步于 `ef74210 docs: migrate agent memory and project rules from Reasonix into AGENTS.md`。
+- **Git**：分支 `master`，本地与远端保持同步。**最新提交请看 `git log -1`**（此处不写死 SHA，避免过期）。
 
 ### 10.1 上一轮未竟事项：「非线性度」指标
 
@@ -425,12 +425,17 @@ useSerialPort('force', callbacks, options);
 
 ⚠️ **风险提示**：那次计算的脚本 `calc_nonlinearity.py` 落在 `.reasonix/attachments/` 里，而 `.reasonix/` 是 **gitignore 的**。一旦清理该目录脚本就没了。要做这个功能，先把脚本挪进仓库（如 `scripts/calc_nonlinearity.py`）并提交。
 
-### 10.2 待用户拍板的收尾项
+### 10.2 决策记录（2026-11-02 用户已拍板）
+
+| # | 事项 | 用户决定 | 后续怎么做 |
+|---|------|---------|-----------|
+| 1 | 「非线性度」做成前端指标（v1.9.39） | **暂不做**（选 C） | ⛔ **不要再主动问**。用户明确说了"需要非线性度时会主动提"。§10.1 已留全部公式、实测参数与结果表，真要做时照它落地即可。 |
+| 2 | `docs/JQFactory-project-constraints.md` 落后 11 个版本 | **不动**（选 C） | 保持原样。它是**历史参考**，现行规则一律以本文件（`AGENTS.md`）为准；两者冲突时信本文件。 |
+| 3 | `calc_nonlinearity.py` 在 gitignore 目录里 | **不挪**（随 #1 一同搁置） | 风险已可接受：§10.1 已完整记录算法、参数与结果，脚本丢了也能重建。**注意：不要清理 `.reasonix/` 目录**。 |
+
+**仍然开放（用户尚未表态）**：
 
 | # | 事项 | 建议 |
 |---|------|------|
-| 1 | `calc_nonlinearity.py` 在 gitignore 目录里 | 移到 `scripts/` 并提交 |
-| 2 | `docs/JQFactory-project-constraints.md` 落后 11 个版本 | 按 `docs/agent-handoff/codebase-drift-audit.md` 更新，或直接标注"以 AGENTS.md 为准" |
-| 3 | `__pycache__/*.pyc` 被 git 跟踪 | `git rm --cached` + 加 `.gitignore` |
-| 4 | 部署需提权才能跑 wrangler | 确认是否接受每次提权；或把 `wrangler` 加进 devDependencies 以固定版本 |
-| 5 | 「非线性度」是否要做成前端指标 | 等用户答复 |
+| 4 | `__pycache__/*.pyc` 被 git 跟踪 | `git rm --cached` + 加入 `.gitignore` |
+| 5 | 部署需提权才能跑 wrangler | 接受每次提权；或把 `wrangler` 加进 devDependencies 以固定版本 |
