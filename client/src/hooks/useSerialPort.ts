@@ -178,7 +178,126 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 }
 
 /** 传感器协议模式 */
-export type SensorProtocol = '16x16' | '32x32' | 'custom_haocun' | 'custom_jizhi' | 'custom_lingxin' | 'custom_xingchen';
+// ===== 自适应 16×16 协议（帧格式 + 波特率自动识别）=====
+// 帧头(4B) + 包号(1B) + 设备类型(1B) 之后的结构有 5 种组合：
+//   单包族  H 01 dev + 256数据                       → 262B
+//           H 01 dev + 256数据 + 四元数16 + 九轴36   → 314B
+//   双包族  H 01 dev +128 + H 02 dev +128（传感器共268B）
+//           之上可选携带 四元数16 和/或 九轴36：
+//           +16 → 284B    +36 → 304B    +16+36 → 320B
+const AD_PKT_DATA_LEN = 128;
+const AD_SINGLE_SENSOR_END = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + SENSOR_TOTAL_16; // 262
+const AD_DUAL_PKT02_OFFSET = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + AD_PKT_DATA_LEN; // 134
+const AD_DUAL_SENSOR_END = AD_DUAL_PKT02_OFFSET * 2;                                   // 268
+const AD_QUAT_LEN = 16;
+const AD_NINE_AXIS_LEN = 36;
+/** 单包族的合法帧长 */
+const AD_SINGLE_FRAME_LENS = [262, 314];
+/** 双包族的合法帧长 */
+const AD_DUAL_FRAME_LENS = [284, 304, 320];
+const AD_MIN_FRAME_LEN = 262;
+const AD_MAX_FRAME_LEN = 320;
+/** 自适应产品的波特率候选（自动探测顺序） */
+export const ADAPTIVE_BAUD_CANDIDATES = [921600, 1000000, 5000000, 6000000];
+/** 单个波特率的探测窗口（毫秒） */
+const AD_PROBE_WINDOW_MS = 700;
+/** 自适应协议使用更大的读缓冲，避免 5M/6M 波特率下丢包 */
+const AD_BUFFER_SIZE = 65536;
+
+export type SensorProtocol =
+  | '16x16'
+  | '32x32'
+  | 'custom_haocun'
+  | 'custom_jizhi'
+  | 'custom_lingxin'
+  | 'custom_xingchen'
+  | 'adaptive_16x16';
+
+/** buf 在 offset 处是否是「帧起始」：帧头 + PKT01 + 设备类型 */
+function isAdaptiveFrameStartAt(buf: Uint8Array, offset: number): boolean {
+  if (offset < 0 || offset + FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD > buf.length) return false;
+  return (
+    buf[offset] === 0xAA &&
+    buf[offset + 1] === 0x55 &&
+    buf[offset + 2] === 0x03 &&
+    buf[offset + 3] === 0x99 &&
+    buf[offset + 4] === PKT01_TYPE
+  );
+}
+
+/** buf 在 offset 处是否是双包族的 PKT02 帧头 */
+function isAdaptivePkt02At(buf: Uint8Array, offset: number): boolean {
+  if (offset + FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD > buf.length) return false;
+  return (
+    buf[offset] === 0xAA &&
+    buf[offset + 1] === 0x55 &&
+    buf[offset + 2] === 0x03 &&
+    buf[offset + 3] === 0x99 &&
+    buf[offset + 4] === PKT02_TYPE
+  );
+}
+
+/**
+ * 识别 buf 开头一帧的结构与总长。
+ * 只有在「下一帧起始」确实出现在某个候选长度处时才判定成功，避免把传感器数据里的
+ * 偶然字节当成帧头；返回 null 表示数据不足，需要继续等待。
+ */
+function detectAdaptiveFrame(buf: Uint8Array): { total: number; isDual: boolean } | null {
+  if (buf.length < AD_MIN_FRAME_LEN) return null;
+  const isDual = isAdaptivePkt02At(buf, AD_DUAL_PKT02_OFFSET);
+  const candidates = isDual ? AD_DUAL_FRAME_LENS : AD_SINGLE_FRAME_LENS;
+  for (const total of candidates) {
+    if (buf.length >= total && isAdaptiveFrameStartAt(buf, total)) return { total, isDual };
+  }
+  return null;
+}
+
+/** 在给定波特率下采样一个时间窗，判断能否读出至少两帧自洽的自适应帧 */
+async function probeAdaptiveBaudRate(port: SerialPort, windowMs: number): Promise<boolean> {
+  const reader = port.readable?.getReader();
+  if (!reader) return false;
+
+  let buf = new Uint8Array(0);
+  let hits = 0;
+  const deadline = Date.now() + windowMs;
+
+  try {
+    while (Date.now() < deadline) {
+      const remain = deadline - Date.now();
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), remain)),
+      ]);
+      if (chunk === null || chunk.done || !chunk.value || chunk.value.length === 0) continue;
+
+      const merged = new Uint8Array(buf.length + chunk.value.length);
+      merged.set(buf);
+      merged.set(chunk.value, buf.length);
+      buf = merged;
+
+      for (;;) {
+        const decided = detectAdaptiveFrame(buf);
+        if (!decided) break;
+        hits += 1;
+        buf = buf.slice(decided.total);
+        if (hits >= 2) return true;
+      }
+
+      if (buf.length > 8192) buf = buf.slice(buf.length - 1024);
+    }
+  } catch {
+    // 读取异常按探测失败处理
+  } finally {
+    try { await reader.cancel(); } catch { /* ignore */ }
+    try { reader.releaseLock(); } catch { /* ignore */ }
+  }
+  return hits >= 2;
+}
+
+/** 静默关闭串口（忽略未打开 / 流未释放等异常） */
+async function closePortQuietly(port: SerialPort): Promise<void> {
+  try { await port.close(); } catch { /* ignore */ }
+}
 
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
@@ -277,6 +396,12 @@ export function useSerialPort(options: UseSerialPortOptions) {
   
   // 已识别的设备类型（避免重复触发回调）
   const lastDeviceIdRef = useRef<number | null>(null);
+
+  // 自适应协议：已锁定的帧长（识别成功后走快路径；失步时重置为 null 重新识别）
+  const adaptiveFrameLenRef = useRef<number | null>(null);
+
+  // 实际生效的波特率（自适应产品可能是自动探测出来的值）
+  const effectiveBaudRef = useRef<number>(role === 'force' ? DEFAULT_BAUD_FORCE : DEFAULT_BAUD_SENSOR);
   
   // 性能优化：累计字节数和最新数据到 Ref，避免高频 setState
   const pendingBytesRef = useRef(0);
@@ -605,6 +730,68 @@ export function useSerialPort(options: UseSerialPortOptions) {
     pendingLastDataRef.current = `LX[278B] ${Array.from(sensorData.slice(0, 8)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}...`;
   }, []);
 
+  /**
+   * 自适应 16×16：从已切好的完整帧中拆出 256 字节传感器数据，
+   * 并按实际附加负载长度解析 四元数(16B) / 九轴原始(36B)。
+   */
+  const processAdaptiveFrame = useCallback((frame: Uint8Array, isDual: boolean) => {
+    const sensorEnd = isDual ? AD_DUAL_SENSOR_END : AD_SINGLE_SENSOR_END;
+    const dataStart = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD;
+    const fullData = new Uint8Array(SENSOR_TOTAL_16);
+
+    if (isDual) {
+      // PKT01 的 128B 打头，PKT02 的 128B 接在后
+      fullData.set(frame.subarray(dataStart, dataStart + AD_PKT_DATA_LEN), 0);
+      const pkt02DataStart = AD_DUAL_PKT02_OFFSET + dataStart;
+      fullData.set(frame.subarray(pkt02DataStart, pkt02DataStart + AD_PKT_DATA_LEN), AD_PKT_DATA_LEN);
+    } else {
+      fullData.set(frame.subarray(dataStart, sensorEnd), 0);
+    }
+
+    // 附加负载：0 / 四元数16 / 九轴36 / 四元数16+九轴36
+    const extraLen = frame.length - sensorEnd;
+    let quatData: Uint8Array | null = null;
+    let nineAxisData: Uint8Array | null = null;
+    if (extraLen === AD_QUAT_LEN) {
+      quatData = frame.slice(sensorEnd, sensorEnd + AD_QUAT_LEN);
+    } else if (extraLen === AD_NINE_AXIS_LEN) {
+      nineAxisData = frame.slice(sensorEnd, sensorEnd + AD_NINE_AXIS_LEN);
+    } else if (extraLen === AD_QUAT_LEN + AD_NINE_AXIS_LEN) {
+      quatData = frame.slice(sensorEnd, sensorEnd + AD_QUAT_LEN);
+      nineAxisData = frame.slice(sensorEnd + AD_QUAT_LEN, frame.length);
+    }
+
+    const matrix = buildMatrix(fullData, 16, 16);
+    const adcValues = Array.from(fullData);
+
+    getSensorDataStreamV2().updateSensorData(matrix, adcValues, fullData);
+
+    if (onSensorMatrixRef.current) {
+      onSensorMatrixRef.current(matrix, 16, 16);
+    }
+    if (onSensorDataRef.current) {
+      onSensorDataRef.current(adcValues);
+    }
+
+    if (onDataRef.current) {
+      const hex = (arr: Uint8Array) =>
+        Array.from(arr).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      const parts = [
+        `AD[${frame.length}B ${isDual ? '双包' : '单包'}]`,
+        `${hex(fullData.subarray(0, 32))}...`,
+      ];
+      if (quatData) parts.push(`quat: ${hex(quatData)}`);
+      if (nineAxisData) parts.push(`9axis: ${hex(nineAxisData.subarray(0, 12))}...`);
+      onDataRef.current(parts.join(' | '));
+    }
+
+    // 性能优化：只写 Ref，不触发 React 重渲染
+    pendingBytesRef.current += frame.length;
+    pendingLastDataRef.current = `AD[${frame.length}B] ${Array.from(fullData.subarray(0, 8))
+      .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+      .join(' ')}...`;
+  }, []);
+
   // 处理传感器二进制缓冲区：根据协议模式解析帧数据
   const processSensorBuffer = useCallback(() => {
     let buf = binaryBufRef.current;
@@ -757,6 +944,54 @@ export function useSerialPort(options: UseSerialPortOptions) {
         } else {
           buf = buf.slice(1);
         }
+      } else if (protocol === 'adaptive_16x16') {
+        // ===== 自适应 16×16：帧长与结构自动识别 =====
+        // 只在 PKT01 位置开帧；若当前是半截的 PKT02（连接时正好落在包中间），跳 1 字节重新同步
+        if (buf[FRAME_HEADER_LEN] === PKT02_TYPE) {
+          adaptiveFrameLenRef.current = null;
+          buf = buf.slice(1);
+          continue;
+        }
+
+        let total = -1;
+        let isDual = false;
+
+        // 快路径：已识别过帧长且下一帧起始就在该位置，直接切帧
+        const knownLen = adaptiveFrameLenRef.current;
+        if (knownLen !== null && buf.length >= knownLen && isAdaptiveFrameStartAt(buf, knownLen)) {
+          total = knownLen;
+          isDual = knownLen >= AD_DUAL_FRAME_LENS[0];
+        } else {
+          const decided = detectAdaptiveFrame(buf);
+          if (decided) {
+            total = decided.total;
+            isDual = decided.isDual;
+            adaptiveFrameLenRef.current = total;
+          }
+        }
+
+        if (total < 0) {
+          // 数据还不足以切出一帧；若已超出最长可能的帧长说明失步，丢 1 字节重新同步
+          if (buf.length > AD_MAX_FRAME_LEN + FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD) {
+            adaptiveFrameLenRef.current = null;
+            buf = buf.slice(1);
+            continue;
+          }
+          binaryBufRef.current = buf;
+          return;
+        }
+
+        // 设备类型（帧头4B + 包号1B 之后的第 6 字节）
+        const adDeviceId = buf[FRAME_HEADER_LEN + 1];
+        if (adDeviceId !== lastDeviceIdRef.current && onDeviceTypeRef.current) {
+          const deviceType =
+            DEVICE_TYPE_MAP[adDeviceId] ?? `DEV_${adDeviceId.toString(16).toUpperCase().padStart(2, '0')}`;
+          lastDeviceIdRef.current = adDeviceId;
+          onDeviceTypeRef.current(deviceType, adDeviceId);
+        }
+
+        processAdaptiveFrame(buf.slice(0, total), isDual);
+        buf = buf.slice(total);
       } else {
         if (buf.length < FRAME_HEADER_LEN + 1) {
           binaryBufRef.current = buf;
@@ -805,7 +1040,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     }
 
     binaryBufRef.current = buf;
-  }, [processSensorPackets, processXingchenPackets, process32x32Frame, processHaocunFrame, processJizhiFrame, processLingxinFrame]);
+  }, [processSensorPackets, processXingchenPackets, process32x32Frame, processHaocunFrame, processJizhiFrame, processLingxinFrame, processAdaptiveFrame]);
 
   // 读取循环（二进制模式）
   const startReadLoop = useCallback(async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
@@ -872,7 +1107,47 @@ export function useSerialPort(options: UseSerialPortOptions) {
       const port = await navigator.serial.requestPort();
       portRef.current = port;
 
-      await port.open({ baudRate, bufferSize: 16384 });
+      // 自适应产品 + 波特率传 0 ⇒ 先自动探测，再用探测到的波特率正式打开
+      const protocolNow = sensorProtocolRef.current;
+      const isAdaptive = role === 'sensor' && protocolNow === 'adaptive_16x16';
+      let effectiveBaud = baudRate;
+
+      if (isAdaptive && baudRate <= 0) {
+        let detected: number | null = null;
+        for (const candidate of ADAPTIVE_BAUD_CANDIDATES) {
+          try {
+            await port.open({ baudRate: candidate, bufferSize: AD_BUFFER_SIZE });
+          } catch {
+            // 系统 / 驱动不接受该波特率，跳过
+            continue;
+          }
+          const ok = await probeAdaptiveBaudRate(port, AD_PROBE_WINDOW_MS);
+          await closePortQuietly(port);
+          if (ok) {
+            detected = candidate;
+            break;
+          }
+          // 给驱动一点复位时间再试下一个
+          await new Promise(resolve => setTimeout(resolve, 80));
+        }
+
+        if (detected === null) {
+          setState(prev => ({
+            ...prev,
+            status: 'error',
+            errorMsg: `自动探测波特率失败（已尝试 ${ADAPTIVE_BAUD_CANDIDATES.join(' / ')}），请手动选择波特率后重试`,
+          }));
+          return false;
+        }
+        effectiveBaud = detected;
+      }
+
+      await port.open({
+        baudRate: effectiveBaud,
+        bufferSize: isAdaptive ? AD_BUFFER_SIZE : 16384,
+      });
+      effectiveBaudRef.current = effectiveBaud;
+      adaptiveFrameLenRef.current = null;
 
       const portInfo = `${port.getInfo().usbProductId ?? 'Unknown'}`;
 
@@ -903,7 +1178,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
         ...prev,
         status: 'connected',
         portInfo,
-        baudRate,
+        baudRate: effectiveBaud,
         bytesReceived: 0,
       }));
 
@@ -936,6 +1211,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
   const disconnect = useCallback(async () => {
     readLoopRef.current = false;
     lastDeviceIdRef.current = null; // 重置设备类型缓存
+    adaptiveFrameLenRef.current = null; // 重置自适应帧长锁定
     
     // 清理状态更新定时器
     if (stateUpdateTimerRef.current) {
@@ -1005,5 +1281,7 @@ export function useSerialPort(options: UseSerialPortOptions) {
     connect,
     disconnect,
     sendCommand,
+    /** 实际生效的波特率（自适应产品可能由自动探测得出，state 更新前也可读取） */
+    getBaudRate: () => effectiveBaudRef.current,
   };
 }

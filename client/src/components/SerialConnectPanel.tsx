@@ -22,7 +22,7 @@ interface SerialConnectPanelProps {
   deviceType?: string | null;
 }
 
-const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600, 1000000, 2000000];
+const COMMON_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 256000, 460800, 921600, 1000000, 2000000, 5000000, 6000000];
 
 // 传感器产品类型
 export type SensorProduct = string;
@@ -108,6 +108,16 @@ const SENSOR_PRODUCTS: SensorProductConfig[] = [
     matrixSize: 14,
     matrixCols: 20,
     protocol: 'custom_xingchen',
+  },
+  {
+    label: '自适应 16×16',
+    sublabel: 'AD-16×16',
+    // 0 = 自动探测波特率
+    defaultBaud: 0,
+    quickBauds: [0, 921600, 1000000, 5000000, 6000000],
+    hint: '16×16点阵，自动识别 5 种帧格式（262/284/304/314/320B，含四元数16B与九轴36B任意组合）与波特率',
+    matrixSize: 16,
+    protocol: 'adaptive_16x16',
   },
 ];
 
@@ -218,7 +228,9 @@ export default function SerialConnectPanel({
 
   const handleConnect = useCallback(async () => {
     const baud = parseInt(baudInput, 10);
-    if (isNaN(baud) || baud <= 0) return;
+    // 0 是「自动探测波特率」的哨兵值，仅自适应产品支持
+    const isAutoBaud = baud === 0;
+    if (isNaN(baud) || (baud <= 0 && !isAutoBaud)) return;
     // force role 传递设备模式，sensor role 传递传感器产品类型
     const ok = await onConnect(
       baud,
@@ -430,9 +442,9 @@ export default function SerialConnectPanel({
                     border: '1px solid oklch(0.25 0.03 265)',
                     color: 'oklch(0.82 0.01 220)',
                   }}
-                  placeholder={defaultBaud.toString()}
-                  min={300}
-                  max={4000000}
+                  placeholder={defaultBaud === 0 ? '自动探测' : defaultBaud.toString()}
+                  min={0}
+                  max={12000000}
                 />
               </div>
               <div className="relative">
@@ -489,7 +501,7 @@ export default function SerialConnectPanel({
                       boxShadow: isActive ? `0 0 6px ${cfg.accentColor.replace(')', ' / 0.15)')}` : 'none',
                     }}
                   >
-                    {b >= 1000 ? `${b / 1000}k` : b}
+                    {b === 0 ? '自动' : b >= 1000 ? `${b / 1000}k` : b}
                   </button>
                 );
               })}

@@ -247,7 +247,8 @@ export default function Home() {
     const ok = await sensorSerial.connect(baudRate);
     if (ok) {
       const productLabel = sensorProduct ? sensorProduct.label : '传感器';
-      toast.success(`${productLabel}已连接，波特率 ${baudRate.toLocaleString()}`);
+      // 自适应产品可能自动探测出波特率，用实际生效值而不是传入值
+      toast.success(`${productLabel}已连接，波特率 ${sensorSerial.getBaudRate().toLocaleString()}`);
     }
     return ok;
   }, [sensorSerial]);
