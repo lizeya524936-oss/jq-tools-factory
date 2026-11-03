@@ -2,8 +2,8 @@
 
 > **面向 AI Agent 的项目级规则文件。** 本文件由 DeepSeek Harness（DSH）在每次会话自动加载。
 >
-> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（已对齐 v1.9.38）。
-> - **最后同步**：2026-11-02 | **对应代码版本**：`v1.9.38`
+> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（已对齐 v1.9.39）。
+> - **最后同步**：2026-11-03 | **对应代码版本**：`v1.9.39`
 > - **维护约定**：规则变更直接改本文件；需要保留出处的历史决策放到 `docs/agent-memory/`。
 
 ---
@@ -87,7 +87,9 @@ pnpm.ps1 cannot be loaded because running scripts is disabled on this system.
 
 `wrangler` 的入口会 `spawn` 子进程（wrangler.js → `wrangler-dist/cli.js`；后者又需要 esbuild 常驻服务进程），在仅允许写工作区的沙箱模式下必然报 **`spawn EPERM`**。绕过包装器直接跑 `wrangler-dist/cli.js` 仍然失败（esbuild 层）。
 
-**结论**：执行 `deploy:test` / `deploy:prod` 需要**提升沙箱权限**（`danger-full-access`）。遇到 EPERM 时向用户请求提权，不要反复换写法重试。
+**结论**：执行 `deploy:test` / `deploy:prod` / `build` 需要 `danger-full-access`。
+
+**本机当前状态（2026-11-03）**：沙箱已设为 `danger-full-access` 且**审批提示已关闭**，上述命令可**直接执行**（`build` 与 `deploy:test` 均已实测通过）。⚠️ 因为审批被禁用，**不要再设置 `sandbox_permissions` 请求提权 —— 会被直接拒绝**。若将来沙箱被收窄回 `workspace-write` 并再次出现 `spawn EPERM`，只能请用户自行调整设置。
 
 ### 2.3 `git push` 有两个必须处理的问题（已实测）
 
@@ -229,7 +231,7 @@ import { getSensorDataStreamV2 }   from '@/lib/sensorDataStreamV2';   // 传感�
 - 灵巧手控制协议实现在 `client/src/lib/omniHandProtocol.ts`。
 - 另有一台 **Arduino 下压机**（9600，ASCII，发 `1` 触发下压），由 `PressController.tsx` 管理，与上面两个不是同一串口。
 
-### 5.2 传感器产品（role = `sensor`，当前 7 种）
+### 5.2 传感器产品（role = `sensor`，当前 8 种）
 
 真源：`client/src/components/SerialConnectPanel.tsx` 的 `SENSOR_PRODUCTS`；协议分支在 `client/src/hooks/useSerialPort.ts` 的 `SensorProtocol`。
 
@@ -242,6 +244,7 @@ import { getSensorDataStreamV2 }   from '@/lib/sensorDataStreamV2';   // 传感�
 | 极智动量小黑采集板 | JZ-16×16 | `custom_jizhi` | 16×16 | 1000000 | 单帧 **262B**（4 帧头 + `01` + id + 256 数据），300Hz | 第 6 字节 |
 | 灵心巧手 16×16 | LX-16×16 | `custom_lingxin` | 16×16 | 921600 | 单帧 **278B**（4 帧头 + `01` + 左右手 + 256 数据 + 16 四元数） | 第 6 字节（`0x01`LH/`0x02`RH） |
 | 星尘科技 20×14 | XC-20×14 | `custom_xingchen` | **14 行 × 20 列**（280点，**非正方形**） | 921600 | 双包：PKT01 **146B**（4+`01`+id+140数据）+ PKT02 **162B**（4+`02`+id+140数据+16四元数），拼 280B | PKT01 第 6 字节 |
+| 自适应 16×16 | AD-16×16 | `adaptive_16x16` | 16×16 | **自动探测** 921600/1000000/5000000/6000000 | **帧长自适应**：单包 262 / 314 B，或双包 284 / 304 / 320 B（可选携带四元数16B、九轴36B 任意组合） | PKT01 第 6 字节 |
 
 ⚠️ **32×32 的帧长是 1028B，不是 262B**（262B 是极智动量的）——两者都是"4 字节帧头 + 一大段数据"，极易混淆。
 
@@ -264,7 +267,7 @@ import { getSensorDataStreamV2 }   from '@/lib/sensorDataStreamV2';   // 传感�
 
 | id | 名称 | 可见产品 |
 |----|------|---------|
-| `jq` | JQ 工业 | 16×16 触觉传感器、32×32 高密度传感器、机器人足底 16×16 |
+| `jq` | JQ 工业 | 16×16 触觉传感器、32×32 高密度传感器、机器人足底 16×16、自适应 16×16 |
 | `haocun` | 灏存科技 | 灏存科技定制 |
 | `jizhi` | 极智动量 | 极智动量小黑采集板 |
 | `lingxin` | 灵心巧手 | 灵心巧手 16×16 |
@@ -300,7 +303,8 @@ useSerialPort('force', callbacks, options);
 
 - `role` 只能是 `'force' | 'sensor'`；每个 role 在 `Home.tsx` 里**只允许创建一个实例**。
 - 回调全部走 ref 代理。
-- 帧解析共 **6 条路径**：`32x32` / `custom_haocun` / `custom_jizhi` / `custom_lingxin` / `custom_xingchen` + `else` 兜底（16×16 双包）。**不存在**"单包动态长度"分支（旧文档虚构的）。
+- 帧解析共 **7 条路径**：`32x32` / `custom_haocun` / `custom_jizhi` / `custom_lingxin` / `custom_xingchen` / `adaptive_16x16` + `else` 兜底（16×16 双包）。**不存在**"单包动态长度"分支（旧文档虚构的）。
+- `adaptive_16x16` 是唯一**帧长不固定**的协议：先靠 offset 134 是否有合法 PKT02 判定单包/双包，再在候选帧长处验证「下一帧起始」反推总长；识别成功后锁定帧长走快路径，失步丢 1 字节重同步。波特率传 `0` 时先探测（见 `ADAPTIVE_BAUD_CANDIDATES`），传具体值则跳过探测。
 
 ### 5.7 Hill 拟合引擎能力（`client/src/lib/hillFit.ts`，599 行）
 
@@ -357,7 +361,7 @@ useSerialPort('force', callbacks, options);
 |------|------|
 | `pages/ConsistencyPage.tsx` | **1167** ⚠ 全项目最大（下压机循环 + CSV 解析 + 拖拽 + 图表编排全塞在一起） |
 | `components/DataChart.tsx` | **1085** ⚠ 散点图 + Hill 面板 + SUM/AVG + 降采样 |
-| `hooks/useSerialPort.ts` | **1009** ⚠ 6 条协议分支 + 32×32 映射表 |
+| `hooks/useSerialPort.ts` | **1009** ⚠ 7 条协议分支 + 32×32 映射表 |
 | `pages/DurabilityPage.tsx` | **972** |
 | `components/SensorMatrix.tsx` | **831** |
 | `components/ConsistencyAnalysis.tsx` | **735** |
@@ -383,7 +387,7 @@ useSerialPort('force', callbacks, options);
 |---------|------|
 | **Agent 规则**（本文件） | `AGENTS.md` |
 | 上一任 agent 的原始记忆 | `docs/agent-memory/` |
-| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（**已对齐 v1.9.38，全文不引用行号**） |
+| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（**已对齐 v1.9.39，全文不引用行号**） |
 | 相对约束文档的**代码漂移审计** | `docs/agent-handoff/codebase-drift-audit.md` |
 | 版本变动全部历史 | `README.md` 的「版本变动记录」（倒序） |
 | 版本号 + 构建日期 | `client/src/version.ts` |
@@ -393,10 +397,13 @@ useSerialPort('force', callbacks, options);
 
 ---
 
-## 10. 当前状态（交接快照 · 2026-11-02）
+## 10. 当前状态（交接快照 · 2026-11-03）
 
-- **线上版本**：`v1.9.38`（`BUILD_DATE` = 2026-10-10）。
-- **最近完成**：SUM/AVG 切换联动 CV 分析（v1.9.38）、图表区拖拽 CSV 上传（v1.9.37）、机器人足底传感器产品（v1.9.36）。
+- **代码版本**：`v1.9.39`（`BUILD_DATE` = 2026-11-02）。
+- **部署状态**：`v1.9.39` **只在测试环境**上线（source commit `d327302`）；**正式环境仍是 `v1.9.38`**。
+  原因：用户要先在测试环境接真机验证自适应 16×16，暂不推正式。
+- **最近完成**：自适应 16×16 产品（v1.9.39，帧格式 + 波特率双自适应）、SUM/AVG 切换联动 CV（v1.9.38）、图表区拖拽 CSV（v1.9.37）、机器人足底产品（v1.9.36）。
+- **下一步待办**：等用户在测试环境验证自适应产品通过后，再执行 `deploy:prod`。
 - **Git**：分支 `master`，本地与远端保持同步。**最新提交请看 `git log -1`**（此处不写死 SHA，避免过期）。
 
 ### 10.1 上一轮未竟事项：「非线性度」指标
