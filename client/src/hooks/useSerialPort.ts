@@ -408,6 +408,8 @@ export function useSerialPort(options: UseSerialPortOptions) {
   // 自适应协议：失步诊断（连续失败达阈值时打印一次线索，便于排查尚未枚举的帧格式）
   const adaptiveDesyncCountRef = useRef(0);
   const adaptiveDesyncWarnedRef = useRef(false);
+  // 自适应协议：帧结构异常提示只打印一次，避免逐帧刷屏
+  const adaptiveShapeWarnedRef = useRef(false);
 
   // 实际生效的波特率（自适应产品可能是自动探测出来的值）
   const effectiveBaudRef = useRef<number>(role === 'force' ? DEFAULT_BAUD_FORCE : DEFAULT_BAUD_SENSOR);
@@ -759,6 +761,21 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
     // 附加负载：0 / 四元数16 / 九轴36 / 四元数16+九轴36
     const extraLen = frame.length - sensorEnd;
+    // 结构自检：附加负载长度必须是 4 种合法值之一，否则说明单/双包判定或帧长错了
+    if (
+      extraLen !== 0 &&
+      extraLen !== AD_QUAT_LEN &&
+      extraLen !== AD_NINE_AXIS_LEN &&
+      extraLen !== AD_QUAT_LEN + AD_NINE_AXIS_LEN &&
+      !adaptiveShapeWarnedRef.current
+    ) {
+      adaptiveShapeWarnedRef.current = true;
+      console.warn(
+        `[useSerialPort] 自适应帧结构异常：总长 ${frame.length}B，传感器结束 ${sensorEnd}B，` +
+        `附加负载 ${extraLen}B（应为 0/16/36/52），当前判定为${isDual ? '双包' : '单包'}。` +
+        `矩阵可能混入四元数/九轴字节。`,
+      );
+    }
     let quatData: Uint8Array | null = null;
     let nineAxisData: Uint8Array | null = null;
     if (extraLen === AD_QUAT_LEN) {
@@ -968,9 +985,21 @@ export function useSerialPort(options: UseSerialPortOptions) {
         // 快路径：已识别过帧长且下一帧起始就在该位置，直接切帧
         const knownLen = adaptiveFrameLenRef.current;
         if (knownLen !== null && buf.length >= knownLen && isAdaptiveFrameStartAt(buf, knownLen)) {
-          total = knownLen;
-          isDual = knownLen >= AD_DUAL_FRAME_LENS[0];
-        } else {
+          // ⚠️ 单/双包必须由「offset 134 是否真有 PKT02 帧头」判定，
+          // 不能用 knownLen 与双包族最小帧长比大小 —— 单包 278/298/314 都大于双包最小 268，
+          // 会被误判成双包，从而把四元数/九轴字节算进传感器矩阵。
+          const dualByHeader = isAdaptivePkt02At(buf, AD_DUAL_PKT02_OFFSET);
+          const validLens = dualByHeader ? AD_DUAL_FRAME_LENS : AD_SINGLE_FRAME_LENS;
+          if (validLens.includes(knownLen)) {
+            total = knownLen;
+            isDual = dualByHeader;
+          } else {
+            // 帧长与帧头结构矛盾 ⇒ 之前锁错了，重新识别
+            adaptiveFrameLenRef.current = null;
+          }
+        }
+
+        if (total < 0) {
           const decided = detectAdaptiveFrame(buf);
           if (decided) {
             total = decided.total;
