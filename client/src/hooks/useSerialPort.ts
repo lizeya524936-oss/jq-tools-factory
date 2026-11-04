@@ -179,22 +179,28 @@ function buildMatrix32x32(data: Uint8Array): number[][] {
 
 /** 传感器协议模式 */
 // ===== 自适应 16×16 协议（帧格式 + 波特率自动识别）=====
-// 帧头(4B) + 包号(1B) + 设备类型(1B) 之后的结构有 5 种组合：
-//   单包族  H 01 dev + 256数据                       → 262B
-//           H 01 dev + 256数据 + 四元数16 + 九轴36   → 314B
-//   双包族  H 01 dev +128 + H 02 dev +128（传感器共268B）
-//           之上可选携带 四元数16 和/或 九轴36：
-//           +16 → 284B    +36 → 304B    +16+36 → 320B
+// 帧头(4B) + 包号(1B) + 设备类型(1B) 之后，可选附加 四元数(16B) 和/或 九轴原始(36B)。
+// 单包族（一次发完 256 点）：传感器结束在 262
+//   无附加           → 262B
+//   +四元数16        → 278B
+//   +九轴36          → 298B
+//   +四元数16+九轴36 → 314B
+// 双包族（H 01 dev+128 → H 02 dev+128）：传感器结束在 268
+//   无附加           → 268B
+//   +四元数16        → 284B
+//   +九轴36          → 304B
+//   +四元数16+九轴36 → 320B
+// 也就是「0/16/36/52 四种附加负载 × 单/双包」= 8 种，枚举即完整。
 const AD_PKT_DATA_LEN = 128;
 const AD_SINGLE_SENSOR_END = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + SENSOR_TOTAL_16; // 262
 const AD_DUAL_PKT02_OFFSET = FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD + AD_PKT_DATA_LEN; // 134
 const AD_DUAL_SENSOR_END = AD_DUAL_PKT02_OFFSET * 2;                                   // 268
 const AD_QUAT_LEN = 16;
 const AD_NINE_AXIS_LEN = 36;
-/** 单包族的合法帧长 */
-const AD_SINGLE_FRAME_LENS = [262, 314];
-/** 双包族的合法帧长 */
-const AD_DUAL_FRAME_LENS = [284, 304, 320];
+/** 单包族的合法帧长（附加负载 0 / 16 / 36 / 52） */
+const AD_SINGLE_FRAME_LENS = [262, 278, 298, 314];
+/** 双包族的合法帧长（附加负载 0 / 16 / 36 / 52） */
+const AD_DUAL_FRAME_LENS = [268, 284, 304, 320];
 const AD_MIN_FRAME_LEN = 262;
 const AD_MAX_FRAME_LEN = 320;
 /** 自适应产品的波特率候选（自动探测顺序） */
@@ -399,6 +405,9 @@ export function useSerialPort(options: UseSerialPortOptions) {
 
   // 自适应协议：已锁定的帧长（识别成功后走快路径；失步时重置为 null 重新识别）
   const adaptiveFrameLenRef = useRef<number | null>(null);
+  // 自适应协议：失步诊断（连续失败达阈值时打印一次线索，便于排查尚未枚举的帧格式）
+  const adaptiveDesyncCountRef = useRef(0);
+  const adaptiveDesyncWarnedRef = useRef(false);
 
   // 实际生效的波特率（自适应产品可能是自动探测出来的值）
   const effectiveBaudRef = useRef<number>(role === 'force' ? DEFAULT_BAUD_FORCE : DEFAULT_BAUD_SENSOR);
@@ -974,12 +983,31 @@ export function useSerialPort(options: UseSerialPortOptions) {
           // 数据还不足以切出一帧；若已超出最长可能的帧长说明失步，丢 1 字节重新同步
           if (buf.length > AD_MAX_FRAME_LEN + FRAME_HEADER_LEN + PKT_HEADER_OVERHEAD) {
             adaptiveFrameLenRef.current = null;
+            adaptiveDesyncCountRef.current += 1;
+
+            // 连续失步达阈值时打印一次原始字节线索，便于确认设备真实帧格式
+            if (adaptiveDesyncCountRef.current >= 60 && !adaptiveDesyncWarnedRef.current) {
+              adaptiveDesyncWarnedRef.current = true;
+              const preview = Array.from(buf.slice(0, 64))
+                .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+                .join(' ');
+              const candidates = isDual ? AD_DUAL_FRAME_LENS : AD_SINGLE_FRAME_LENS;
+              console.warn(
+                `[useSerialPort] 自适应 16×16 无法识别帧格式：已连续失步 ${adaptiveDesyncCountRef.current} 次。` +
+                `判定为${isDual ? '双包' : '单包'}族，候选帧长 ${candidates.join(' / ')}（B）。` +
+                `缓冲区 ${buf.length}B，前 64B: ${preview}`,
+              );
+            }
+
             buf = buf.slice(1);
             continue;
           }
           binaryBufRef.current = buf;
           return;
         }
+
+        adaptiveDesyncCountRef.current = 0;
+        adaptiveDesyncWarnedRef.current = false;
 
         // 设备类型（帧头4B + 包号1B 之后的第 6 字节）
         const adDeviceId = buf[FRAME_HEADER_LEN + 1];
@@ -1115,14 +1143,20 @@ export function useSerialPort(options: UseSerialPortOptions) {
       if (isAdaptive && baudRate <= 0) {
         let detected: number | null = null;
         for (const candidate of ADAPTIVE_BAUD_CANDIDATES) {
+          // 确保上一轮已彻底关闭，否则 open 会抛 "port already open" 并静默跳过后续候选
+          await closePortQuietly(port);
           try {
             await port.open({ baudRate: candidate, bufferSize: AD_BUFFER_SIZE });
-          } catch {
-            // 系统 / 驱动不接受该波特率，跳过
+          } catch (openErr) {
+            console.warn(`[useSerialPort] 波特率 ${candidate} 打开失败，跳过`, openErr);
             continue;
           }
-          const ok = await probeAdaptiveBaudRate(port, AD_PROBE_WINDOW_MS);
-          await closePortQuietly(port);
+          let ok = false;
+          try {
+            ok = await probeAdaptiveBaudRate(port, AD_PROBE_WINDOW_MS);
+          } finally {
+            await closePortQuietly(port);
+          }
           if (ok) {
             detected = candidate;
             break;
