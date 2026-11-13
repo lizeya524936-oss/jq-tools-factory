@@ -793,17 +793,17 @@ export default function ConsistencyPage() {
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
       <div className="flex flex-col gap-3" style={{ width: '520px', flexShrink: 0 }}>
         {/* 传感器矩阵 - 放大区域 */}
-        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
+        <div className="rounded" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
           {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
           {handSide && (
-            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}>
               <button
                 onClick={() => { if (!useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.25)' : 'transparent',
-                  border: useHandLayout ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid transparent',
-                  color: useHandLayout ? 'oklch(0.80 0.15 265)' : 'oklch(0.45 0.02 240)',
+                  background: useHandLayout ? 'color-mix(in srgb, var(--jk-primary) 25%, transparent)' : 'transparent',
+                  border: useHandLayout ? '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)' : '1px solid transparent',
+                  color: useHandLayout ? 'var(--jk-primary)' : 'var(--jk-text-low)',
                 }}
               >
                 <Hand size={16} />
@@ -813,9 +813,9 @@ export default function ConsistencyPage() {
                 onClick={() => { if (useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: !useHandLayout ? 'oklch(0.72 0.20 145 / 0.25)' : 'transparent',
-                  border: !useHandLayout ? '1px solid oklch(0.72 0.20 145 / 0.5)' : '1px solid transparent',
-                  color: !useHandLayout ? 'oklch(0.82 0.15 145)' : 'oklch(0.45 0.02 240)',
+                  background: !useHandLayout ? 'color-mix(in srgb, var(--jk-ok) 25%, transparent)' : 'transparent',
+                  border: !useHandLayout ? '1px solid color-mix(in srgb, var(--jk-ok) 50%, transparent)' : '1px solid transparent',
+                  color: !useHandLayout ? 'var(--jk-ok)' : 'var(--jk-text-low)',
                 }}
               >
                 <Grid3x3 size={16} />
@@ -863,17 +863,17 @@ export default function ConsistencyPage() {
                 background: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                  return allSelected ? 'color-mix(in srgb, var(--jk-danger) 30%, transparent)' : 'color-mix(in srgb, var(--jk-primary) 30%, transparent)';
                 })(),
                 border: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                  return allSelected ? '1px solid color-mix(in srgb, var(--jk-danger) 50%, transparent)' : '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)';
                 })(),
                 color: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                  return allSelected ? 'var(--jk-danger)' : 'var(--jk-primary)';
                 })(),
               }}
             >
@@ -888,9 +888,9 @@ export default function ConsistencyPage() {
             disabled={isRunning || records.length === 0}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
             style={{
-              background: 'oklch(0.72 0.20 145 / 0.15)',
-              border: '1px solid oklch(0.72 0.20 145 / 0.3)',
-              color: 'oklch(0.72 0.20 145)',
+              background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)',
+              color: 'var(--jk-ok)',
             }}
             title="导出CSV"
           >
@@ -902,9 +902,9 @@ export default function ConsistencyPage() {
             disabled={isRunning}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
             style={{
-              background: 'oklch(0.22 0.03 265)',
-              border: '1px solid oklch(0.30 0.03 265)',
-              color: 'oklch(0.60 0.02 240)',
+              background: 'var(--jk-s4)',
+              border: '1px solid var(--jk-line-3)',
+              color: 'var(--jk-text-high)',
             }}
           >
             <RefreshCw size={12} />
@@ -955,19 +955,19 @@ export default function ConsistencyPage() {
         {/* 工具说明条 */}
         <div
           className="flex items-center gap-3 px-3 py-1.5 rounded text-xs font-mono"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.70 0.18 200)', flexShrink: 0 }} />
-            <span style={{ color: 'oklch(0.70 0.18 200)' }}>手动垂直下压机</span>
-            <span style={{ color: 'oklch(0.40 0.02 240)' }}>——人工下压检测一致性</span>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--jk-accent)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--jk-accent)' }}>手动垂直下压机</span>
+            <span style={{ color: 'var(--jk-text-dim)' }}>——人工下压检测一致性</span>
           </div>
-          <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
-          <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法A：高频采样力学数据 + 多个压力传感点ADC求和</span>
+          <div className="w-px h-3" style={{ background: 'var(--jk-line-2)' }} />
+          <span style={{ color: 'var(--jk-text-mid)' }}>检测方法A：高频采样力学数据 + 多个压力传感点ADC求和</span>
           <div className="ml-auto flex items-center gap-2">
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{showHandLayout ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
-            <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>矩阵 {matrixRows}×{matrixCols}</span>
+            <span style={{ color: 'var(--jk-text-low)' }}>{showHandLayout ? handSelectedIndices.size : selectedSensors.length} 个传感器点已选</span>
+            <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
+            <span style={{ color: 'var(--jk-text-low)' }}>矩阵 {matrixRows}×{matrixCols}</span>
           </div>
         </div>
 
@@ -975,14 +975,14 @@ export default function ConsistencyPage() {
         <div className="flex items-center gap-1">
           <span className="px-3 py-1 rounded text-xs font-mono"
             style={{
-              background: 'oklch(0.58 0.22 265 / 0.2)',
-              border: '1px solid oklch(0.58 0.22 265 / 0.5)',
-              color: 'oklch(0.70 0.18 200)',
+              background: 'color-mix(in srgb, var(--jk-primary) 20%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)',
+              color: 'var(--jk-accent)',
             }}
           >
             综合视图
           </span>
-          <div className="ml-auto text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+          <div className="ml-auto text-xs font-mono" style={{ color: 'var(--jk-text-low)' }}>
             判定方法A：{params.forceMin}N-{params.forceMax}N，{params.checkPoints}个检查点，误差阈值±{params.threshold}%
           </div>
         </div>
@@ -990,7 +990,7 @@ export default function ConsistencyPage() {
         {/* 图表内容：压力数据可视化 + 压力 & ADC 综合曲线 */}
         <div className="flex-1 min-h-0 flex flex-col gap-3">
           {/* 压力数据可视化 */}
-          <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', padding: '12px', height: '220px' }}>
+          <div className="rounded" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', padding: '12px', height: '220px' }}>
             <PressureChart showControls={false} />
           </div>
 
@@ -998,15 +998,15 @@ export default function ConsistencyPage() {
           <div className="flex-1 min-h-0 flex flex-col">
             {/* 曲线标题栏 + 上传按钮 */}
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-accent)' }}>
                 压力 & ADC Sum 综合曲线
               </span>
               {uploadedSeries.length > 0 && (
                 <span className="px-2 py-0.5 rounded text-xs font-mono"
                   style={{
-                    background: 'oklch(0.72 0.20 145 / 0.15)',
-                    border: '1px solid oklch(0.72 0.20 145 / 0.3)',
-                    color: 'oklch(0.72 0.20 145)',
+                    background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)',
+                    color: 'var(--jk-ok)',
                     fontSize: '9px',
                   }}
                 >
@@ -1019,9 +1019,9 @@ export default function ConsistencyPage() {
                     onClick={handleClearAllSeries}
                     className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
                     style={{
-                      background: 'oklch(0.65 0.22 25 / 0.12)',
-                      border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                      color: 'oklch(0.65 0.22 25)',
+                      background: 'color-mix(in srgb, var(--jk-danger) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)',
+                      color: 'var(--jk-danger)',
                     }}
                   >
                     清除全部
@@ -1040,9 +1040,9 @@ export default function ConsistencyPage() {
                   disabled={uploadedSeries.length >= 20}
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all disabled:opacity-40"
                   style={{
-                    background: 'oklch(0.58 0.22 265 / 0.15)',
-                    border: '1px solid oklch(0.58 0.22 265 / 0.3)',
-                    color: 'oklch(0.70 0.18 200)',
+                    background: 'color-mix(in srgb, var(--jk-primary) 15%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--jk-primary) 30%, transparent)',
+                    color: 'var(--jk-accent)',
                   }}
                   title={uploadedSeries.length >= 20 ? '已达最大文件数量' : '上传 CSV 文件（最多20个）'}
                 >
@@ -1056,7 +1056,7 @@ export default function ConsistencyPage() {
             {(uploadedSeries.length > 0 || records.length > 0) && (
               <div
                 className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 mb-1 rounded overflow-y-auto"
-                style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)', maxHeight: '100px' }}
+                style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)', maxHeight: '100px' }}
               >
                 {/* Hill 拟合曲线 checkbox */}
                 <label
@@ -1068,12 +1068,12 @@ export default function ConsistencyPage() {
                     checked={showFitCurve}
                     onChange={() => setShowFitCurve(v => !v)}
                     className="w-3 h-3 rounded cursor-pointer"
-                    style={{ accentColor: '#f0a030' }}
+                    style={{ accentColor: 'var(--jk-fit)' }}
                   />
                   <svg width="14" height="10" style={{ flexShrink: 0 }}>
-                    <line x1="0" y1="5" x2="14" y2="5" stroke="#f0a030" strokeWidth="2" strokeDasharray="3 2" />
+                    <line x1="0" y1="5" x2="14" y2="5" stroke="var(--jk-fit)" strokeWidth="2" strokeDasharray="3 2" />
                   </svg>
-                  <span style={{ color: showFitCurve ? '#f0a030' : 'oklch(0.40 0.02 240)' }}>
+                  <span style={{ color: showFitCurve ? 'var(--jk-fit)' : 'var(--jk-text-dim)' }}>
                     Hill 拟合
                   </span>
                 </label>
@@ -1097,7 +1097,7 @@ export default function ConsistencyPage() {
                     />
                     <span
                       style={{
-                        color: s.visible ? s.color : 'oklch(0.40 0.02 240)',
+                        color: s.visible ? s.color : 'var(--jk-text-dim)',
                         textDecoration: s.visible ? 'none' : 'line-through',
                         maxWidth: '120px',
                         overflow: 'hidden',
@@ -1108,13 +1108,13 @@ export default function ConsistencyPage() {
                     >
                       {s.name}
                     </span>
-                    <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+                    <span style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
                       ({s.records.length})
                     </span>
                     <button
                       onClick={(e) => { e.preventDefault(); handleRemoveSeries(s.id); }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
-                      style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px', lineHeight: 1 }}
+                      style={{ color: 'var(--jk-danger)', fontSize: '10px', lineHeight: 1 }}
                       title="移除此文件"
                     >
                       ×
@@ -1146,9 +1146,9 @@ export default function ConsistencyPage() {
               {isDragOver && (
                 <div
                   className="absolute inset-0 z-50 flex items-center justify-center rounded pointer-events-none"
-                  style={{ background: 'oklch(0.70 0.18 200 / 0.12)', border: '2px dashed oklch(0.70 0.18 200 / 0.65)' }}
+                  style={{ background: 'color-mix(in srgb, var(--jk-accent) 12%, transparent)', border: '2px dashed color-mix(in srgb, var(--jk-accent) 65%, transparent)' }}
                 >
-                  <div className="text-sm font-mono px-4 py-2 rounded" style={{ color: 'oklch(0.88 0.14 200)', background: 'oklch(0.15 0.03 265 / 0.9)' }}>
+                  <div className="text-sm font-mono px-4 py-2 rounded" style={{ color: 'var(--jk-accent)', background: 'color-mix(in srgb, var(--jk-s1) 90%, transparent)' }}>
                     松开以导入 CSV 文件
                   </div>
                 </div>

@@ -75,10 +75,10 @@ function generatePressurePoints(maxPressure: number): number[] {
 
 /** CV 颜色 */
 function getCVColor(cv: number): string {
-  if (cv <= CV_THRESHOLDS.excellent) return 'oklch(0.72 0.20 145)';
+  if (cv <= CV_THRESHOLDS.excellent) return 'var(--jk-ok)';
   if (cv <= CV_THRESHOLDS.pass) return 'oklch(0.80 0.18 90)';
-  if (cv <= CV_THRESHOLDS.warning) return 'oklch(0.70 0.20 55)';
-  return 'oklch(0.65 0.22 25)';
+  if (cv <= CV_THRESHOLDS.warning) return 'var(--jk-warn)';
+  return 'var(--jk-danger)';
 }
 
 function getCVLabel(cv: number): string {
@@ -261,15 +261,15 @@ interface ConsistencyAnalysisProps {
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
 
 const SERIES_COLORS = [
-  'oklch(0.70 0.18 200)',
-  'oklch(0.72 0.20 145)',
-  'oklch(0.70 0.20 55)',
+  'var(--jk-accent)',
+  'var(--jk-ok)',
+  'var(--jk-warn)',
   'oklch(0.70 0.18 330)',
   'oklch(0.65 0.18 280)',
   'oklch(0.75 0.15 80)',
-  'oklch(0.68 0.20 170)',
-  'oklch(0.70 0.22 25)',
-  'oklch(0.72 0.15 230)',
+  'var(--jk-accent-2)',
+  'var(--jk-danger)',
+  'var(--jk-primary)',
   'oklch(0.68 0.18 120)',
 ];
 
@@ -321,9 +321,9 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
       <div
         className="rounded p-4 text-center text-xs font-mono"
         style={{
-          background: 'oklch(0.17 0.025 265)',
-          border: '1px solid oklch(0.25 0.03 265)',
-          color: 'oklch(0.45 0.02 240)',
+          background: 'var(--jk-s2)',
+          border: '1px solid var(--jk-line-1)',
+          color: 'var(--jk-text-low)',
         }}
       >
         需要至少 2 个数据文件（每个 ≥5 条记录）才能进行 CV 分析和残差分布统计
@@ -358,36 +358,36 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
     <div
       className="rounded"
       style={{
-        background: 'oklch(0.17 0.025 265)',
-        border: '1px solid oklch(0.25 0.03 265)',
+        background: 'var(--jk-s2)',
+        border: '1px solid var(--jk-line-1)',
       }}
     >
       {/* 标题栏 */}
       <div
         className="flex items-center gap-3 px-4 py-2.5 cursor-pointer select-none"
         onClick={() => setExpanded(v => !v)}
-        style={{ borderBottom: expanded ? '1px solid oklch(0.25 0.03 265)' : 'none' }}
+        style={{ borderBottom: expanded ? '1px solid var(--jk-line-1)' : 'none' }}
       >
-        <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
+        <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
           {expanded ? '▼' : '▶'} 一致性评估
         </span>
         <div className="flex items-center gap-3 ml-auto text-xs font-mono">
-          <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>
+          <span style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>
             0-{pressureMax}N · {pressurePoints.length} 个分析点
           </span>
-          <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
+          <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
           <span style={{ color: getCVColor(avgCV) }}>
             平均 CV: {avgCV.toFixed(2)}% ({getCVLabel(avgCV)})
           </span>
-          <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
-          <span style={{ color: 'oklch(0.60 0.02 240)' }}>
+          <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
+          <span style={{ color: 'var(--jk-text-high)' }}>
             残差 σ: {residualStd.toFixed(2)}
           </span>
-          <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
-          <span style={{ color: 'oklch(0.60 0.02 240)' }}>
+          <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
+          <span style={{ color: 'var(--jk-text-high)' }}>
             CV 评分: {cvScore.toFixed(0)}
           </span>
-          <span style={{ color: 'oklch(0.60 0.02 240)' }}>
+          <span style={{ color: 'var(--jk-text-high)' }}>
             残差评分: {residualScore.toFixed(0)}
           </span>
         </div>
@@ -401,51 +401,51 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
             {/* 左图：关键压力点 CV 折线图 */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
+                <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
                   关键压力点 CV 分析
                 </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
                   ({analysis.perFileFits.length} 个文件独立拟合, 0-{pressureMax}N)
                 </span>
               </div>
               <div style={{ height: '220px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={cvChartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.02 240)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--jk-text-faint)" />
                     <XAxis
                       dataKey="pressure"
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
                     />
                     <YAxis
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      label={{ value: 'CV (%)', angle: -90, position: 'insideLeft', fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
+                      label={{ value: 'CV (%)', angle: -90, position: 'insideLeft', fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: 'oklch(0.15 0.025 265)',
-                        border: '1px solid oklch(0.30 0.03 265)',
+                        background: 'var(--jk-s1)',
+                        border: '1px solid var(--jk-line-3)',
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontFamily: "'IBM Plex Mono', monospace",
-                        color: 'oklch(0.70 0.02 240)',
+                        color: 'var(--jk-text-strong)',
                       }}
                       formatter={(value: number, name: string) => {
                         if (name === 'cv') return [`${value.toFixed(2)}%`, 'CV'];
                         return [value, name];
                       }}
                     />
-                    <ReferenceLine y={CV_THRESHOLDS.excellent} stroke="oklch(0.72 0.20 145)" strokeDasharray="5 3" label={{ value: '优秀 3%', fill: 'oklch(0.72 0.20 145)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
+                    <ReferenceLine y={CV_THRESHOLDS.excellent} stroke="var(--jk-ok)" strokeDasharray="5 3" label={{ value: '优秀 3%', fill: 'var(--jk-ok)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
                     <ReferenceLine y={CV_THRESHOLDS.pass} stroke="oklch(0.80 0.18 90)" strokeDasharray="5 3" label={{ value: '合格 5%', fill: 'oklch(0.80 0.18 90)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
-                    <ReferenceLine y={CV_THRESHOLDS.warning} stroke="oklch(0.70 0.20 55)" strokeDasharray="5 3" label={{ value: '警告 8%', fill: 'oklch(0.70 0.20 55)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
+                    <ReferenceLine y={CV_THRESHOLDS.warning} stroke="var(--jk-warn)" strokeDasharray="5 3" label={{ value: '警告 8%', fill: 'var(--jk-warn)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace", position: 'right' }} />
                     <Line
                       type="monotone"
                       dataKey="cv"
-                      stroke="oklch(0.70 0.18 200)"
+                      stroke="var(--jk-accent)"
                       strokeWidth={2}
-                      dot={{ fill: 'oklch(0.70 0.18 200)', r: 4, strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: 'oklch(0.80 0.18 200)' }}
+                      dot={{ fill: 'var(--jk-accent)', r: 4, strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: 'var(--jk-accent)' }}
                       isAnimationActive={false}
                     />
                   </LineChart>
@@ -455,21 +455,21 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
               <div className="mt-2 overflow-x-auto" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 <table className="w-full text-xs font-mono" style={{ borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid oklch(0.25 0.03 265)', position: 'sticky', top: 0, background: 'oklch(0.17 0.025 265)' }}>
-                      <th className="px-2 py-1 text-left" style={{ color: 'oklch(0.50 0.02 240)' }}>压力点</th>
-                      <th className="px-2 py-1 text-right" style={{ color: 'oklch(0.50 0.02 240)' }}>CV (%)</th>
-                      <th className="px-2 py-1 text-right" style={{ color: 'oklch(0.50 0.02 240)' }}>均值</th>
-                      <th className="px-2 py-1 text-right" style={{ color: 'oklch(0.50 0.02 240)' }}>标准差</th>
-                      <th className="px-2 py-1 text-center" style={{ color: 'oklch(0.50 0.02 240)' }}>等级</th>
+                    <tr style={{ borderBottom: '1px solid var(--jk-line-1)', position: 'sticky', top: 0, background: 'var(--jk-s2)' }}>
+                      <th className="px-2 py-1 text-left" style={{ color: 'var(--jk-text-mid)' }}>压力点</th>
+                      <th className="px-2 py-1 text-right" style={{ color: 'var(--jk-text-mid)' }}>CV (%)</th>
+                      <th className="px-2 py-1 text-right" style={{ color: 'var(--jk-text-mid)' }}>均值</th>
+                      <th className="px-2 py-1 text-right" style={{ color: 'var(--jk-text-mid)' }}>标准差</th>
+                      <th className="px-2 py-1 text-center" style={{ color: 'var(--jk-text-mid)' }}>等级</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cvPoints.map(p => (
-                      <tr key={p.pressure} style={{ borderBottom: '1px solid oklch(0.20 0.02 265)' }}>
-                        <td className="px-2 py-1" style={{ color: 'oklch(0.65 0.02 240)' }}>{p.pressure} N</td>
+                      <tr key={p.pressure} style={{ borderBottom: '1px solid var(--jk-s3)' }}>
+                        <td className="px-2 py-1" style={{ color: 'var(--jk-text-high)' }}>{p.pressure} N</td>
                         <td className="px-2 py-1 text-right" style={{ color: getCVColor(p.cv) }}>{p.cv.toFixed(2)}%</td>
-                        <td className="px-2 py-1 text-right" style={{ color: 'oklch(0.60 0.02 240)' }}>{p.mean.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right" style={{ color: 'oklch(0.60 0.02 240)' }}>{p.std.toFixed(2)}</td>
+                        <td className="px-2 py-1 text-right" style={{ color: 'var(--jk-text-high)' }}>{p.mean.toFixed(1)}</td>
+                        <td className="px-2 py-1 text-right" style={{ color: 'var(--jk-text-high)' }}>{p.std.toFixed(2)}</td>
                         <td className="px-2 py-1 text-center">
                           <span
                             className="px-1.5 py-0.5 rounded"
@@ -495,12 +495,12 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
               <div
                 className="rounded p-3 mb-3"
                 style={{
-                  background: 'oklch(0.15 0.02 265)',
-                  border: '1px solid oklch(0.25 0.03 265)',
+                  background: 'var(--jk-s1)',
+                  border: '1px solid var(--jk-line-1)',
                 }}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
+                  <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
                     自定义压力点 CV 计算
                   </span>
                 </div>
@@ -514,18 +514,18 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                     onChange={e => setCustomPressure(e.target.value)}
                     className="flex-1 px-2 py-1 rounded text-xs font-mono outline-none"
                     style={{
-                      background: 'oklch(0.20 0.02 265)',
-                      border: '1px solid oklch(0.30 0.03 265)',
-                      color: 'oklch(0.70 0.02 240)',
+                      background: 'var(--jk-s3)',
+                      border: '1px solid var(--jk-line-3)',
+                      color: 'var(--jk-text-strong)',
                     }}
                   />
                   <button
                     onClick={() => setCustomPressure('')}
                     className="px-2 py-1 rounded text-xs font-mono hover:opacity-80 transition-opacity"
                     style={{
-                      background: 'oklch(0.25 0.03 265)',
-                      border: '1px solid oklch(0.30 0.03 265)',
-                      color: 'oklch(0.55 0.02 240)',
+                      background: 'var(--jk-line-1)',
+                      border: '1px solid var(--jk-line-3)',
+                      color: 'var(--jk-text-body)',
                     }}
                   >
                     清除
@@ -535,22 +535,22 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                 {customCVResult ? (
                   <div className="mt-2">
                     {customCVResult.isOutOfRange && (
-                      <div className="text-xs font-mono mb-1" style={{ color: 'oklch(0.70 0.20 55)' }}>
+                      <div className="text-xs font-mono mb-1" style={{ color: 'var(--jk-warn)' }}>
                         ⚠ 超出当前分析范围 (0-{pressureMax}N)，结果仅供参考
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono">
                       <span>
-                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>CV: </span>
+                        <span style={{ color: 'var(--jk-text-mid)' }}>CV: </span>
                         <span style={{ color: getCVColor(customCVResult.cv) }}>{customCVResult.cv.toFixed(2)}%</span>
                       </span>
                       <span>
-                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>均值: </span>
-                        <span style={{ color: 'oklch(0.65 0.02 240)' }}>{customCVResult.mean.toFixed(1)}</span>
+                        <span style={{ color: 'var(--jk-text-mid)' }}>均值: </span>
+                        <span style={{ color: 'var(--jk-text-high)' }}>{customCVResult.mean.toFixed(1)}</span>
                       </span>
                       <span>
-                        <span style={{ color: 'oklch(0.50 0.02 240)' }}>标准差: </span>
-                        <span style={{ color: 'oklch(0.65 0.02 240)' }}>{customCVResult.std.toFixed(2)}</span>
+                        <span style={{ color: 'var(--jk-text-mid)' }}>标准差: </span>
+                        <span style={{ color: 'var(--jk-text-high)' }}>{customCVResult.std.toFixed(2)}</span>
                       </span>
                       <span
                         className="px-1.5 py-0.5 rounded"
@@ -563,8 +563,8 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                         {getCVLabel(customCVResult.cv)}
                       </span>
                     </div>
-                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}>
-                      <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
+                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--jk-s4)' }}>
+                      <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
                         各文件预测值:
                       </span>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
@@ -573,7 +573,7 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                           const color = SERIES_COLORS[(seriesIdx >= 0 ? seriesIdx : i) % SERIES_COLORS.length];
                           return (
                             <span key={name} className="text-xs font-mono" style={{ fontSize: '9px' }}>
-                              <span style={{ color: 'oklch(0.45 0.02 240)' }}>
+                              <span style={{ color: 'var(--jk-text-low)' }}>
                                 {name.replace(/\.csv$/i, '').slice(0, 14)}:
                               </span>
                               {' '}
@@ -585,47 +585,47 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-2 text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
+                  <div className="mt-2 text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
                     输入压力值查看该点的 CV 计算结果
                   </div>
                 )}
               </div>
 
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
+                <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
                   各文件关键压力点 ADC 预测值
                 </span>
               </div>
               <div style={{ height: '220px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ScatterChart margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.02 240)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--jk-text-faint)" />
                     <XAxis
                       type="number"
                       dataKey="pressure"
                       name="压力"
                       unit="N"
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
                       domain={[0, pressureMax]}
                     />
                     <YAxis
                       type="number"
                       dataKey="adcPredicted"
                       name="ADC"
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      label={{ value: 'ADC 预测值', angle: -90, position: 'insideLeft', fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
+                      label={{ value: 'ADC 预测值', angle: -90, position: 'insideLeft', fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     />
                     <ZAxis range={[30, 30]} />
                     <Tooltip
                       contentStyle={{
-                        background: 'oklch(0.15 0.025 265)',
-                        border: '1px solid oklch(0.30 0.03 265)',
+                        background: 'var(--jk-s1)',
+                        border: '1px solid var(--jk-line-3)',
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontFamily: "'IBM Plex Mono', monospace",
-                        color: 'oklch(0.70 0.02 240)',
+                        color: 'var(--jk-text-strong)',
                       }}
                       formatter={(value: number, name: string) => {
                         if (name === 'ADC') return [value.toFixed(1), 'ADC 预测'];
@@ -649,7 +649,7 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
                     />
-                    <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px' }}>
+                    <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '9px' }}>
                       {f.fileName.replace(/\.csv$/i, '').slice(0, 20)}
                     </span>
                   </div>
@@ -659,40 +659,40 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
           </div>
 
           {/* 下半部分：残差分布直方图 */}
-          <div style={{ borderTop: '1px solid oklch(0.22 0.03 265)', paddingTop: '16px' }}>
+          <div style={{ borderTop: '1px solid var(--jk-s4)', paddingTop: '16px' }}>
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.65 0.15 200)' }}>
+                <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
                   残差分布直方图
                 </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
                   (全部文件合并, n={allResiduals.length})
                 </span>
               </div>
               <div style={{ height: '220px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={histData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.02 240)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--jk-text-faint)" />
                     <XAxis
                       dataKey="bin"
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
                       interval="preserveStartEnd"
-                      label={{ value: '残差 (ADC)', position: 'insideBottom', offset: -2, fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      label={{ value: '残差 (ADC)', position: 'insideBottom', offset: -2, fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     />
                     <YAxis
-                      tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                      axisLine={{ stroke: 'oklch(0.30 0.02 240)' }}
-                      label={{ value: '频次', angle: -90, position: 'insideLeft', fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                      axisLine={{ stroke: 'var(--jk-text-faint)' }}
+                      label={{ value: '频次', angle: -90, position: 'insideLeft', fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: 'oklch(0.15 0.025 265)',
-                        border: '1px solid oklch(0.30 0.03 265)',
+                        background: 'var(--jk-s1)',
+                        border: '1px solid var(--jk-line-3)',
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontFamily: "'IBM Plex Mono', monospace",
-                        color: 'oklch(0.70 0.02 240)',
+                        color: 'var(--jk-text-strong)',
                       }}
                       formatter={(value: number) => [value, '频次']}
                     />
@@ -710,7 +710,7 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                         return (
                           <Cell
                             key={index}
-                            fill={inSigma ? 'oklch(0.58 0.18 265 / 0.7)' : 'oklch(0.40 0.10 265 / 0.5)'}
+                            fill={inSigma ? 'color-mix(in srgb, var(--jk-primary) 70%, transparent)' : 'color-mix(in srgb, var(--jk-primary-soft) 50%, transparent)'}
                           />
                         );
                       })}
@@ -718,7 +718,7 @@ function ConsistencyAnalysisInner({ allSeries, pressureMax, useAvg = false }: Co
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-2 flex gap-4 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+              <div className="mt-2 flex gap-4 text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
                 <span>均值 μ = {residualMean.toFixed(2)}</span>
                 <span>标准差 σ = {residualStd.toFixed(2)}</span>
                 <span>范围: [{Math.min(...allResiduals).toFixed(1)}, {Math.max(...allResiduals).toFixed(1)}]</span>

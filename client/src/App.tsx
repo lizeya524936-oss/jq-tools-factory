@@ -27,7 +27,7 @@ function AppShell() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable respectSystem>
         <ClientProvider>
           <TooltipProvider>
             <Toaster />

@@ -3,11 +3,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 
-  JQ Tools Factory - 精密科学仪器风格
-  Design: 深灰色系主题，蓝紫色主色，传感器矩阵核心视觉
-  Colors: 深灰背景 #1A1A2E, 蓝紫主色 #4361EE, 亮蓝 #4CC9F0, 绿色通过 #4ADE80
-  Typography: IBM Plex Mono (数据) + IBM Plex Sans (界面)
+/*
+  JQ Tools Factory — 双主题配色
+  ------------------------------------------------------------------
+  白天（默认，:root）  E 浅色仪器 —— 亮底 + 青蓝，车间强光/打印可读性最好
+  黑夜（.dark）        A 石墨青   —— 中性近黑灰 + 青色高亮，精密仪器感
+
+  两套主题共用同一批语义变量（--jk-*）。组件里的内联颜色已全部改为 var(--jk-*)，
+  所以切换主题只需切换 <html> 上的 .dark 类，无需重新渲染任何组件。
+  由 scripts/theme/retheme.mjs 生成/维护的槽位约定见该脚本顶部注释。
+  ------------------------------------------------------------------
 */
 
 @theme inline {
@@ -49,40 +54,131 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ================= 白天：E 浅色仪器 ================= */
 :root {
+  color-scheme: light;
   --radius: 0.4rem;
-  --background: oklch(0.13 0.02 265);
-  --foreground: oklch(0.92 0.01 220);
-  --card: oklch(0.17 0.025 265);
-  --card-foreground: oklch(0.92 0.01 220);
-  --popover: oklch(0.17 0.025 265);
-  --popover-foreground: oklch(0.92 0.01 220);
-  --primary: oklch(0.58 0.22 265);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.22 0.03 265);
-  --secondary-foreground: oklch(0.85 0.01 220);
-  --muted: oklch(0.20 0.025 265);
-  --muted-foreground: oklch(0.60 0.02 240);
-  --accent: oklch(0.70 0.18 200);
-  --accent-foreground: oklch(0.10 0.02 265);
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.28 0.03 265);
-  --input: oklch(0.22 0.03 265);
-  --ring: oklch(0.58 0.22 265);
-  --chart-1: oklch(0.58 0.22 265);
-  --chart-2: oklch(0.70 0.18 200);
-  --chart-3: oklch(0.72 0.20 145);
-  --chart-4: oklch(0.75 0.18 55);
-  --chart-5: oklch(0.65 0.22 25);
-  --sidebar: oklch(0.15 0.025 265);
-  --sidebar-foreground: oklch(0.85 0.01 220);
-  --sidebar-primary: oklch(0.58 0.22 265);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.20 0.03 265);
-  --sidebar-accent-foreground: oklch(0.85 0.01 220);
-  --sidebar-border: oklch(0.25 0.03 265);
-  --sidebar-ring: oklch(0.58 0.22 265);
+
+  /* —— 语义槽位（组件内联颜色用这些）—— */
+  --jk-bg-deep: #eef2f5;
+  --jk-bg: #f1f4f7;
+  --jk-sunken: #f4f6f8;
+  --jk-s1: #ffffff;
+  --jk-s2: #ffffff;
+  --jk-s3: #f7f9fa;
+  --jk-s4: #edf1f4;
+  --jk-line-1: #e4e9ee;
+  --jk-line-2: #dce2e8;
+  --jk-line-3: #cbd3db;
+  --jk-line-4: #b4bec8;
+  --jk-surface-hi: #8b98a5;
+
+  --jk-ink: #16202b;
+  --jk-text-max: #1e2a32;
+  --jk-text-strong: #2e3a42;
+  --jk-text-high: #45535e;
+  --jk-text-body: #55646f;
+  --jk-text-mid: #61707e;
+  --jk-text-low: #7e8d9c;
+  --jk-text-dim: #93a0ad;
+  --jk-text-faint: #c2cad2;
+
+  --jk-primary: #0e7490;
+  --jk-primary-soft: #0e7490;
+  --jk-on-primary: #ffffff;
+  --jk-accent: #0891b2;
+  --jk-accent-2: #0d9488;
+  --jk-ok: #059669;
+  --jk-warn: #d97706;
+  --jk-danger: #dc2626;
+  --jk-fit: #b45309;
+
+  /* 传感器矩阵热力范围 */
+  --jk-heat-low: #eaf6fa;
+  --jk-heat-high: #0e7490;
+
+  /* —— shadcn 兼容令牌 —— */
+  --background: var(--jk-bg);
+  --foreground: var(--jk-ink);
+  --card: var(--jk-s1);
+  --card-foreground: var(--jk-ink);
+  --popover: var(--jk-s1);
+  --popover-foreground: var(--jk-ink);
+  --primary: var(--jk-primary);
+  --primary-foreground: var(--jk-on-primary);
+  --secondary: var(--jk-s4);
+  --secondary-foreground: var(--jk-text-strong);
+  --muted: var(--jk-sunken);
+  --muted-foreground: var(--jk-text-mid);
+  --accent: var(--jk-accent);
+  --accent-foreground: #ffffff;
+  --destructive: var(--jk-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--jk-line-2);
+  --input: var(--jk-line-1);
+  --ring: var(--jk-primary);
+  --chart-1: #0e7490;
+  --chart-2: #0891b2;
+  --chart-3: #059669;
+  --chart-4: #b45309;
+  --chart-5: #dc2626;
+  --sidebar: var(--jk-s2);
+  --sidebar-foreground: var(--jk-text-strong);
+  --sidebar-primary: var(--jk-primary);
+  --sidebar-primary-foreground: var(--jk-on-primary);
+  --sidebar-accent: var(--jk-s4);
+  --sidebar-accent-foreground: var(--jk-text-strong);
+  --sidebar-border: var(--jk-line-1);
+  --sidebar-ring: var(--jk-primary);
+}
+
+/* ================= 黑夜：A 石墨青 ================= */
+.dark {
+  color-scheme: dark;
+
+  --jk-bg-deep: #0a0d10;
+  --jk-bg: #0c0f12;
+  --jk-sunken: #0f1215;
+  --jk-s1: #13171b;
+  --jk-s2: #161b20;
+  --jk-s3: #1a2026;
+  --jk-s4: #1f262d;
+  --jk-line-1: #242b32;
+  --jk-line-2: #2c343d;
+  --jk-line-3: #364049;
+  --jk-line-4: #434e59;
+  --jk-surface-hi: #c7d3df;
+
+  --jk-ink: #e6edf3;
+  --jk-text-max: #e1e8ee;
+  --jk-text-strong: #c6d1da;
+  --jk-text-high: #b0bcc8;
+  --jk-text-body: #98a5b1;
+  --jk-text-mid: #8b98a5;
+  --jk-text-low: #7c8b98;
+  --jk-text-dim: #6c7a88;
+  --jk-text-faint: #4f5c67;
+
+  --jk-primary: #22d3ee;
+  --jk-primary-soft: #22d3ee;
+  --jk-on-primary: #04222a;
+  --jk-accent: #67e8f9;
+  --jk-accent-2: #2dd4bf;
+  --jk-ok: #34d399;
+  --jk-warn: #fbbf24;
+  --jk-danger: #f87171;
+  --jk-fit: #f0a030;
+
+  --jk-heat-low: #10202a;
+  --jk-heat-high: #67e8f9;
+
+  --accent-foreground: var(--jk-on-primary);
+  --destructive-foreground: #240b0b;
+  --chart-1: #22d3ee;
+  --chart-2: #67e8f9;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
 }
 
 @layer base {
@@ -92,6 +188,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'IBM Plex Sans', sans-serif;
+    transition: background-color .18s ease, color .18s ease;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -147,46 +244,46 @@
     transform: scale(1.15);
   }
   .sensor-dot.selected {
-    box-shadow: 0 0 8px 2px oklch(0.70 0.18 200 / 0.6);
+    box-shadow: 0 0 8px 2px color-mix(in srgb, var(--jk-accent) 60%, transparent);
   }
 
   /* 状态栏 */
   .status-bar {
-    background: oklch(0.11 0.02 265);
-    border-top: 1px solid oklch(0.25 0.03 265);
+    background: var(--jk-sunken);
+    border-top: 1px solid var(--jk-line-1);
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.7rem;
   }
 
   /* 数据卡片 */
   .data-card {
-    background: oklch(0.17 0.025 265);
-    border: 1px solid oklch(0.28 0.03 265);
+    background: var(--jk-s1);
+    border: 1px solid var(--jk-line-2);
     border-radius: 0.4rem;
   }
 
   /* 图表容器 */
   .chart-container {
-    background: oklch(0.15 0.02 265);
-    border: 1px solid oklch(0.25 0.03 265);
+    background: var(--jk-sunken);
+    border: 1px solid var(--jk-line-2);
     border-radius: 0.4rem;
   }
 
   /* 通过/失败徽章 */
   .badge-pass {
-    background: oklch(0.72 0.20 145 / 0.15);
-    color: oklch(0.72 0.20 145);
-    border: 1px solid oklch(0.72 0.20 145 / 0.3);
+    background: color-mix(in srgb, var(--jk-ok) 15%, transparent);
+    color: var(--jk-ok);
+    border: 1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent);
   }
   .badge-fail {
-    background: oklch(0.65 0.22 25 / 0.15);
-    color: oklch(0.65 0.22 25);
-    border: 1px solid oklch(0.65 0.22 25 / 0.3);
+    background: color-mix(in srgb, var(--jk-danger) 15%, transparent);
+    color: var(--jk-danger);
+    border: 1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent);
   }
   .badge-pending {
-    background: oklch(0.60 0.02 240 / 0.15);
-    color: oklch(0.60 0.02 240);
-    border: 1px solid oklch(0.60 0.02 240 / 0.3);
+    background: color-mix(in srgb, var(--jk-text-mid) 15%, transparent);
+    color: var(--jk-text-mid);
+    border: 1px solid color-mix(in srgb, var(--jk-text-mid) 30%, transparent);
   }
 
   /* 滚动条 */
@@ -195,13 +292,13 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: oklch(0.15 0.02 265);
+    background: var(--jk-sunken);
   }
   ::-webkit-scrollbar-thumb {
-    background: oklch(0.30 0.03 265);
+    background: var(--jk-line-3);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.40 0.04 265);
+    background: var(--jk-line-4);
   }
 }

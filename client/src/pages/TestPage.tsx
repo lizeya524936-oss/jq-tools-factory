@@ -178,34 +178,34 @@ export default function TestPage() {
     : undefined;
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4" style={{ background: 'oklch(0.13 0.02 265)' }}>
+    <div className="flex flex-col h-full p-4 gap-4" style={{ background: 'var(--jk-sunken)' }}>
       {/* 顶部设备连接状态卡片 */}
       <div className="grid grid-cols-2 gap-3">
         {/* 力学仪器连接状态 */}
         <div
           className="rounded p-3"
           style={{
-            background: 'oklch(0.17 0.025 265)',
-            border: `1px solid ${isForceConnected ? 'oklch(0.70 0.18 200 / 0.4)' : 'oklch(0.25 0.03 265)'}`,
+            background: 'var(--jk-s2)',
+            border: `1px solid ${isForceConnected ? 'color-mix(in srgb, var(--jk-accent) 40%, transparent)' : 'var(--jk-line-1)'}`,
           }}
         >
           <div className="flex items-center gap-2 mb-2">
             {isForceConnected ? (
-              <CheckCircle2 size={14} style={{ color: 'oklch(0.70 0.18 200)' }} />
+              <CheckCircle2 size={14} style={{ color: 'var(--jk-accent)' }} />
             ) : (
-              <AlertCircle size={14} style={{ color: 'oklch(0.65 0.22 25)' }} />
+              <AlertCircle size={14} style={{ color: 'var(--jk-danger)' }} />
             )}
-            <span className="text-xs font-mono font-medium" style={{ color: isForceConnected ? 'oklch(0.70 0.18 200)' : 'oklch(0.65 0.22 25)' }}>
+            <span className="text-xs font-mono font-medium" style={{ color: isForceConnected ? 'var(--jk-accent)' : 'var(--jk-danger)' }}>
               力学仪器 (CL2-500N-MH01)
             </span>
           </div>
-          <div className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-            状态: <span style={{ color: isForceConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.40 0.02 240)' }}>
+          <div className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
+            状态: <span style={{ color: isForceConnected ? 'var(--jk-ok)' : 'var(--jk-text-dim)' }}>
               {isForceConnected ? '已连接' : '未连接'}
             </span>
           </div>
           {isForceConnected && latestForceN !== null && (
-            <div className="mt-2 text-xs font-mono" style={{ color: 'oklch(0.72 0.20 145)' }}>
+            <div className="mt-2 text-xs font-mono" style={{ color: 'var(--jk-ok)' }}>
               压力: <span style={{ fontWeight: 600 }}>{latestForceN.toFixed(2)} N</span>
             </div>
           )}
@@ -215,27 +215,27 @@ export default function TestPage() {
         <div
           className="rounded p-3"
           style={{
-            background: 'oklch(0.17 0.025 265)',
-            border: `1px solid ${isSensorConnected ? 'oklch(0.72 0.20 145 / 0.4)' : 'oklch(0.25 0.03 265)'}`,
+            background: 'var(--jk-s2)',
+            border: `1px solid ${isSensorConnected ? 'color-mix(in srgb, var(--jk-ok) 40%, transparent)' : 'var(--jk-line-1)'}`,
           }}
         >
           <div className="flex items-center gap-2 mb-2">
             {isSensorConnected ? (
-              <CheckCircle2 size={14} style={{ color: 'oklch(0.72 0.20 145)' }} />
+              <CheckCircle2 size={14} style={{ color: 'var(--jk-ok)' }} />
             ) : (
-              <AlertCircle size={14} style={{ color: 'oklch(0.65 0.22 25)' }} />
+              <AlertCircle size={14} style={{ color: 'var(--jk-danger)' }} />
             )}
-            <span className="text-xs font-mono font-medium" style={{ color: isSensorConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.65 0.22 25)' }}>
+            <span className="text-xs font-mono font-medium" style={{ color: isSensorConnected ? 'var(--jk-ok)' : 'var(--jk-danger)' }}>
               传感器产品 (织物触觉传感器)
             </span>
           </div>
-          <div className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-            状态: <span style={{ color: isSensorConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.40 0.02 240)' }}>
+          <div className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
+            状态: <span style={{ color: isSensorConnected ? 'var(--jk-ok)' : 'var(--jk-text-dim)' }}>
               {isSensorConnected ? '已连接' : '未连接'}
             </span>
           </div>
           {isSensorConnected && adcSum > 0 && (
-            <div className="mt-2 text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
+            <div className="mt-2 text-xs font-mono" style={{ color: 'var(--jk-accent)' }}>
               ADC Sum: <span style={{ fontWeight: 600 }}>0x{adcSum.toString(16).toUpperCase().padStart(8, '0')}</span>
             </div>
           )}
@@ -249,32 +249,32 @@ export default function TestPage() {
         {/* 传感器数组显示（左侧列，占剩余高度） */}
         <div
           className="rounded p-4 flex flex-col min-h-0 flex-1"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Zap size={14} style={{ color: 'oklch(0.70 0.18 200)' }} />
-              <span className="text-sm font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
+              <Zap size={14} style={{ color: 'var(--jk-accent)' }} />
+              <span className="text-sm font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
                 传感器数组实时监控
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+            <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
               <span>矩阵: {matrixRows}×{matrixCols}</span>
-              <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
+              <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
               <span>已选: {selectedCount}</span>
             </div>
           </div>
 
           {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
           {handSide && (
-            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}>
               <button
                 onClick={() => { if (!useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.25)' : 'transparent',
-                  border: useHandLayout ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid transparent',
-                  color: useHandLayout ? 'oklch(0.80 0.15 265)' : 'oklch(0.45 0.02 240)',
+                  background: useHandLayout ? 'color-mix(in srgb, var(--jk-primary) 25%, transparent)' : 'transparent',
+                  border: useHandLayout ? '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)' : '1px solid transparent',
+                  color: useHandLayout ? 'var(--jk-primary)' : 'var(--jk-text-low)',
                 }}
               >
                 <Hand size={16} />
@@ -284,9 +284,9 @@ export default function TestPage() {
                 onClick={() => { if (useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: !useHandLayout ? 'oklch(0.72 0.20 145 / 0.25)' : 'transparent',
-                  border: !useHandLayout ? '1px solid oklch(0.72 0.20 145 / 0.5)' : '1px solid transparent',
-                  color: !useHandLayout ? 'oklch(0.82 0.15 145)' : 'oklch(0.45 0.02 240)',
+                  background: !useHandLayout ? 'color-mix(in srgb, var(--jk-ok) 25%, transparent)' : 'transparent',
+                  border: !useHandLayout ? '1px solid color-mix(in srgb, var(--jk-ok) 50%, transparent)' : '1px solid transparent',
+                  color: !useHandLayout ? 'var(--jk-ok)' : 'var(--jk-text-low)',
                 }}
               >
                 <Grid3x3 size={16} />
@@ -298,7 +298,7 @@ export default function TestPage() {
           {/* 矩阵尺寸调整 - 仅在矩阵模式下显示 */}
           {!showHandLayout && (
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>矩阵尺寸:</span>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>矩阵尺寸:</span>
               <input
                 type="number"
                 min={1}
@@ -307,12 +307,12 @@ export default function TestPage() {
                 onChange={e => handleMatrixSizeChange(parseInt(e.target.value), matrixCols)}
                 className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
                 style={{
-                  background: 'oklch(0.12 0.02 265)',
-                  border: '1px solid oklch(0.25 0.03 265)',
-                  color: 'oklch(0.82 0.01 220)',
+                  background: 'var(--jk-bg)',
+                  border: '1px solid var(--jk-line-1)',
+                  color: 'var(--jk-ink)',
                 }}
               />
-              <span style={{ color: 'oklch(0.50 0.02 240)' }}>×</span>
+              <span style={{ color: 'var(--jk-text-mid)' }}>×</span>
               <input
                 type="number"
                 min={1}
@@ -321,9 +321,9 @@ export default function TestPage() {
                 onChange={e => handleMatrixSizeChange(matrixRows, parseInt(e.target.value))}
                 className="w-14 px-2 py-1.5 rounded text-xs font-mono outline-none"
                 style={{
-                  background: 'oklch(0.12 0.02 265)',
-                  border: '1px solid oklch(0.25 0.03 265)',
-                  color: 'oklch(0.82 0.01 220)',
+                  background: 'var(--jk-bg)',
+                  border: '1px solid var(--jk-line-1)',
+                  color: 'var(--jk-ink)',
                 }}
               />
             </div>
@@ -350,17 +350,17 @@ export default function TestPage() {
                   background: (() => {
                     const allIndices = getHandIndices(handSide);
                     const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                    return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                    return allSelected ? 'color-mix(in srgb, var(--jk-danger) 30%, transparent)' : 'color-mix(in srgb, var(--jk-primary) 30%, transparent)';
                   })(),
                   border: (() => {
                     const allIndices = getHandIndices(handSide);
                     const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                    return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                    return allSelected ? '1px solid color-mix(in srgb, var(--jk-danger) 50%, transparent)' : '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)';
                   })(),
                   color: (() => {
                     const allIndices = getHandIndices(handSide);
                     const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                    return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                    return allSelected ? 'var(--jk-danger)' : 'var(--jk-primary)';
                   })(),
                 }}
               >
@@ -422,7 +422,7 @@ export default function TestPage() {
         {/* 压力图表显示（右侧）+ Hill 拟合参数 */}
         <div
           className="rounded p-4 flex flex-col min-h-0 gap-3"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flex: '1' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flex: '1' }}
         >
           <div className="flex-1 min-h-0">
             <PressureChart externalData={recordingPressureData} />
@@ -432,28 +432,28 @@ export default function TestPage() {
           {!recordingActive && recordingRecords.length > 0 && (
             <div
               className="rounded p-3 flex-shrink-0"
-              style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+              style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}
             >
-              <div className="text-xs font-mono font-medium mb-2" style={{ color: 'oklch(0.70 0.18 200)' }}>
+              <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--jk-accent)' }}>
                 Hill 拟合参数
               </div>
               {hillFit ? (
                 <div className="space-y-1 text-xs font-mono">
-                  <div style={{ color: 'oklch(0.75 0.18 55)' }}>
+                  <div style={{ color: 'var(--jk-warn)' }}>
                     正向: {formatHillEquation(hillFit)}
                   </div>
-                  <div style={{ color: 'oklch(0.70 0.18 200)' }}>
+                  <div style={{ color: 'var(--jk-accent)' }}>
                     反推: {formatInverseEquation(hillFit)}
                   </div>
-                  <div style={{ color: 'oklch(0.55 0.02 240)' }}>
+                  <div style={{ color: 'var(--jk-text-body)' }}>
                     a = {hillFit.a.toFixed(2)} · b = {hillFit.b.toFixed(2)} · n = {hillFit.n.toFixed(4)}
                   </div>
-                  <div style={{ color: 'oklch(0.55 0.02 240)' }}>
+                  <div style={{ color: 'var(--jk-text-body)' }}>
                     R² = {hillFit.r2.toFixed(4)} · RMSE = {hillFit.rmse.toFixed(4)} · 采样点 = {recordingRecords.length}
                   </div>
                 </div>
               ) : (
-                <div className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+                <div className="text-xs font-mono" style={{ color: 'var(--jk-text-low)' }}>
                   有效数据不足（需 ≥3 组压力&gt;0 且有 ADC 的数据）才能拟合 Hill 方程
                 </div>
               )}
@@ -466,16 +466,16 @@ export default function TestPage() {
       {(isForceConnected || isSensorConnected) && (
         <div
           className="rounded p-3"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
-          <div className="text-xs font-mono font-medium mb-2" style={{ color: 'oklch(0.70 0.18 200)' }}>
+          <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--jk-accent)' }}>
             实时数据监控
           </div>
           <div className="grid grid-cols-3 gap-3 text-xs font-mono">
             {isForceConnected && (
               <div>
-                <div style={{ color: 'oklch(0.50 0.02 240)' }}>压力 (N)</div>
-                <div style={{ color: 'oklch(0.72 0.20 145)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
+                <div style={{ color: 'var(--jk-text-mid)' }}>压力 (N)</div>
+                <div style={{ color: 'var(--jk-ok)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
                   {latestForceN !== null ? latestForceN.toFixed(2) : '--'}
                 </div>
               </div>
@@ -483,14 +483,14 @@ export default function TestPage() {
             {isSensorConnected && (
               <>
                 <div>
-                  <div style={{ color: 'oklch(0.50 0.02 240)' }}>ADC Sum</div>
-                  <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
+                  <div style={{ color: 'var(--jk-text-mid)' }}>ADC Sum</div>
+                  <div style={{ color: 'var(--jk-accent)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
                     {adcSum}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: 'oklch(0.50 0.02 240)' }}>ADC Sum (HEX)</div>
-                  <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
+                  <div style={{ color: 'var(--jk-text-mid)' }}>ADC Sum (HEX)</div>
+                  <div style={{ color: 'var(--jk-accent)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
                     0x{adcSum.toString(16).toUpperCase().padStart(8, '0')}
                   </div>
                 </div>

@@ -76,7 +76,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       };
     }
     // 未选中：蓝色系热力图
-    if (v === 0) return { bg: 'oklch(0.18 0.03 265)', border: 'oklch(0.24 0.03 265)', glow: 'none' };
+    if (v === 0) return { bg: 'var(--jk-s2)', border: 'var(--jk-line-1)', glow: 'none' };
     let hue: number, sat: number, light: number;
     if (v < 127) {
       const t = v / 127;
@@ -306,13 +306,13 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         style={{
           width: `${size}px`,
           height: `${size}px`,
-          background: inBox ? 'oklch(0.58 0.22 265 / 0.4)' : colors.bg,
+          background: inBox ? 'color-mix(in srgb, var(--jk-primary) 40%, transparent)' : colors.bg,
           border: isZoomCenter
-            ? '2px solid oklch(0.85 0.18 55)'
-            : `1px solid ${inBox ? 'oklch(0.70 0.18 200)' : colors.border}`,
+            ? '2px solid var(--jk-warn)'
+            : `1px solid ${inBox ? 'var(--jk-accent)' : colors.border}`,
           boxShadow: isZoomCenter
-            ? '0 0 8px oklch(0.85 0.18 55 / 0.5)'
-            : inBox ? '0 0 3px oklch(0.58 0.22 265 / 0.5)' : colors.glow,
+            ? '0 0 8px color-mix(in srgb, var(--jk-warn) 50%, transparent)'
+            : inBox ? '0 0 3px color-mix(in srgb, var(--jk-primary) 50%, transparent)' : colors.glow,
           cursor: 'pointer',
           borderRadius: '2px',
           transition: 'background 0.08s, box-shadow 0.08s',
@@ -329,7 +329,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
             <span style={{
               fontSize: size > 44 ? '8px' : '6px',
-              color: sensor.selected ? 'oklch(0.15 0.02 145)' : 'oklch(0.70 0.02 240)',
+              color: sensor.selected ? 'var(--jk-ok)' : 'var(--jk-text-strong)',
               fontFamily: "'IBM Plex Mono', monospace",
               fontWeight: 700,
             }}>
@@ -337,14 +337,14 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             </span>
             <span style={{
               fontSize: size > 44 ? '7px' : '5px',
-              color: sensor.selected ? 'oklch(0.20 0.02 145)' : 'oklch(0.50 0.02 240)',
+              color: sensor.selected ? 'var(--jk-ok)' : 'var(--jk-text-mid)',
               fontFamily: "'IBM Plex Mono', monospace",
             }}>
               0x{hexVal}
             </span>
             <span style={{
               fontSize: '5px',
-              color: sensor.selected ? 'oklch(0.25 0.02 145)' : 'oklch(0.40 0.02 240)',
+              color: sensor.selected ? 'var(--jk-ok)' : 'var(--jk-text-dim)',
               fontFamily: "'IBM Plex Mono', monospace",
             }}>
               #{arrayIdx}
@@ -355,7 +355,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         {!isZoomView && showIdx && (
           <span style={{
             fontSize: size > 16 ? '7px' : '5px',
-            color: sensor.selected ? 'oklch(0.15 0.02 145)' : adcVal > 127 ? 'oklch(0.15 0.02 265)' : 'oklch(0.55 0.02 240)',
+            color: sensor.selected ? 'var(--jk-ok)' : adcVal > 127 ? 'var(--jk-s1)' : 'var(--jk-text-body)',
             fontFamily: "'IBM Plex Mono', monospace",
             fontWeight: 600,
             lineHeight: 1,
@@ -372,21 +372,21 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       {/* 标题栏 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Grid3x3 size={12} style={{ color: 'oklch(0.70 0.18 200)' }} />
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.60 0.02 240)' }}>传感器数组</span>
-          <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
+          <Grid3x3 size={12} style={{ color: 'var(--jk-accent)' }} />
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-high)' }}>传感器数组</span>
+          <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
             {rows}×{cols}
           </span>
           {isConnected && (
             <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.72 0.20 145)' }} />
-              <span style={{ color: 'oklch(0.72 0.20 145)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>实时</span>
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--jk-ok)' }} />
+              <span style={{ color: 'var(--jk-ok)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>实时</span>
             </div>
           )}
         </div>
         <div className="flex items-center gap-1">
           {/* 交互提示 */}
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
             拖拽框选 · Ctrl+拖拽追加 · 单击选点 · 右键清除
           </span>
           {/* 尺寸按钮 */}
@@ -395,9 +395,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
               onClick={() => { setEditRows(rows); setEditCols(cols); setShowSizeEditor(!showSizeEditor); }}
               className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono transition-colors"
               style={{
-                background: showSizeEditor ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.20 0.025 265)',
-                border: `1px solid ${showSizeEditor ? 'oklch(0.58 0.22 265 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-                color: showSizeEditor ? 'oklch(0.70 0.18 200)' : 'oklch(0.45 0.02 240)',
+                background: showSizeEditor ? 'color-mix(in srgb, var(--jk-primary) 20%, transparent)' : 'var(--jk-s3)',
+                border: `1px solid ${showSizeEditor ? 'color-mix(in srgb, var(--jk-primary) 50%, transparent)' : 'var(--jk-line-2)'}`,
+                color: showSizeEditor ? 'var(--jk-accent)' : 'var(--jk-text-low)',
                 fontSize: '9px',
               }}
               title="设置矩阵尺寸（最大64×64）"
@@ -410,18 +410,18 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       </div>
 
       {/* 选中统计栏 */}
-      <div className="flex items-center justify-between px-2 py-1 rounded" style={{ background: 'oklch(0.15 0.025 265)', border: '1px solid oklch(0.22 0.03 265)' }}>
+      <div className="flex items-center justify-between px-2 py-1 rounded" style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)' }}>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
-            已选: <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{selectedCount}</span>
-            <span style={{ color: 'oklch(0.38 0.02 240)' }}>/{totalCount}</span>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
+            已选: <span style={{ color: 'var(--jk-ok)', fontWeight: 600 }}>{selectedCount}</span>
+            <span style={{ color: 'var(--jk-text-dim)' }}>/{totalCount}</span>
           </span>
           {selectedCount > 0 && (
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px' }}>
-              ADC Sum: <span style={{ color: 'oklch(0.70 0.18 200)' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '9px' }}>
+              ADC Sum: <span style={{ color: 'var(--jk-accent)' }}>
                 {sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0)}
               </span>
-              <span style={{ color: 'oklch(0.45 0.02 240)', marginLeft: '4px' }}>
+              <span style={{ color: 'var(--jk-text-low)', marginLeft: '4px' }}>
                 (0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')})
               </span>
             </span>
@@ -431,10 +431,10 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           onClick={() => setDisplayMode(prev => prev === 'index' ? 'value' : prev === 'value' ? 'off' : 'index')}
           className="text-xs font-mono px-1.5 py-0.5 rounded transition-colors"
           style={{
-            background: displayMode !== 'off' ? 'oklch(0.70 0.18 200 / 0.12)' : 'transparent',
-            color: displayMode !== 'off' ? 'oklch(0.70 0.18 200)' : 'oklch(0.40 0.02 240)',
+            background: displayMode !== 'off' ? 'color-mix(in srgb, var(--jk-accent) 12%, transparent)' : 'transparent',
+            color: displayMode !== 'off' ? 'var(--jk-accent)' : 'var(--jk-text-dim)',
             fontSize: '9px',
-            border: `1px solid ${displayMode !== 'off' ? 'oklch(0.70 0.18 200 / 0.3)' : 'oklch(0.25 0.03 265)'}`,
+            border: `1px solid ${displayMode !== 'off' ? 'color-mix(in srgb, var(--jk-accent) 30%, transparent)' : 'var(--jk-line-1)'}`,
           }}
           title="切换显示: 序号 → 数值 → 关闭"
         >
@@ -444,43 +444,43 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
       {/* 矩阵尺寸编辑器 */}
       {showSizeEditor && (
-        <div className="rounded p-2.5 space-y-2" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.30 0.04 265)' }}>
-          <div className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+        <div className="rounded p-2.5 space-y-2" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-3)' }}>
+          <div className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
             矩阵尺寸设置（0-64）
           </div>
           <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1.5 flex-1">
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>横</span>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>横</span>
               <input
                 type="number"
                 value={editCols}
                 min={0} max={64}
                 onChange={e => setEditCols(Math.min(64, Math.max(0, parseInt(e.target.value) || 0)))}
                 className="flex-1 text-center text-xs font-mono rounded px-1 py-0.5 outline-none"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.28 0.03 265)', color: 'oklch(0.85 0.01 220)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-2)', color: 'var(--jk-ink)' }}
               />
             </div>
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>×</span>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>×</span>
             <div className="flex items-center gap-1.5 flex-1">
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>纵</span>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>纵</span>
               <input
                 type="number"
                 value={editRows}
                 min={0} max={64}
                 onChange={e => setEditRows(Math.min(64, Math.max(0, parseInt(e.target.value) || 0)))}
                 className="flex-1 text-center text-xs font-mono rounded px-1 py-0.5 outline-none"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.28 0.03 265)', color: 'oklch(0.85 0.01 220)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-2)', color: 'var(--jk-ink)' }}
               />
             </div>
           </div>
-          <div className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+          <div className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
             共 {editRows * editCols} 个传感器点（最大64×64=4096）
           </div>
           <div className="flex gap-2">
-            <button onClick={handleApplySize} className="flex-1 py-1 rounded text-xs font-mono" style={{ background: 'oklch(0.58 0.22 265)', color: 'white' }}>
+            <button onClick={handleApplySize} className="flex-1 py-1 rounded text-xs font-mono" style={{ background: 'var(--jk-primary)', color: 'var(--jk-on-primary)' }}>
               应用
             </button>
-            <button onClick={() => setShowSizeEditor(false)} className="flex-1 py-1 rounded text-xs font-mono" style={{ background: 'oklch(0.22 0.03 265)', border: '1px solid oklch(0.30 0.03 265)', color: 'oklch(0.60 0.02 240)' }}>
+            <button onClick={() => setShowSizeEditor(false)} className="flex-1 py-1 rounded text-xs font-mono" style={{ background: 'var(--jk-s4)', border: '1px solid var(--jk-line-3)', color: 'var(--jk-text-high)' }}>
               取消
             </button>
           </div>
@@ -499,7 +499,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             key={btn.label}
             onClick={btn.action}
             className="px-2 py-0.5 text-xs rounded border transition-colors"
-            style={{ background: 'oklch(0.20 0.025 265)', borderColor: 'oklch(0.30 0.03 265)', color: 'oklch(0.70 0.02 240)', fontSize: '10px' }}
+            style={{ background: 'var(--jk-s3)', borderColor: 'var(--jk-line-3)', color: 'var(--jk-text-strong)', fontSize: '10px' }}
           >
             {btn.label}
           </button>
@@ -511,8 +511,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         ref={containerRef}
         className="relative p-2 rounded overflow-auto"
         style={{
-          background: 'oklch(0.13 0.02 265)',
-          border: '1px solid oklch(0.25 0.03 265)',
+          background: 'var(--jk-sunken)',
+          border: '1px solid var(--jk-line-1)',
           maxHeight: rows > 32 ? '140px' : rows > 16 ? '300px' : rows > 8 ? '300px' : '360px',
           userSelect: 'none',
           cursor: 'default',
@@ -536,36 +536,36 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           return (
             <div style={{
               position: 'absolute', left: offsetX, top: offsetY, zIndex: 50, pointerEvents: 'none',
-              width: `${popW}px`, background: 'oklch(0.18 0.03 265)', border: '1px solid oklch(0.35 0.06 265)',
+              width: `${popW}px`, background: 'var(--jk-s2)', border: '1px solid var(--jk-line-4)',
               borderRadius: '6px', boxShadow: '0 4px 16px oklch(0 0 0 / 0.5)', padding: '8px 10px',
               fontFamily: "'IBM Plex Mono', monospace",
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ fontSize: '10px', color: 'oklch(0.75 0.18 200)', fontWeight: 600 }}>
+                <span style={{ fontSize: '10px', color: 'var(--jk-accent)', fontWeight: 600 }}>
                   R{s.row + 1} · C{s.col + 1}
                 </span>
                 <span style={{
-                  fontSize: '9px', background: 'oklch(0.58 0.22 265 / 0.2)', color: 'oklch(0.70 0.18 200)',
-                  border: '1px solid oklch(0.58 0.22 265 / 0.4)', borderRadius: '3px', padding: '1px 5px', fontWeight: 600,
+                  fontSize: '9px', background: 'color-mix(in srgb, var(--jk-primary) 20%, transparent)', color: 'var(--jk-accent)',
+                  border: '1px solid color-mix(in srgb, var(--jk-primary) 40%, transparent)', borderRadius: '3px', padding: '1px 5px', fontWeight: 600,
                 }}>
                   #{arrayIdx}
                 </span>
               </div>
               {s.selected && (
                 <div style={{ marginBottom: '4px' }}>
-                  <span style={{ fontSize: '8px', background: 'oklch(0.72 0.20 145 / 0.2)', color: 'oklch(0.72 0.20 145)', border: '1px solid oklch(0.72 0.20 145 / 0.4)', borderRadius: '3px', padding: '1px 4px' }}>✓ 已选中</span>
+                  <span style={{ fontSize: '8px', background: 'color-mix(in srgb, var(--jk-ok) 20%, transparent)', color: 'var(--jk-ok)', border: '1px solid color-mix(in srgb, var(--jk-ok) 40%, transparent)', borderRadius: '3px', padding: '1px 4px' }}>✓ 已选中</span>
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '9px', color: 'oklch(0.50 0.02 240)' }}>十六进制</span>
-                  <span style={{ fontSize: '11px', color: 'oklch(0.75 0.18 200)', fontWeight: 600 }}>0x{hexVal}</span>
+                  <span style={{ fontSize: '9px', color: 'var(--jk-text-mid)' }}>十六进制</span>
+                  <span style={{ fontSize: '11px', color: 'var(--jk-accent)', fontWeight: 600 }}>0x{hexVal}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '9px', color: 'oklch(0.50 0.02 240)' }}>十进制</span>
-                  <span style={{ fontSize: '11px', color: 'oklch(0.85 0.01 220)', fontWeight: 600 }}>{adcVal}</span>
+                  <span style={{ fontSize: '9px', color: 'var(--jk-text-mid)' }}>十进制</span>
+                  <span style={{ fontSize: '11px', color: 'var(--jk-ink)', fontWeight: 600 }}>{adcVal}</span>
                 </div>
-                <div style={{ marginTop: '2px', height: '4px', background: 'oklch(0.22 0.03 265)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ marginTop: '2px', height: '4px', background: 'var(--jk-s4)', borderRadius: '2px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${adcNorm * 100}%`, borderRadius: '2px', transition: 'width 0.1s',
                     background: adcNorm < 0.5
@@ -574,11 +574,11 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                   }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '8px', color: 'oklch(0.38 0.02 240)' }}>0</span>
-                  <span style={{ fontSize: '8px', color: 'oklch(0.38 0.02 240)' }}>255</span>
+                  <span style={{ fontSize: '8px', color: 'var(--jk-text-dim)' }}>0</span>
+                  <span style={{ fontSize: '8px', color: 'var(--jk-text-dim)' }}>255</span>
                 </div>
               </div>
-              <div style={{ marginTop: '4px', fontSize: '8px', color: 'oklch(0.45 0.02 240)', textAlign: 'center' }}>
+              <div style={{ marginTop: '4px', fontSize: '8px', color: 'var(--jk-text-low)', textAlign: 'center' }}>
                 双击放大查看
               </div>
             </div>
@@ -592,7 +592,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
               <div
                 key={c}
                 className="text-center font-mono"
-                style={{ fontSize: '7px', color: 'oklch(0.38 0.02 240)', width: `${dotSize}px`, flexShrink: 0 }}
+                style={{ fontSize: '7px', color: 'var(--jk-text-dim)', width: `${dotSize}px`, flexShrink: 0 }}
               >
                 {c + 1}
               </div>
@@ -604,7 +604,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         {Array.from({ length: rows }, (_, r) => (
           <div key={r} className="flex items-center" style={{ gap: '1px', marginBottom: '1px' }}>
             {showLabels && (
-              <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '7px', color: 'oklch(0.38 0.02 240)', width: `${Math.max(20, String(rows).length * 8 + 8)}px`, paddingRight: '3px' }}>
+              <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '7px', color: 'var(--jk-text-dim)', width: `${Math.max(20, String(rows).length * 8 + 8)}px`, paddingRight: '3px' }}>
                 {r + 1}
               </div>
             )}
@@ -613,26 +613,26 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         ))}
 
         {/* 图例 */}
-        <div className="flex gap-2 mt-2 pt-1.5 flex-wrap items-center" style={{ borderTop: '1px solid oklch(0.20 0.03 265)' }}>
+        <div className="flex gap-2 mt-2 pt-1.5 flex-wrap items-center" style={{ borderTop: '1px solid var(--jk-s3)' }}>
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.72 0.20 145)', border: '1px solid oklch(0.82 0.18 145)' }} />
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px' }}>已选中(绿)</span>
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--jk-ok)', border: '1px solid var(--jk-ok)' }} />
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '9px' }}>已选中(绿)</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.35 0.16 260)', border: '1px solid oklch(0.45 0.14 260)' }} />
-            <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '7px' }}>0</span>
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--jk-primary)', border: '1px solid var(--jk-primary-soft)' }} />
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '7px' }}>0</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.55 0.20 145)', border: '1px solid oklch(0.65 0.18 145)' }} />
-            <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '7px' }}>127</span>
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--jk-ok)', border: '1px solid var(--jk-ok)' }} />
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '7px' }}>127</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.50 0.22 25)', border: '1px solid oklch(0.60 0.20 25)' }} />
-            <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '7px' }}>255</span>
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--jk-danger)', border: '1px solid var(--jk-danger)' }} />
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '7px' }}>255</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <ZoomIn size={8} style={{ color: 'oklch(0.40 0.02 240)' }} />
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '8px' }}>
+            <ZoomIn size={8} style={{ color: 'var(--jk-text-dim)' }} />
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '8px' }}>
               双击放大
             </span>
           </div>
@@ -650,25 +650,25 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           <div
             className="rounded-lg p-3 relative"
             style={{
-              background: 'oklch(0.14 0.025 265)',
-              border: '1px solid oklch(0.35 0.06 265)',
+              background: 'var(--jk-sunken)',
+              border: '1px solid var(--jk-line-4)',
               boxShadow: '0 4px 24px oklch(0 0 0 / 0.4)',
             }}
           >
             {/* 放大视图标题 */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => setZoom({ active: false, centerRow: 0, centerCol: 0, radius: 3 })}>
-                <ZoomIn size={12} style={{ color: 'oklch(0.75 0.18 55)' }} />
-                <span className="text-xs font-mono font-medium hover:opacity-70 transition-opacity" style={{ color: 'oklch(0.75 0.18 55)' }}>
+                <ZoomIn size={12} style={{ color: 'var(--jk-warn)' }} />
+                <span className="text-xs font-mono font-medium hover:opacity-70 transition-opacity" style={{ color: 'var(--jk-warn)' }}>
                   放大视图
                 </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
                   R{minR + 1}~R{maxR + 1} · C{minC + 1}~C{maxC + 1}
                 </span>
                 <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{
-                  background: 'oklch(0.85 0.18 55 / 0.12)',
-                  color: 'oklch(0.85 0.18 55)',
-                  border: '1px solid oklch(0.85 0.18 55 / 0.3)',
+                  background: 'color-mix(in srgb, var(--jk-warn) 12%, transparent)',
+                  color: 'var(--jk-warn)',
+                  border: '1px solid color-mix(in srgb, var(--jk-warn) 30%, transparent)',
                   fontSize: '9px',
                 }}>
                   中心 #{getArrayIndex(zoom.centerRow, zoom.centerCol)}
@@ -676,16 +676,16 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
               </div>
               <div className="flex items-center gap-2">
                 {/* 放大范围调节 */}
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>范围:</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>范围:</span>
                 {[2, 3, 4, 5].map(r => (
                   <button
                     key={r}
                     onClick={() => setZoom(prev => ({ ...prev, radius: r }))}
                     className="px-1.5 py-0.5 rounded text-xs font-mono transition-colors"
                     style={{
-                      background: zoom.radius === r ? 'oklch(0.85 0.18 55 / 0.15)' : 'oklch(0.20 0.025 265)',
-                      border: `1px solid ${zoom.radius === r ? 'oklch(0.85 0.18 55 / 0.4)' : 'oklch(0.28 0.03 265)'}`,
-                      color: zoom.radius === r ? 'oklch(0.85 0.18 55)' : 'oklch(0.50 0.02 240)',
+                      background: zoom.radius === r ? 'color-mix(in srgb, var(--jk-warn) 15%, transparent)' : 'var(--jk-s3)',
+                      border: `1px solid ${zoom.radius === r ? 'color-mix(in srgb, var(--jk-warn) 40%, transparent)' : 'var(--jk-line-2)'}`,
+                      color: zoom.radius === r ? 'var(--jk-warn)' : 'var(--jk-text-mid)',
                       fontSize: '9px',
                     }}
                   >
@@ -705,9 +705,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                   }}
                   className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
                   style={{
-                    background: 'oklch(0.72 0.20 145 / 0.15)',
-                    border: '1px solid oklch(0.72 0.20 145 / 0.4)',
-                    color: 'oklch(0.72 0.20 145)',
+                    background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--jk-ok) 40%, transparent)',
+                    color: 'var(--jk-ok)',
                     fontSize: '9px',
                   }}
                   title="选中此区域内的所有点"
@@ -717,7 +717,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                 <button
                   onClick={() => setZoom({ active: false, centerRow: 0, centerCol: 0, radius: 3 })}
                   className="ml-1 p-0.5 rounded transition-colors hover:bg-opacity-70"
-                  style={{ background: 'oklch(0.65 0.22 25 / 0.15)', border: '1px solid oklch(0.65 0.22 25 / 0.3)', color: 'oklch(0.65 0.22 25)' }}
+                  style={{ background: 'color-mix(in srgb, var(--jk-danger) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)', color: 'var(--jk-danger)' }}
                   title="关闭放大视图"
                 >
                   <X size={13} />
@@ -733,7 +733,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                   <div
                     key={i}
                     className="text-center font-mono"
-                    style={{ fontSize: '8px', color: 'oklch(0.50 0.02 240)', width: `${zoomDotSize}px`, flexShrink: 0 }}
+                    style={{ fontSize: '8px', color: 'var(--jk-text-mid)', width: `${zoomDotSize}px`, flexShrink: 0 }}
                   >
                     C{minC + i + 1}
                   </div>
@@ -743,7 +743,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                 const r = minR + ri;
                 return (
                   <div key={r} className="flex items-center" style={{ gap: '2px', marginBottom: '2px' }}>
-                    <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '8px', color: 'oklch(0.50 0.02 240)', width: '26px', paddingRight: '4px' }}>
+                    <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '8px', color: 'var(--jk-text-mid)', width: '26px', paddingRight: '4px' }}>
                       R{r + 1}
                     </div>
                     {Array.from({ length: zoomCols }, (_, ci) => {
@@ -756,11 +756,11 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             </div>
 
             {/* 放大区域统计 */}
-            <div className="flex items-center gap-3 mt-2 pt-2" style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}>
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+            <div className="flex items-center gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--jk-s4)' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>
                 区域 {zoomRows}×{zoomCols} = {zoomRows * zoomCols} 点
               </span>
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>
                 ADC范围: {(() => {
                   const vals: number[] = [];
                   for (let r = minR; r <= maxR; r++) {
@@ -772,7 +772,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                   return vals.length > 0 ? `${Math.min(...vals)}~${Math.max(...vals)}` : '--';
                 })()}
               </span>
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>
                 ADC均值: {(() => {
                   const vals: number[] = [];
                   for (let r = minR; r <= maxR; r++) {
@@ -791,9 +791,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
       {/* 已选传感器索引列表 */}
       {selectedCount > 0 && (
-        <div className="rounded p-2" style={{ background: 'oklch(0.15 0.025 265)', border: '1px solid oklch(0.22 0.03 265)' }}>
+        <div className="rounded p-2" style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)' }}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '10px' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '10px' }}>
               已选 {selectedCount} 个传感器点 · 数组位序:
             </span>
           </div>
@@ -806,9 +806,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
                   key={idx}
                   className="px-1 py-0.5 text-xs font-mono rounded"
                   style={{
-                    background: 'oklch(0.72 0.20 145 / 0.12)',
-                    color: 'oklch(0.72 0.20 145)',
-                    border: '1px solid oklch(0.72 0.20 145 / 0.25)',
+                    background: 'color-mix(in srgb, var(--jk-ok) 12%, transparent)',
+                    color: 'var(--jk-ok)',
+                    border: '1px solid color-mix(in srgb, var(--jk-ok) 25%, transparent)',
                     fontSize: '9px',
                   }}
                   title={`R${sensor.row + 1}·C${sensor.col + 1} = 数组第${idx}位`}
@@ -819,7 +819,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             })}
           </div>
           {selectedCount > 0 && (
-            <div className="mt-1 text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+            <div className="mt-1 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
               范围: #{selectedIndices[0]} ~ #{selectedIndices[selectedIndices.length - 1]}
               {' '}| ADC Sum(Hex): 0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')}
             </div>

@@ -23,13 +23,13 @@ interface ConsistencyChartProps {
 
 // 产品颜色（10种）
 const PRODUCT_COLORS = [
-  'oklch(0.70 0.18 200)',  // 青蓝
-  'oklch(0.72 0.20 145)',  // 绿
-  'oklch(0.75 0.18 55)',   // 黄
-  'oklch(0.65 0.22 25)',   // 橙红
+  'var(--jk-accent)',  // 青蓝
+  'var(--jk-ok)',  // 绿
+  'var(--jk-warn)',   // 黄
+  'var(--jk-danger)',   // 橙红
   'oklch(0.68 0.20 310)',  // 紫
-  'oklch(0.70 0.18 170)',  // 青绿
-  'oklch(0.72 0.15 240)',  // 蓝
+  'var(--jk-accent-2)',  // 青绿
+  'var(--jk-primary)',  // 蓝
   'oklch(0.75 0.20 80)',   // 黄绿
   'oklch(0.65 0.18 350)',  // 粉红
   'oklch(0.70 0.15 280)',  // 蓝紫
@@ -39,7 +39,7 @@ export default function ConsistencyChart({ records, productCount, samplesPerProd
   if (records.length === 0) {
     return (
       <div className="chart-container p-3 h-full flex items-center justify-center">
-        <div className="text-sm font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+        <div className="text-sm font-mono" style={{ color: 'var(--jk-text-low)' }}>
           暂无一致性数据
         </div>
       </div>
@@ -71,37 +71,37 @@ export default function ConsistencyChart({ records, productCount, samplesPerProd
   return (
     <div className="chart-container p-3 h-full flex flex-col">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
+        <span className="text-xs font-mono" style={{ color: 'var(--jk-accent)' }}>
           一致性 - ADC Sum 多产品对比
         </span>
-        <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
+        <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>
           {productCount} 个产品 × {samplesPerProduct} 个采样点
         </span>
       </div>
       <div className="flex-1" style={{ minHeight: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.03 265)" strokeOpacity={0.5} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--jk-line-1)" strokeOpacity={0.5} />
             <XAxis
               dataKey="sample"
-              tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-              axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-              tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-              label={{ value: '采样点', position: 'insideBottom', offset: -3, fill: 'oklch(0.50 0.02 240)', fontSize: 10 }}
+              tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+              axisLine={{ stroke: 'var(--jk-line-3)' }}
+              tickLine={{ stroke: 'var(--jk-line-3)' }}
+              label={{ value: '采样点', position: 'insideBottom', offset: -3, fill: 'var(--jk-text-mid)', fontSize: 10 }}
             />
             <YAxis
-              tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-              axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-              tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-              label={{ value: 'ADC Sum', angle: -90, position: 'insideLeft', fill: 'oklch(0.70 0.18 200)', fontSize: 10 }}
+              tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+              axisLine={{ stroke: 'var(--jk-line-3)' }}
+              tickLine={{ stroke: 'var(--jk-line-3)' }}
+              label={{ value: 'ADC Sum', angle: -90, position: 'insideLeft', fill: 'var(--jk-accent)', fontSize: 10 }}
             />
             <Tooltip
               contentStyle={{
-                background: 'oklch(0.17 0.025 265)',
-                border: '1px solid oklch(0.35 0.04 265)',
+                background: 'var(--jk-s2)',
+                border: '1px solid var(--jk-line-4)',
                 fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: '10px',
-                color: 'oklch(0.85 0.01 220)',
+                color: 'var(--jk-ink)',
               }}
             />
             {/* 各产品曲线 */}
@@ -122,7 +122,7 @@ export default function ConsistencyChart({ records, productCount, samplesPerProd
               type="monotone"
               dataKey="mean_adc"
               name="均值"
-              stroke="oklch(0.92 0.01 220)"
+              stroke="var(--jk-ink)"
               strokeWidth={2.5}
               dot={false}
               strokeDasharray="none"

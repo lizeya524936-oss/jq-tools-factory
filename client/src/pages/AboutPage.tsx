@@ -13,23 +13,23 @@ export default function AboutPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded flex items-center justify-center font-mono font-bold text-white flex-shrink-0"
-            style={{ background: 'oklch(0.58 0.22 265)', fontSize: '14px' }}
+            style={{ background: 'var(--jk-primary)', fontSize: '14px' }}
           >
             JQ
           </div>
           <div>
             <h1
               className="text-lg font-semibold"
-              style={{ color: 'oklch(0.92 0.01 220)', fontFamily: "'IBM Plex Sans', sans-serif" }}
+              style={{ color: 'var(--jk-ink)', fontFamily: "'IBM Plex Sans', sans-serif" }}
             >
               JQ Tools Factory
             </h1>
-            <p className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
+            <p className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>
               产品出厂检测工具 {APP_VERSION} | 矩侨工业 · {BUILD_DATE}
             </p>
           </div>
           <div className="ml-auto text-right">
-            <p className="text-xs font-mono" style={{ color: 'oklch(0.48 0.02 240)', lineHeight: '1.6' }}>
+            <p className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', lineHeight: '1.6' }}>
               我们是矩侨工业，做织物传感器件，压阻原理<br />
               数据多以矩阵化数组进行输出ADC数值<br />
               用在不同领域的压力数据采集
@@ -40,14 +40,14 @@ export default function AboutPage() {
         {/* 检测目标 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <CheckCircle size={14} style={{ color: 'oklch(0.72 0.20 145)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <CheckCircle size={14} style={{ color: 'var(--jk-ok)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               检测目标
             </span>
-            <span className="text-xs font-mono ml-auto" style={{ color: 'oklch(0.45 0.02 240)' }}>
+            <span className="text-xs font-mono ml-auto" style={{ color: 'var(--jk-text-low)' }}>
               误差阈值默认±8%，具体可定义
             </span>
           </div>
@@ -59,7 +59,7 @@ export default function AboutPage() {
                 desc: '验证产品检测区域的一致性要求',
                 tool: '手动垂直下压机',
                 method: '检测方法A',
-                color: 'oklch(0.70 0.18 200)',
+                color: 'var(--jk-accent)',
               },
               {
                 label: '重复性',
@@ -67,7 +67,7 @@ export default function AboutPage() {
                 desc: '验证产品检测区域的重复性要求',
                 tool: 'PLC可编程垂直下压机',
                 method: '检测方法B',
-                color: 'oklch(0.72 0.20 145)',
+                color: 'var(--jk-ok)',
               },
               {
                 label: '耐久性',
@@ -75,23 +75,23 @@ export default function AboutPage() {
                 desc: '验证产品检测区域的耐久性要求',
                 tool: '机器人灵巧手套',
                 method: '1万次抓握',
-                color: 'oklch(0.65 0.22 25)',
+                color: 'var(--jk-danger)',
               },
             ].map(item => (
               <div
                 key={item.label}
                 className="rounded p-3"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-s4)' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium" style={{ color: 'oklch(0.75 0.01 220)' }}>
+                  <span className="text-xs font-medium" style={{ color: 'var(--jk-ink)' }}>
                     {item.label}
                   </span>
                   <span className="text-lg font-mono font-bold" style={{ color: item.color }}>
                     {item.value}
                   </span>
                 </div>
-                <div className="text-xs mb-2" style={{ color: 'oklch(0.55 0.02 240)' }}>
+                <div className="text-xs mb-2" style={{ color: 'var(--jk-text-body)' }}>
                   {item.desc}
                 </div>
                 <div
@@ -112,62 +112,62 @@ export default function AboutPage() {
         {/* 设备连接流程 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <Usb size={14} style={{ color: 'oklch(0.58 0.22 265)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <Usb size={14} style={{ color: 'var(--jk-primary)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               设备连接流程（两个USB串口）
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div
               className="rounded p-3"
-              style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.70 0.18 200 / 0.3)' }}
+              style={{ background: 'var(--jk-sunken)', border: '1px solid color-mix(in srgb, var(--jk-accent) 30%, transparent)' }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <div
                   className="w-5 h-5 rounded flex items-center justify-center text-xs font-mono font-bold"
-                  style={{ background: 'oklch(0.70 0.18 200 / 0.2)', color: 'oklch(0.70 0.18 200)' }}
+                  style={{ background: 'color-mix(in srgb, var(--jk-accent) 20%, transparent)', color: 'var(--jk-accent)' }}
                 >
                   1
                 </div>
-                <span className="text-xs font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--jk-accent)' }}>
                   选择力学检测设备
                 </span>
               </div>
-              <p className="text-xs" style={{ color: 'oklch(0.60 0.02 240)' }}>
+              <p className="text-xs" style={{ color: 'var(--jk-text-high)' }}>
                 通过USB串口选择力学检测设备
               </p>
-              <p className="text-xs font-mono mt-1" style={{ color: 'oklch(0.50 0.02 240)' }}>
+              <p className="text-xs font-mono mt-1" style={{ color: 'var(--jk-text-mid)' }}>
                 数显手持测力仪 CL2-500N-MH01
               </p>
-              <p className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+              <p className="text-xs font-mono" style={{ color: 'var(--jk-text-low)' }}>
                 量程500N/50Kgf，用于检测压力数据
               </p>
             </div>
             <div
               className="rounded p-3"
-              style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.72 0.20 145 / 0.3)' }}
+              style={{ background: 'var(--jk-sunken)', border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)' }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <div
                   className="w-5 h-5 rounded flex items-center justify-center text-xs font-mono font-bold"
-                  style={{ background: 'oklch(0.72 0.20 145 / 0.2)', color: 'oklch(0.72 0.20 145)' }}
+                  style={{ background: 'color-mix(in srgb, var(--jk-ok) 20%, transparent)', color: 'var(--jk-ok)' }}
                 >
                   2
                 </div>
-                <span className="text-xs font-medium" style={{ color: 'oklch(0.72 0.20 145)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--jk-ok)' }}>
                   选择被测传感器产品
                 </span>
               </div>
-              <p className="text-xs" style={{ color: 'oklch(0.60 0.02 240)' }}>
+              <p className="text-xs" style={{ color: 'var(--jk-text-high)' }}>
                 通过USB串口选择被测传感器
               </p>
-              <p className="text-xs font-mono mt-1" style={{ color: 'oklch(0.50 0.02 240)' }}>
+              <p className="text-xs font-mono mt-1" style={{ color: 'var(--jk-text-mid)' }}>
                 不同形态、点密度的织物触觉传感器
               </p>
-              <p className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)' }}>
+              <p className="text-xs font-mono" style={{ color: 'var(--jk-text-low)' }}>
                 最大点阵密度64×64，横纵点阵支持1到64可设置
               </p>
             </div>
@@ -177,39 +177,39 @@ export default function AboutPage() {
         {/* 检测产品 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <Layers size={14} style={{ color: 'oklch(0.70 0.18 200)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <Layers size={14} style={{ color: 'var(--jk-accent)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               传感器矩阵规格
             </span>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { size: '8×8', desc: '64点', example: '触觉手套（小）', color: 'oklch(0.70 0.18 200)' },
-              { size: '16×16', desc: '256点', example: '足底传感器', color: 'oklch(0.72 0.20 145)' },
-              { size: '32×32', desc: '1024点', example: '皮肤传感器', color: 'oklch(0.75 0.18 55)' },
-              { size: '64×64', desc: '4096点', example: '大面积阵列', color: 'oklch(0.65 0.22 25)' },
+              { size: '8×8', desc: '64点', example: '触觉手套（小）', color: 'var(--jk-accent)' },
+              { size: '16×16', desc: '256点', example: '足底传感器', color: 'var(--jk-ok)' },
+              { size: '32×32', desc: '1024点', example: '皮肤传感器', color: 'var(--jk-warn)' },
+              { size: '64×64', desc: '4096点', example: '大面积阵列', color: 'var(--jk-danger)' },
             ].map(item => (
               <div
                 key={item.size}
                 className="rounded p-2.5 text-center"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-s4)' }}
               >
                 <div className="text-base font-mono font-bold" style={{ color: item.color }}>
                   {item.size}
                 </div>
-                <div className="text-xs font-mono mt-0.5" style={{ color: 'oklch(0.55 0.02 240)' }}>
+                <div className="text-xs font-mono mt-0.5" style={{ color: 'var(--jk-text-body)' }}>
                   {item.desc}
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'oklch(0.45 0.02 240)' }}>
+                <div className="text-xs mt-1" style={{ color: 'var(--jk-text-low)' }}>
                   {item.example}
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-xs font-mono mt-2" style={{ color: 'oklch(0.45 0.02 240)' }}>
+          <p className="text-xs font-mono mt-2" style={{ color: 'var(--jk-text-low)' }}>
             * 横纵点阵支持1到64任意设置，软件按被测产品的横纵比例进行数据展示
           </p>
         </div>
@@ -217,11 +217,11 @@ export default function AboutPage() {
         {/* 检测流程 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <GitBranch size={14} style={{ color: 'oklch(0.75 0.18 55)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <GitBranch size={14} style={{ color: 'var(--jk-warn)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               检测流程说明
             </span>
           </div>
@@ -230,7 +230,7 @@ export default function AboutPage() {
               {
                 step: '01',
                 title: '一致性检测（方法A）',
-                color: 'oklch(0.70 0.18 200)',
+                color: 'var(--jk-accent)',
                 items: [
                   '手动垂直下压机，人工下压检测一致性',
                   '对传感器的特定区域做高频采样力学、多个压力传感点的求和数据',
@@ -242,7 +242,7 @@ export default function AboutPage() {
               {
                 step: '02',
                 title: '重复性检测（方法B）',
-                color: 'oklch(0.72 0.20 145)',
+                color: 'var(--jk-ok)',
                 items: [
                   'PLC可编程垂直下压机，编程检测重复性',
                   '对传感器的特定区域做高频采样力学、多个压力传感点的求和数据',
@@ -253,7 +253,7 @@ export default function AboutPage() {
               {
                 step: '03',
                 title: '耐久性检测',
-                color: 'oklch(0.65 0.22 25)',
+                color: 'var(--jk-danger)',
                 items: [
                   '定制一对机器人灵巧手套，反复抓握一个特定物体，1万次',
                   '查看ADC求和数据，并验证全部传感感点的有效性和灵敏度是否变化',
@@ -263,7 +263,7 @@ export default function AboutPage() {
               <div
                 key={section.step}
                 className="rounded p-3"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-s4)' }}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <span
@@ -286,7 +286,7 @@ export default function AboutPage() {
                         className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0"
                         style={{ background: section.color }}
                       />
-                      <span className="text-xs" style={{ color: 'oklch(0.58 0.02 240)' }}>
+                      <span className="text-xs" style={{ color: 'var(--jk-text-high)' }}>
                         {item}
                       </span>
                     </li>
@@ -300,22 +300,22 @@ export default function AboutPage() {
         {/* 数据格式 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <Zap size={14} style={{ color: 'oklch(0.65 0.22 25)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <Zap size={14} style={{ color: 'var(--jk-danger)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               数据记录/导出格式
             </span>
           </div>
           <div
             className="rounded p-3 font-mono text-xs"
-            style={{ background: 'oklch(0.12 0.02 265)', border: '1px solid oklch(0.20 0.03 265)' }}
+            style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-s3)' }}
           >
-            <div style={{ color: 'oklch(0.55 0.02 240)' }} className="mb-1">
+            <div style={{ color: 'var(--jk-text-body)' }} className="mb-1">
               # CSV导出格式（数据导出格式为CSV数据）
             </div>
-            <div style={{ color: 'oklch(0.72 0.20 145)' }}>
+            <div style={{ color: 'var(--jk-ok)' }}>
               Time, Pressure, ADC Value, ADC Sum
             </div>
             <div className="mt-2 space-y-1">
@@ -326,8 +326,8 @@ export default function AboutPage() {
                 ['ADC Sum', '以选定区域的串口上报十六进制数组求和（纵坐标）'],
               ].map(([key, desc]) => (
                 <div key={key}>
-                  <span style={{ color: 'oklch(0.70 0.18 200)' }}>{key}</span>
-                  <span style={{ color: 'oklch(0.50 0.02 240)' }}> — {desc}</span>
+                  <span style={{ color: 'var(--jk-accent)' }}>{key}</span>
+                  <span style={{ color: 'var(--jk-text-mid)' }}> — {desc}</span>
                 </div>
               ))}
             </div>
@@ -337,11 +337,11 @@ export default function AboutPage() {
         {/* 软件功能 */}
         <div
           className="rounded p-4"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <Cpu size={14} style={{ color: 'oklch(0.58 0.22 265)' }} />
-            <span className="text-sm font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <Cpu size={14} style={{ color: 'var(--jk-primary)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--jk-ink)' }}>
               软件功能模块
             </span>
           </div>
@@ -375,12 +375,12 @@ export default function AboutPage() {
               <div
                 key={f.module}
                 className="rounded p-2.5"
-                style={{ background: 'oklch(0.14 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+                style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-s4)' }}
               >
-                <div className="font-medium mb-1" style={{ color: 'oklch(0.70 0.18 200)' }}>
+                <div className="font-medium mb-1" style={{ color: 'var(--jk-accent)' }}>
                   {f.module}
                 </div>
-                <div style={{ color: 'oklch(0.55 0.02 240)', lineHeight: '1.5' }}>{f.desc}</div>
+                <div style={{ color: 'var(--jk-text-body)', lineHeight: '1.5' }}>{f.desc}</div>
               </div>
             ))}
           </div>

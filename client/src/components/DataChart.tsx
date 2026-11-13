@@ -97,30 +97,30 @@ const MAX_DISPLAY_POINTS_PER_SERIES = 200;
 
 // 20 种区分度高的颜色
 export const SERIES_COLORS = [
-  'oklch(0.70 0.18 200)',  // 蓝
-  'oklch(0.72 0.20 145)',  // 绿
-  'oklch(0.65 0.22 25)',   // 橙红
+  'var(--jk-accent)',  // 蓝
+  'var(--jk-ok)',  // 绿
+  'var(--jk-danger)',   // 橙红
   'oklch(0.68 0.20 300)',  // 紫
   'oklch(0.75 0.18 80)',   // 黄
   'oklch(0.65 0.20 350)',  // 粉红
-  'oklch(0.70 0.15 170)',  // 青
+  'var(--jk-accent-2)',  // 青
   'oklch(0.60 0.22 50)',   // 深橙
-  'oklch(0.72 0.15 260)',  // 淡蓝紫
+  'var(--jk-primary)',  // 淡蓝紫
   'oklch(0.68 0.20 120)',  // 黄绿
   'oklch(0.60 0.18 330)',  // 玫红
-  'oklch(0.75 0.12 220)',  // 天蓝
+  'var(--jk-ink)',  // 天蓝
   'oklch(0.65 0.20 70)',   // 琥珀
   'oklch(0.58 0.22 280)',  // 靛蓝
   'oklch(0.72 0.18 160)',  // 翠绿
   'oklch(0.62 0.20 10)',   // 红
-  'oklch(0.70 0.15 240)',  // 钢蓝
+  'var(--jk-primary)',  // 钢蓝
   'oklch(0.68 0.18 100)',  // 柠檬绿
   'oklch(0.60 0.20 310)',  // 紫罗兰
-  'oklch(0.75 0.15 190)',  // 浅青
+  'var(--jk-accent)',  // 浅青
 ];
 
 // 拟合曲线颜色（使用标准 CSS 颜色确保 Legend 正确渲染）
-const FIT_CURVE_COLOR = '#f0a030';
+const FIT_CURVE_COLOR = 'var(--jk-fit)';
 
 /**
  * 对数据点数组进行降采样，保留曲线形状特征
@@ -154,8 +154,8 @@ function MultiSeriesTooltipInner({ active, payload, axisSwapped }: { active: boo
         <div
           className="rounded p-2.5"
           style={{
-            background: 'oklch(0.17 0.025 265)',
-            border: '1px solid oklch(0.35 0.04 265)',
+            background: 'var(--jk-s2)',
+            border: '1px solid var(--jk-line-4)',
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: '11px',
             boxShadow: '0 4px 12px oklch(0 0 0 / 0.4)',
@@ -165,12 +165,12 @@ function MultiSeriesTooltipInner({ active, payload, axisSwapped }: { active: boo
             Hill 拟合曲线
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'oklch(0.72 0.20 145)' }}>{axisSwapped ? 'ADC (拟合):' : '压力:'}</span>
-            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum?.toFixed(1)}` : `${data?.pressure?.toFixed(2)} N`}</span>
+            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'var(--jk-ok)' }}>{axisSwapped ? 'ADC (拟合):' : '压力:'}</span>
+            <span style={{ color: axisSwapped ? FIT_CURVE_COLOR : 'var(--jk-ok)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum?.toFixed(1)}` : `${data?.pressure?.toFixed(2)} N`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: axisSwapped ? 'oklch(0.72 0.20 145)' : FIT_CURVE_COLOR }}>{axisSwapped ? '压力 (拟合):' : 'ADC (拟合):'}</span>
-            <span style={{ color: axisSwapped ? 'oklch(0.72 0.20 145)' : FIT_CURVE_COLOR, fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum?.toFixed(1)}`}</span>
+            <span style={{ color: axisSwapped ? 'var(--jk-ok)' : FIT_CURVE_COLOR }}>{axisSwapped ? '压力 (拟合):' : 'ADC (拟合):'}</span>
+            <span style={{ color: axisSwapped ? 'var(--jk-ok)' : FIT_CURVE_COLOR, fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum?.toFixed(1)}`}</span>
           </div>
         </div>
       );
@@ -180,33 +180,33 @@ function MultiSeriesTooltipInner({ active, payload, axisSwapped }: { active: boo
       <div
         className="rounded p-2.5"
         style={{
-          background: 'oklch(0.17 0.025 265)',
-          border: '1px solid oklch(0.35 0.04 265)',
+          background: 'var(--jk-s2)',
+          border: '1px solid var(--jk-line-4)',
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: '11px',
           boxShadow: '0 4px 12px oklch(0 0 0 / 0.4)',
         }}
       >
         {data?.seriesName && (
-          <div style={{ color: data.seriesColor || 'oklch(0.55 0.02 240)', marginBottom: '4px', fontSize: '10px', fontWeight: 600 }}>
+          <div style={{ color: data.seriesColor || 'var(--jk-text-body)', marginBottom: '4px', fontSize: '10px', fontWeight: 600 }}>
             {data.seriesName}
           </div>
         )}
-        <div style={{ color: 'oklch(0.55 0.02 240)', marginBottom: '4px', fontSize: '10px' }}>
+        <div style={{ color: 'var(--jk-text-body)', marginBottom: '4px', fontSize: '10px' }}>
           样本 #{data?.index} · {data?.time}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)' }}>{axisSwapped ? 'ADC Sum:' : '压力:'}</span>
-            <span style={{ color: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum}` : `${data?.pressure?.toFixed(2)} N`}</span>
+            <span style={{ color: axisSwapped ? 'var(--jk-accent)' : 'var(--jk-ok)' }}>{axisSwapped ? 'ADC Sum:' : '压力:'}</span>
+            <span style={{ color: axisSwapped ? 'var(--jk-accent)' : 'var(--jk-ok)', fontWeight: 600 }}>{axisSwapped ? `${data?.adcSum}` : `${data?.pressure?.toFixed(2)} N`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)' }}>{axisSwapped ? '压力:' : 'ADC Sum:'}</span>
-            <span style={{ color: data?.seriesColor || 'oklch(0.70 0.18 200)', fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum}`}</span>
+            <span style={{ color: data?.seriesColor || 'var(--jk-accent)' }}>{axisSwapped ? '压力:' : 'ADC Sum:'}</span>
+            <span style={{ color: data?.seriesColor || 'var(--jk-accent)', fontWeight: 600 }}>{axisSwapped ? `${data?.pressure?.toFixed(2)} N` : `${data?.adcSum}`}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: 'oklch(0.55 0.15 200)' }}>Hex Sum:</span>
-            <span style={{ color: 'oklch(0.55 0.15 200)', fontWeight: 600 }}>{data?.adcSumHex}</span>
+            <span style={{ color: 'var(--jk-accent)' }}>Hex Sum:</span>
+            <span style={{ color: 'var(--jk-accent)', fontWeight: 600 }}>{data?.adcSumHex}</span>
           </div>
         </div>
       </div>
@@ -242,7 +242,7 @@ const CustomLegend = ({ payload }: any) => {
                 <circle cx="10" cy="5" r="3" fill={entry.color} />
               </svg>
             )}
-            <span style={{ color: entry.color || 'oklch(0.60 0.02 240)' }}>
+            <span style={{ color: entry.color || 'var(--jk-text-high)' }}>
               {entry.value}
             </span>
           </div>
@@ -471,9 +471,9 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
 
   // 按钮样式
   const exportBtnStyle = {
-    background: 'oklch(0.20 0.02 265)',
-    border: '1px solid oklch(0.30 0.03 265)',
-    color: 'oklch(0.70 0.12 200)',
+    background: 'var(--jk-s3)',
+    border: '1px solid var(--jk-line-3)',
+    color: 'var(--jk-accent)',
     fontSize: '9px',
     padding: '2px 8px',
     borderRadius: '4px',
@@ -486,8 +486,8 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
     <div
       className="rounded px-3 py-2 mt-1"
       style={{
-        background: 'oklch(0.14 0.02 265)',
-        border: `1px solid oklch(0.25 0.03 265)`,
+        background: 'var(--jk-sunken)',
+        border: `1px solid var(--jk-line-1)`,
       }}
     >
       {/* 标题行 + 导出按钮 */}
@@ -498,8 +498,8 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
         <span
           className="px-1.5 py-0.5 rounded text-xs font-mono"
           style={{
-            background: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145 / 0.15)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80 / 0.15)' : 'oklch(0.65 0.22 25 / 0.15)',
-            color: fit.r2 >= 0.99 ? 'oklch(0.72 0.20 145)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80)' : 'oklch(0.65 0.22 25)',
+            background: fit.r2 >= 0.99 ? 'color-mix(in srgb, var(--jk-ok) 15%, transparent)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80 / 0.15)' : 'color-mix(in srgb, var(--jk-danger) 15%, transparent)',
+            color: fit.r2 >= 0.99 ? 'var(--jk-ok)' : fit.r2 >= 0.95 ? 'oklch(0.75 0.18 80)' : 'var(--jk-danger)',
             fontSize: '9px',
           }}
         >
@@ -508,8 +508,8 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
         <span
           className="px-1.5 py-0.5 rounded text-xs font-mono"
           style={{
-            background: 'oklch(0.20 0.02 265)',
-            color: 'oklch(0.55 0.02 240)',
+            background: 'var(--jk-s3)',
+            color: 'var(--jk-text-body)',
             fontSize: '9px',
           }}
         >
@@ -518,8 +518,8 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
         <span
           className="px-1.5 py-0.5 rounded text-xs font-mono"
           style={{
-            background: 'oklch(0.20 0.02 265)',
-            color: 'oklch(0.55 0.02 240)',
+            background: 'var(--jk-s3)',
+            color: 'var(--jk-text-body)',
             fontSize: '9px',
           }}
         >
@@ -538,8 +538,8 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
             onClick={handleCopyLatex}
             style={{
               ...exportBtnStyle,
-              color: copyStatus ? 'oklch(0.72 0.20 145)' : exportBtnStyle.color,
-              borderColor: copyStatus ? 'oklch(0.72 0.20 145 / 0.4)' : exportBtnStyle.border.split(' ').pop(),
+              color: copyStatus ? 'var(--jk-ok)' : exportBtnStyle.color,
+              borderColor: copyStatus ? 'color-mix(in srgb, var(--jk-ok) 40%, transparent)' : exportBtnStyle.border.split(' ').pop(),
             }}
             title="复制 LaTeX 公式到剪贴板"
           >
@@ -554,16 +554,16 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
         <div className="flex-1 flex flex-col gap-1.5">
           {/* 正向方程 */}
           <div className="flex items-start gap-2">
-            <span className="text-xs font-mono shrink-0" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px', lineHeight: '18px' }}>
+            <span className="text-xs font-mono shrink-0" style={{ color: 'var(--jk-text-mid)', fontSize: '9px', lineHeight: '18px' }}>
               拟合方程:
             </span>
             <code
               className="text-xs font-mono px-2 py-0.5 rounded"
               style={{
-                background: 'oklch(0.11 0.015 265)',
-                color: 'oklch(0.80 0.15 200)',
+                background: 'var(--jk-bg)',
+                color: 'var(--jk-accent)',
                 fontSize: '10px',
-                border: '1px solid oklch(0.22 0.03 265)',
+                border: '1px solid var(--jk-s4)',
                 lineHeight: '18px',
               }}
             >
@@ -575,30 +575,30 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
 
           {/* 系数 */}
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>系数:</span>
-            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.75 0.18 80)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              a = {fit.a.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>(max ADC)</span>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>系数:</span>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--jk-bg)', color: 'oklch(0.75 0.18 80)', fontSize: '9px', border: '1px solid var(--jk-s4)' }}>
+              a = {fit.a.toFixed(4)} <span style={{ color: 'var(--jk-text-low)', fontSize: '8px' }}>(max ADC)</span>
             </code>
-            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.72 0.20 145)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
-              b = {fit.b.toFixed(4)} <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '8px' }}>(半饱和 N)</span>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--jk-bg)', color: 'var(--jk-ok)', fontSize: '9px', border: '1px solid var(--jk-s4)' }}>
+              b = {fit.b.toFixed(4)} <span style={{ color: 'var(--jk-text-low)', fontSize: '8px' }}>(半饱和 N)</span>
             </code>
-            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'oklch(0.11 0.015 265)', color: 'oklch(0.68 0.20 300)', fontSize: '9px', border: '1px solid oklch(0.22 0.03 265)' }}>
+            <code className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--jk-bg)', color: 'oklch(0.68 0.20 300)', fontSize: '9px', border: '1px solid var(--jk-s4)' }}>
               n = {fit.n.toFixed(4)}
             </code>
           </div>
 
           {/* 反推公式 */}
           <div className="flex items-start gap-2">
-            <span className="text-xs font-mono shrink-0" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px', lineHeight: '18px' }}>
+            <span className="text-xs font-mono shrink-0" style={{ color: 'var(--jk-text-mid)', fontSize: '9px', lineHeight: '18px' }}>
               {axisSwapped ? 'P→ADC:' : 'ADC→N:'}
             </span>
             <code
               className="text-xs font-mono px-2 py-0.5 rounded"
               style={{
-                background: 'oklch(0.11 0.015 265)',
-                color: 'oklch(0.72 0.20 145)',
+                background: 'var(--jk-bg)',
+                color: 'var(--jk-ok)',
                 fontSize: '10px',
-                border: '1px solid oklch(0.22 0.03 265)',
+                border: '1px solid var(--jk-s4)',
                 lineHeight: '18px',
               }}
             >
@@ -613,12 +613,12 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
         <div
           className="flex flex-col gap-1.5 px-3 py-2 rounded"
           style={{
-            background: 'oklch(0.11 0.015 265)',
-            border: '1px solid oklch(0.22 0.03 265)',
+            background: 'var(--jk-bg)',
+            border: '1px solid var(--jk-s4)',
             minWidth: '180px',
           }}
         >
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
             {axisSwapped ? 'P → ADC 在线计算' : 'ADC → N 在线计算'}
           </span>
           <div className="flex items-center gap-1.5">
@@ -630,9 +630,9 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
               placeholder={axisSwapped ? '输入压力值 (N)' : '输入 ADC 值'}
               className="flex-1 px-2 py-1 rounded text-xs font-mono"
               style={{
-                background: 'oklch(0.17 0.025 265)',
-                border: '1px solid oklch(0.30 0.03 265)',
-                color: 'oklch(0.85 0.12 200)',
+                background: 'var(--jk-s2)',
+                border: '1px solid var(--jk-line-3)',
+                color: 'var(--jk-accent)',
                 fontSize: '10px',
                 outline: 'none',
               }}
@@ -641,9 +641,9 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
               onClick={handleInverse}
               className="px-2 py-1 rounded text-xs font-mono"
               style={{
-                background: 'oklch(0.70 0.18 200 / 0.2)',
-                border: '1px solid oklch(0.70 0.18 200 / 0.4)',
-                color: 'oklch(0.85 0.12 200)',
+                background: 'color-mix(in srgb, var(--jk-accent) 20%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--jk-accent) 40%, transparent)',
+                color: 'var(--jk-accent)',
                 fontSize: '10px',
               }}
             >
@@ -651,7 +651,7 @@ function HillFitPanel({ fit, axisSwapped }: { fit: HillFitResult; axisSwapped: b
             </button>
           </div>
           {calcResult && (
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.72 0.20 145)', fontSize: '10px' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-ok)', fontSize: '10px' }}>
               {calcResult}
             </div>
           )}
@@ -903,13 +903,13 @@ const DataChart = memo(function DataChart({
     <div className="chart-container p-3 flex flex-col" style={{ minHeight: '480px', height: '100%' }}>
       {title && (
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)' }}>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-accent)' }}>
             {title}
           </span>
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>
             {visibleSeries.length} 个系列 · {totalDisplayPoints} 个显示点
             {totalRawPoints > totalDisplayPoints && (
-              <span style={{ color: 'oklch(0.40 0.02 240)' }}> (原始 {totalRawPoints})</span>
+              <span style={{ color: 'var(--jk-text-dim)' }}> (原始 {totalRawPoints})</span>
             )}
           </span>
         </div>
@@ -918,10 +918,10 @@ const DataChart = memo(function DataChart({
       {!hasData ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-sm font-mono mb-1" style={{ color: 'oklch(0.45 0.02 240)' }}>
+            <div className="text-sm font-mono mb-1" style={{ color: 'var(--jk-text-low)' }}>
               暂无数据
             </div>
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
               请选择传感器并开始检测，或上传 CSV 文件
             </div>
           </div>
@@ -945,9 +945,9 @@ const DataChart = memo(function DataChart({
               onClick={toggleAxisSwap}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
               style={{
-                background: axisSwapped ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.20 0.02 265)',
-                border: axisSwapped ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid oklch(0.30 0.03 265)',
-                color: axisSwapped ? 'oklch(0.75 0.12 220)' : 'oklch(0.50 0.02 240)',
+                background: axisSwapped ? 'color-mix(in srgb, var(--jk-primary) 20%, transparent)' : 'var(--jk-s3)',
+                border: axisSwapped ? '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)' : '1px solid var(--jk-line-3)',
+                color: axisSwapped ? 'var(--jk-ink)' : 'var(--jk-text-mid)',
                 fontSize: '9px',
               }}
             >
@@ -963,23 +963,23 @@ const DataChart = memo(function DataChart({
               onClick={toggleShowAvg}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-all"
               style={{
-                background: showAvg ? 'oklch(0.56 0.18 145 / 0.15)' : 'oklch(0.20 0.02 265)',
-                border: showAvg ? '1px solid oklch(0.56 0.18 145 / 0.4)' : '1px solid oklch(0.30 0.03 265)',
-                color: showAvg ? 'oklch(0.72 0.20 145)' : 'oklch(0.50 0.02 240)',
+                background: showAvg ? 'color-mix(in srgb, var(--jk-ok) 15%, transparent)' : 'var(--jk-s3)',
+                border: showAvg ? '1px solid color-mix(in srgb, var(--jk-ok) 40%, transparent)' : '1px solid var(--jk-line-3)',
+                color: showAvg ? 'var(--jk-ok)' : 'var(--jk-text-mid)',
                 fontSize: '9px',
               }}
             >
               {showAvg ? 'AVG' : 'SUM'}
             </button>
             {axisSwapped && (
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
                 X: {showAvg ? 'ADC Avg' : 'ADC Sum'} · Y: 压力 (N)
               </span>
             )}
           </div>
           {/* 降采样提示 */}
           {totalRawPoints > totalDisplayPoints && (
-            <div className="mb-1 text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+            <div className="mb-1 text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>
               已降采样显示 ({totalDisplayPoints}/{totalRawPoints} 点)
             </div>
           )}
@@ -989,7 +989,7 @@ const DataChart = memo(function DataChart({
               <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="oklch(0.25 0.03 265)"
+                  stroke="var(--jk-line-1)"
                   strokeOpacity={0.6}
                 />
                 {/* 横坐标：axisSwapped 时为 ADC Sum，否则为 压力 (N) */}
@@ -997,15 +997,15 @@ const DataChart = memo(function DataChart({
                   dataKey={axisSwapped ? "adcSum" : "pressure"}
                   type="number"
                   name={axisSwapped ? "ADC Sum" : "压力"}
-                  tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                  axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                  tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
+                  tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                  axisLine={{ stroke: 'var(--jk-line-3)' }}
+                  tickLine={{ stroke: 'var(--jk-line-3)' }}
                   tickFormatter={axisSwapped ? formatAdcTick : undefined}
                   label={{
                     value: axisSwapped ? 'ADC Sum' : '压力 (N)',
                     position: 'insideBottom',
                     offset: -5,
-                    fill: axisSwapped ? 'oklch(0.70 0.18 200)' : 'oklch(0.72 0.20 145)',
+                    fill: axisSwapped ? 'var(--jk-accent)' : 'var(--jk-ok)',
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
@@ -1017,15 +1017,15 @@ const DataChart = memo(function DataChart({
                   dataKey={axisSwapped ? "pressure" : "adcSum"}
                   type="number"
                   name={axisSwapped ? "压力" : "ADC Sum"}
-                  tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                  axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                  tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
+                  tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                  axisLine={{ stroke: 'var(--jk-line-3)' }}
+                  tickLine={{ stroke: 'var(--jk-line-3)' }}
                   tickFormatter={axisSwapped ? undefined : formatAdcTick}
                   label={{
                     value: axisSwapped ? '压力 (N)' : (showAvg ? 'ADC Avg' : 'ADC Sum'),
                     angle: -90,
                     position: 'insideLeft',
-                    fill: axisSwapped ? 'oklch(0.72 0.20 145)' : 'oklch(0.70 0.18 200)',
+                    fill: axisSwapped ? 'var(--jk-ok)' : 'var(--jk-accent)',
                     fontSize: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}

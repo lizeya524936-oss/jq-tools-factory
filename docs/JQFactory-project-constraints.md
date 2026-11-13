@@ -1,6 +1,6 @@
 # JQFactory 项目约束与核心逻辑文档
 
-> **代码基线**：`v1.9.41`（`BUILD_DATE` = 2026-11-04） | **整理日期**：2026-11-04
+> **代码基线**：`v1.9.42`（`BUILD_DATE` = 2026-11-14） | **整理日期**：2026-11-14
 > **用途**：程序融合参考 —— 部署约束、数据流规则、上传/导出逻辑、状态管理模式
 
 **与 `AGENTS.md` 的关系**：根目录的 `AGENTS.md` 是 **Agent 每次会话自动加载的规则总纲**（含铁律、环境坑、交接快照）；本文是**详细技术参考**。两者冲突时，以 `AGENTS.md` + 实际代码为准。
@@ -611,21 +611,32 @@ try {
 
 ## 九、UI 组件约束
 
-### 9.1 颜色系统（oklch，取自 `client/src/index.css`）
+### 9.1 颜色系统（双主题 · 语义变量）
 
-```css
---background:  oklch(0.13 0.02 265);   /* 主背景（最暗） */
---card:        oklch(0.17 0.025 265);  /* 卡片 */
---foreground:  oklch(0.92 0.01 220);   /* 主文字 */
---border:      oklch(0.28 0.03 265);   /* 主边框 */
---primary:     oklch(0.58 0.22 265);   /* 主色（紫蓝） */
---accent:      oklch(0.70 0.18 200);   /* 蓝色强调 */
---destructive: oklch(0.65 0.22 25);    /* 红色警告 */
-```
+配色**不再是写死的 oklch 字面量**，而是 `client/src/index.css` 里的语义变量 `--jk-*`：
 
-⚠️ **上一版把主背景写成 `oklch(0.17 0.025 265)`、主边框写成 `oklch(0.25 0.03 265)` —— 那其实是 `--card` 和 `--sidebar-border` 的值，取错了 token。**
+| 类别 | 变量 | 说明 |
+|------|------|------|
+| 面 | `--jk-bg` `--jk-sunken` `--jk-s1`~`--jk-s4` `--jk-surface-hi` | 由底层到抬起层 |
+| 线 | `--jk-line-1`~`--jk-line-4` | 由弱到强 |
+| 文字 | `--jk-ink` `--jk-text-max` `--jk-text-strong` `--jk-text-high` `--jk-text-body` `--jk-text-mid` `--jk-text-low` `--jk-text-dim` `--jk-text-faint` | 由强调到次要 |
+| 强调 | `--jk-primary` `--jk-on-primary` `--jk-primary-soft` `--jk-accent` `--jk-accent-2` `--jk-ok` `--jk-warn` `--jk-danger` `--jk-fit` | 主色 / 主色文字 / 通过 / 警示 / 失败 / 拟合曲线 |
+| 热力 | `--jk-heat-low` `--jk-heat-high` | 传感器矩阵色域两端 |
 
-**另有一处历史例外**：`SerialConnectPanel.tsx` 里仍有 `#16213e` / `#e0e0e0` 两处 hex 硬编码未清理。**新增**颜色一律用 oklch。
+**两套主题**（`index.css`）：
+
+| 模式 | 选择器 | 方案 | 底色 | 主色 |
+|------|--------|------|------|------|
+| 白天 | `:root` | E 浅色仪器 | `#F1F4F7` | `#0E7490` |
+| 黑夜 | `.dark` | A 石墨青 | `#0C0F12` | `#22D3EE` |
+
+- 切换只切 `<html class="dark">`，颜色全部来自变量，**不触发组件重渲染**
+- 存储键 `jq_theme`；首次访问跟随 `prefers-color-scheme`；`?theme=light|dark` 可强制
+- 透明度一律用 `color-mix(in srgb, var(--jk-x) N%, transparent)`，**不要写** `oklch(... / N)`
+- 唯一可保留字面量的：图表系列色、`${}` 动态插值的热力色
+- 迁移/新增色阶的工具：[`scripts/theme/retheme.mjs`](../scripts/theme/retheme.mjs)（有试运行模式）、[`fix-literals.mjs`](../scripts/theme/fix-literals.mjs)
+
+⚠️ **历史教训**：v1.9.41 之前全站有 **1245 处内联 `oklch()`**，内联样式优先级高于 CSS，所以当时根本无法做亮色主题。v1.9.42 按「色相+彩度+明度」归并成上述语义变量（转换 1197 处），才让双主题成立。**新增代码请直接用变量，避免再次散落。**
 
 ### 9.2 字体
 

@@ -456,22 +456,22 @@ export default function DurabilityPage() {
         style={{
           width: '520px',
           minWidth: '280px',
-          borderRight: '1px solid oklch(0.22 0.03 265)',
+          borderRight: '1px solid var(--jk-s4)',
           flexShrink: 0,
         }}
       >
         {/* 传感器矩阵 */}
-        <div className="rounded" style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
+        <div className="rounded" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
           {/* 手掌布局/矩阵显示切换开关 */}
           {handSide && (
-            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+            <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}>
               <button
                 onClick={() => { if (!useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: useHandLayout ? 'oklch(0.58 0.22 265 / 0.25)' : 'transparent',
-                  border: useHandLayout ? '1px solid oklch(0.58 0.22 265 / 0.5)' : '1px solid transparent',
-                  color: useHandLayout ? 'oklch(0.80 0.15 265)' : 'oklch(0.45 0.02 240)',
+                  background: useHandLayout ? 'color-mix(in srgb, var(--jk-primary) 25%, transparent)' : 'transparent',
+                  border: useHandLayout ? '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)' : '1px solid transparent',
+                  color: useHandLayout ? 'var(--jk-primary)' : 'var(--jk-text-low)',
                 }}
               >
                 <Hand size={16} />
@@ -481,9 +481,9 @@ export default function DurabilityPage() {
                 onClick={() => { if (useHandLayout) toggleHandLayout(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-mono font-medium transition-all"
                 style={{
-                  background: !useHandLayout ? 'oklch(0.72 0.20 145 / 0.25)' : 'transparent',
-                  border: !useHandLayout ? '1px solid oklch(0.72 0.20 145 / 0.5)' : '1px solid transparent',
-                  color: !useHandLayout ? 'oklch(0.82 0.15 145)' : 'oklch(0.45 0.02 240)',
+                  background: !useHandLayout ? 'color-mix(in srgb, var(--jk-ok) 25%, transparent)' : 'transparent',
+                  border: !useHandLayout ? '1px solid color-mix(in srgb, var(--jk-ok) 50%, transparent)' : '1px solid transparent',
+                  color: !useHandLayout ? 'var(--jk-ok)' : 'var(--jk-text-low)',
                 }}
               >
                 <Grid3x3 size={16} />
@@ -526,17 +526,17 @@ export default function DurabilityPage() {
                 background: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? 'oklch(0.35 0.15 30 / 0.3)' : 'oklch(0.30 0.15 250 / 0.3)';
+                  return allSelected ? 'color-mix(in srgb, var(--jk-danger) 30%, transparent)' : 'color-mix(in srgb, var(--jk-primary) 30%, transparent)';
                 })(),
                 border: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? '1px solid oklch(0.50 0.15 30 / 0.5)' : '1px solid oklch(0.50 0.15 250 / 0.5)';
+                  return allSelected ? '1px solid color-mix(in srgb, var(--jk-danger) 50%, transparent)' : '1px solid color-mix(in srgb, var(--jk-primary) 50%, transparent)';
                 })(),
                 color: (() => {
                   const allIndices = getHandIndices(handSide);
                   const allSelected = allIndices.every(i => handSelectedIndices.has(i));
-                  return allSelected ? 'oklch(0.70 0.15 30)' : 'oklch(0.70 0.15 250)';
+                  return allSelected ? 'var(--jk-danger)' : 'var(--jk-primary)';
                 })(),
               }}
             >
@@ -550,7 +550,7 @@ export default function DurabilityPage() {
             onClick={handleExport}
             disabled={isRunning || records.length === 0}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
-            style={{ background: 'oklch(0.72 0.20 145 / 0.15)', border: '1px solid oklch(0.72 0.20 145 / 0.3)', color: 'oklch(0.72 0.20 145)' }}
+            style={{ background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)', color: 'var(--jk-ok)' }}
           >
             <Download size={12} /> 导出数据
           </button>
@@ -558,7 +558,7 @@ export default function DurabilityPage() {
             onClick={handleReset}
             disabled={isRunning}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
-            style={{ background: 'oklch(0.22 0.03 265)', border: '1px solid oklch(0.30 0.03 265)', color: 'oklch(0.60 0.02 240)' }}
+            style={{ background: 'var(--jk-s4)', border: '1px solid var(--jk-line-3)', color: 'var(--jk-text-high)' }}
           >
             <RefreshCw size={12} /> 重置
           </button>
@@ -568,11 +568,11 @@ export default function DurabilityPage() {
 
         {isRunning && (
           <div style={{ flexShrink: 0 }}>
-            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)' }}>
+            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)' }}>
               <span>抓握进度</span><span>{progress}%</span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'oklch(0.22 0.03 265)' }}>
-              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'oklch(0.58 0.22 265)' }} />
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--jk-s4)' }}>
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'var(--jk-primary)' }} />
             </div>
           </div>
         )}
@@ -607,24 +607,24 @@ export default function DurabilityPage() {
         {/* 标题栏 + 使能按钮 */}
         <div
           className="flex items-center justify-between px-3 py-2 rounded"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0 }}
         >
           <div className="flex items-center gap-2">
-            <Hand size={14} style={{ color: 'oklch(0.75 0.15 180)' }} />
-            <span className="text-xs font-mono font-semibold" style={{ color: 'oklch(0.75 0.15 180)' }}>
+            <Hand size={14} style={{ color: 'var(--jk-accent-2)' }} />
+            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--jk-accent-2)' }}>
               灵巧手控制
             </span>
             {omniConnected ? (
               <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: omniEnabled ? 'oklch(0.75 0.18 150)' : 'oklch(0.65 0.22 60)' }} />
-                <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: omniEnabled ? 'var(--jk-ok)' : 'oklch(0.65 0.22 60)' }} />
+                <span style={{ color: 'var(--jk-text-body)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
                   {omniEnabled ? '已连接 · 已使能' : '已连接 · 已失能'}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.40 0.02 240)' }} />
-                <span style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--jk-text-dim)' }} />
+                <span style={{ color: 'var(--jk-text-low)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
                   未连接
                 </span>
               </div>
@@ -636,16 +636,16 @@ export default function DurabilityPage() {
               disabled={isTesting}
               className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
               style={{
-                background: omniEnabled ? 'oklch(0.65 0.22 25 / 0.12)' : 'oklch(0.75 0.15 180 / 0.12)',
-                border: `1px solid ${omniEnabled ? 'oklch(0.65 0.22 25 / 0.3)' : 'oklch(0.75 0.15 180 / 0.3)'}`,
-                color: omniEnabled ? 'oklch(0.65 0.22 25)' : 'oklch(0.75 0.15 180)',
+                background: omniEnabled ? 'color-mix(in srgb, var(--jk-danger) 12%, transparent)' : 'color-mix(in srgb, var(--jk-accent-2) 12%, transparent)',
+                border: `1px solid ${omniEnabled ? 'color-mix(in srgb, var(--jk-danger) 30%, transparent)' : 'color-mix(in srgb, var(--jk-accent-2) 30%, transparent)'}`,
+                color: omniEnabled ? 'var(--jk-danger)' : 'var(--jk-accent-2)',
                 fontSize: '10px',
               }}
             >
               <Power size={10} /> {omniEnabled ? '失能' : '使能'}
             </button>
           ) : (
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '9px' }}>
               通过右上角“选择检测设备”连接
             </span>
           )}
@@ -653,9 +653,9 @@ export default function DurabilityPage() {
 
         {/* 未连接提示 */}
         {!omniConnected && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded text-xs" style={{ background: 'oklch(0.58 0.22 265 / 0.08)', border: '1px solid oklch(0.58 0.22 265 / 0.2)', flexShrink: 0 }}>
-            <AlertCircle size={12} style={{ color: 'oklch(0.58 0.22 265)', flexShrink: 0, marginTop: '1px' }} />
-            <span style={{ color: 'oklch(0.65 0.05 265)', fontSize: '10px' }}>
+          <div className="flex items-start gap-2 px-3 py-2 rounded text-xs" style={{ background: 'color-mix(in srgb, var(--jk-primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-primary) 20%, transparent)', flexShrink: 0 }}>
+            <AlertCircle size={12} style={{ color: 'var(--jk-primary)', flexShrink: 0, marginTop: '1px' }} />
+            <span style={{ color: 'var(--jk-line-4)', fontSize: '10px' }}>
               请在右上角“选择检测设备”中选择“机械手”并连接，连接成功后将自动发送使能命令
             </span>
           </div>
@@ -664,24 +664,24 @@ export default function DurabilityPage() {
         {/* 上传 JSON + 动作列表 */}
         <div
           className="rounded p-3"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0 }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono font-semibold" style={{ color: 'oklch(0.65 0.02 240)' }}>
-              动作库 {jsonFileName && <span style={{ color: 'oklch(0.50 0.02 240)', fontWeight: 'normal' }}>({jsonFileName})</span>}
+            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--jk-text-high)' }}>
+              动作库 {jsonFileName && <span style={{ color: 'var(--jk-text-mid)', fontWeight: 'normal' }}>({jsonFileName})</span>}
             </span>
             <button
               onClick={handleLoadJSON}
               disabled={isTesting}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
-              style={{ background: 'oklch(0.22 0.03 265)', border: '1px solid oklch(0.30 0.03 265)', color: 'oklch(0.60 0.02 240)', fontSize: '10px' }}
+              style={{ background: 'var(--jk-s4)', border: '1px solid var(--jk-line-3)', color: 'var(--jk-text-high)', fontSize: '10px' }}
             >
               <Upload size={10} /> 上传 JSON
             </button>
           </div>
 
           {availableActions.length === 0 ? (
-            <div className="flex items-center justify-center py-6 text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', border: '1px dashed oklch(0.28 0.03 265)', borderRadius: '6px' }}>
+            <div className="flex items-center justify-center py-6 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', border: '1px dashed var(--jk-line-2)', borderRadius: '6px' }}>
               请上传灵巧手动作 JSON 文件
             </div>
           ) : (
@@ -691,30 +691,30 @@ export default function DurabilityPage() {
                   key={`${action.name}-${idx}`}
                   className="group flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-mono transition-all"
                   style={{
-                    background: 'oklch(0.22 0.03 265)',
-                    border: '1px solid oklch(0.30 0.03 265)',
-                    color: 'oklch(0.70 0.02 240)',
+                    background: 'var(--jk-s4)',
+                    border: '1px solid var(--jk-line-3)',
+                    color: 'var(--jk-text-strong)',
                   }}
                   title={`点击添加到循环序列 | 双击手动执行\n轴位置: ${action.positions.join(', ')}`}
                   onClick={() => addToSequence(action)}
                   onDoubleClick={(e) => { e.preventDefault(); handleManualAction(action); }}
                 >
-                  <Plus size={10} style={{ color: 'oklch(0.50 0.15 180)', opacity: 0.6 }} />
+                  <Plus size={10} style={{ color: 'var(--jk-accent-2)', opacity: 0.6 }} />
                   {action.name}
                 </button>
               ))}
             </div>
           )}
           {availableActions.length > 0 && (
-            <div className="mt-1.5 text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+            <div className="mt-1.5 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
               单击添加到循环序列
             </div>
           )}
 
           {/* 快捷执行按钮 */}
           {availableActions.length > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid oklch(0.25 0.03 265)' }}>
-              <div className="text-xs font-mono mb-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+            <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--jk-line-1)' }}>
+              <div className="text-xs font-mono mb-1.5" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
                 快捷执行
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -725,9 +725,9 @@ export default function DurabilityPage() {
                     disabled={!omniConnected || !omniEnabled || isTesting}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-mono font-medium transition-all disabled:opacity-30"
                     style={{
-                      background: omniConnected && omniEnabled ? 'oklch(0.75 0.15 180 / 0.10)' : 'oklch(0.20 0.025 265)',
-                      border: `1px solid ${omniConnected && omniEnabled ? 'oklch(0.75 0.15 180 / 0.25)' : 'oklch(0.28 0.03 265)'}`,
-                      color: omniConnected && omniEnabled ? 'oklch(0.75 0.15 180)' : 'oklch(0.45 0.02 240)',
+                      background: omniConnected && omniEnabled ? 'color-mix(in srgb, var(--jk-accent-2) 10%, transparent)' : 'var(--jk-s3)',
+                      border: `1px solid ${omniConnected && omniEnabled ? 'color-mix(in srgb, var(--jk-accent-2) 25%, transparent)' : 'var(--jk-line-2)'}`,
+                      color: omniConnected && omniEnabled ? 'var(--jk-accent-2)' : 'var(--jk-text-low)',
                     }}
                     title={`点击立即执行: ${action.name}\n轴位置: ${action.positions.join(', ')}`}
                   >
@@ -743,18 +743,18 @@ export default function DurabilityPage() {
         {/* 循环序列方框 */}
         <div
           className="rounded p-3"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0 }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono font-semibold" style={{ color: 'oklch(0.65 0.02 240)' }}>
-              循环序列 <span style={{ color: 'oklch(0.50 0.02 240)', fontWeight: 'normal' }}>({sequenceActions.length} 个动作)</span>
+            <span className="text-xs font-mono font-semibold" style={{ color: 'var(--jk-text-high)' }}>
+              循环序列 <span style={{ color: 'var(--jk-text-mid)', fontWeight: 'normal' }}>({sequenceActions.length} 个动作)</span>
             </span>
             {sequenceActions.length > 0 && (
               <button
                 onClick={clearSequence}
                 disabled={isTesting}
                 className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-colors disabled:opacity-40"
-                style={{ background: 'oklch(0.65 0.22 25 / 0.1)', border: '1px solid oklch(0.65 0.22 25 / 0.2)', color: 'oklch(0.65 0.22 25)', fontSize: '9px' }}
+                style={{ background: 'color-mix(in srgb, var(--jk-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 20%, transparent)', color: 'var(--jk-danger)', fontSize: '9px' }}
               >
                 <Trash2 size={9} /> 清空
               </button>
@@ -765,10 +765,10 @@ export default function DurabilityPage() {
             <div
               className="flex items-center justify-center py-8 text-xs font-mono"
               style={{
-                color: 'oklch(0.40 0.02 240)',
-                border: '2px dashed oklch(0.28 0.03 265)',
+                color: 'var(--jk-text-dim)',
+                border: '2px dashed var(--jk-line-2)',
                 borderRadius: '8px',
-                background: 'oklch(0.14 0.02 265)',
+                background: 'var(--jk-sunken)',
               }}
             >
               从上方动作库中点击动作添加到此处
@@ -781,21 +781,21 @@ export default function DurabilityPage() {
                   className="flex items-center gap-2 px-2 py-1.5 rounded transition-all"
                   style={{
                     background: currentActionName === action.name && isTesting
-                      ? 'oklch(0.75 0.15 180 / 0.15)'
-                      : 'oklch(0.20 0.025 265)',
-                    border: `1px solid ${currentActionName === action.name && isTesting ? 'oklch(0.75 0.15 180 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
+                      ? 'color-mix(in srgb, var(--jk-accent-2) 15%, transparent)'
+                      : 'var(--jk-s3)',
+                    border: `1px solid ${currentActionName === action.name && isTesting ? 'color-mix(in srgb, var(--jk-accent-2) 30%, transparent)' : 'var(--jk-line-2)'}`,
                   }}
                 >
-                  <GripVertical size={10} style={{ color: 'oklch(0.35 0.02 240)', flexShrink: 0 }} />
-                  <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px', width: '16px', textAlign: 'center', flexShrink: 0 }}>
+                  <GripVertical size={10} style={{ color: 'var(--jk-text-dim)', flexShrink: 0 }} />
+                  <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '9px', width: '16px', textAlign: 'center', flexShrink: 0 }}>
                     {idx + 1}
                   </span>
                   <span
                     className="flex-1 text-xs font-mono font-medium"
                     style={{
                       color: currentActionName === action.name && isTesting
-                        ? 'oklch(0.75 0.15 180)'
-                        : 'oklch(0.70 0.02 240)',
+                        ? 'var(--jk-accent-2)'
+                        : 'var(--jk-text-strong)',
                     }}
                   >
                     {action.name}
@@ -805,7 +805,7 @@ export default function DurabilityPage() {
                       onClick={() => moveInSequence(idx, 'up')}
                       disabled={idx === 0 || isTesting}
                       className="p-0.5 rounded transition-colors disabled:opacity-20"
-                      style={{ color: 'oklch(0.50 0.02 240)' }}
+                      style={{ color: 'var(--jk-text-mid)' }}
                     >
                       <ChevronUp size={10} />
                     </button>
@@ -813,7 +813,7 @@ export default function DurabilityPage() {
                       onClick={() => moveInSequence(idx, 'down')}
                       disabled={idx === sequenceActions.length - 1 || isTesting}
                       className="p-0.5 rounded transition-colors disabled:opacity-20"
-                      style={{ color: 'oklch(0.50 0.02 240)' }}
+                      style={{ color: 'var(--jk-text-mid)' }}
                     >
                       <ChevronDown size={10} />
                     </button>
@@ -821,7 +821,7 @@ export default function DurabilityPage() {
                       onClick={() => removeFromSequence(idx)}
                       disabled={isTesting}
                       className="p-0.5 rounded transition-colors disabled:opacity-20"
-                      style={{ color: 'oklch(0.65 0.22 25)' }}
+                      style={{ color: 'var(--jk-danger)' }}
                     >
                       <Trash2 size={10} />
                     </button>
@@ -832,7 +832,7 @@ export default function DurabilityPage() {
           )}
 
           {sequenceActions.length > 0 && (
-            <div className="mt-2 text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+            <div className="mt-2 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
               执行顺序: {sequenceActions.map(a => a.name).join(' → ')} (循环)
             </div>
           )}
@@ -841,14 +841,14 @@ export default function DurabilityPage() {
         {/* 循环参数 */}
         <div
           className="rounded p-3"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', flexShrink: 0 }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0 }}
         >
-          <div className="text-xs font-mono font-semibold mb-2" style={{ color: 'oklch(0.65 0.02 240)' }}>
+          <div className="text-xs font-mono font-semibold mb-2" style={{ color: 'var(--jk-text-high)' }}>
             循环参数
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+              <label className="block text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
                 循环次数
               </label>
               <input
@@ -859,11 +859,11 @@ export default function DurabilityPage() {
                 onChange={(e) => setTotalCycles(Math.max(1, parseInt(e.target.value) || 1))}
                 disabled={isTesting}
                 className="w-full px-2.5 py-1.5 rounded text-xs font-mono disabled:opacity-40"
-                style={{ background: 'oklch(0.12 0.025 265)', border: '1px solid oklch(0.28 0.03 265)', color: 'oklch(0.82 0.01 220)', fontSize: '11px' }}
+                style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-line-2)', color: 'var(--jk-ink)', fontSize: '11px' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+              <label className="block text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
                 动作间隔 (ms)
               </label>
               <input
@@ -875,7 +875,7 @@ export default function DurabilityPage() {
                 onChange={(e) => setIntervalMs(Math.max(200, parseInt(e.target.value) || 2000))}
                 disabled={isTesting}
                 className="w-full px-2.5 py-1.5 rounded text-xs font-mono disabled:opacity-40"
-                style={{ background: 'oklch(0.12 0.025 265)', border: '1px solid oklch(0.28 0.03 265)', color: 'oklch(0.82 0.01 220)', fontSize: '11px' }}
+                style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-line-2)', color: 'var(--jk-ink)', fontSize: '11px' }}
               />
             </div>
           </div>
@@ -889,9 +889,9 @@ export default function DurabilityPage() {
               disabled={!omniConnected || sequenceActions.length === 0}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-xs font-mono font-semibold transition-colors disabled:opacity-30"
               style={{
-                background: omniConnected && sequenceActions.length > 0 ? 'oklch(0.75 0.15 180 / 0.15)' : 'oklch(0.20 0.025 265)',
-                border: `1px solid ${omniConnected && sequenceActions.length > 0 ? 'oklch(0.75 0.15 180 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
-                color: omniConnected && sequenceActions.length > 0 ? 'oklch(0.75 0.15 180)' : 'oklch(0.45 0.02 240)',
+                background: omniConnected && sequenceActions.length > 0 ? 'color-mix(in srgb, var(--jk-accent-2) 15%, transparent)' : 'var(--jk-s3)',
+                border: `1px solid ${omniConnected && sequenceActions.length > 0 ? 'color-mix(in srgb, var(--jk-accent-2) 30%, transparent)' : 'var(--jk-line-2)'}`,
+                color: omniConnected && sequenceActions.length > 0 ? 'var(--jk-accent-2)' : 'var(--jk-text-low)',
               }}
             >
               <Play size={12} /> 开始循环 ({totalCycles} 次)
@@ -900,7 +900,7 @@ export default function DurabilityPage() {
             <button
               onClick={handleStopTest}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-xs font-mono font-semibold transition-colors"
-              style={{ background: 'oklch(0.65 0.22 25 / 0.15)', border: '1px solid oklch(0.65 0.22 25 / 0.3)', color: 'oklch(0.65 0.22 25)' }}
+              style={{ background: 'color-mix(in srgb, var(--jk-danger) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)', color: 'var(--jk-danger)' }}
             >
               <Square size={12} /> 停止测试
             </button>
@@ -910,14 +910,14 @@ export default function DurabilityPage() {
         {/* 进度条 */}
         {(isTesting || currentCycle > 0) && (
           <div style={{ flexShrink: 0 }}>
-            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
               <span>{isTesting ? `正在执行: ${currentActionName || '...'}` : '已完成'}</span>
               <span>{currentCycle} / {totalCycles}</span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'oklch(0.20 0.025 265)' }}>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--jk-s3)' }}>
               <div
                 className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${testProgress}%`, background: isTesting ? 'oklch(0.75 0.15 180)' : 'oklch(0.75 0.18 150)' }}
+                style={{ width: `${testProgress}%`, background: isTesting ? 'var(--jk-accent-2)' : 'var(--jk-ok)' }}
               />
             </div>
           </div>
@@ -926,17 +926,17 @@ export default function DurabilityPage() {
         {/* 日志面板 */}
         <div
           className="flex-1 min-h-0 rounded overflow-hidden flex flex-col"
-          style={{ background: 'oklch(0.12 0.02 265)', border: '1px solid oklch(0.22 0.03 265)' }}
+          style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-s4)' }}
         >
-          <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: '1px solid oklch(0.22 0.03 265)', flexShrink: 0 }}>
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+          <div className="flex items-center justify-between px-3 py-1.5" style={{ borderBottom: '1px solid var(--jk-s4)', flexShrink: 0 }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
               运行日志 ({logMessages.length})
             </span>
             <button
               onClick={() => { setLogMessages([]); setCurrentCycle(0); }}
               disabled={isTesting}
               className="text-xs font-mono px-1.5 py-0.5 rounded transition-colors disabled:opacity-30"
-              style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}
+              style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}
             >
               清除
             </button>
@@ -946,17 +946,17 @@ export default function DurabilityPage() {
             style={{ fontSize: '9px', lineHeight: '1.7' }}
           >
             {logMessages.length === 0 ? (
-              <div style={{ color: 'oklch(0.35 0.02 240)' }}>等待操作...</div>
+              <div style={{ color: 'var(--jk-text-dim)' }}>等待操作...</div>
             ) : (
               logMessages.map((msg, i) => (
                 <div
                   key={i}
                   style={{
                     color: msg.includes('失败') || msg.includes('错误') || msg.includes('异常')
-                      ? 'oklch(0.65 0.22 25)'
+                      ? 'var(--jk-danger)'
                       : msg.includes('成功') || msg.includes('完成')
-                      ? 'oklch(0.75 0.18 150)'
-                      : 'oklch(0.50 0.02 240)',
+                      ? 'var(--jk-ok)'
+                      : 'var(--jk-text-mid)',
                   }}
                 >
                   {msg}

@@ -96,22 +96,22 @@ export default function PressController({
     <div
       className="rounded p-3 flex flex-col gap-2"
       style={{
-        background: 'oklch(0.15 0.02 265)',
-        border: '1px solid oklch(0.25 0.03 265)',
+        background: 'var(--jk-s1)',
+        border: '1px solid var(--jk-line-1)',
       }}
     >
       {/* 标题 */}
       <div className="flex items-center gap-2">
-        <Zap size={12} style={{ color: 'oklch(0.80 0.18 55)' }} />
-        <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.80 0.18 55)' }}>
+        <Zap size={12} style={{ color: 'var(--jk-warn)' }} />
+        <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-warn)' }}>
           下压机控制
         </span>
       </div>
 
       {/* Arduino 连接状态 */}
       <div className="flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ background: arduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.40 0.02 240)' }} />
-        <span className="text-xs font-mono" style={{ color: arduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.50 0.02 240)' }}>
+        <div className="w-1.5 h-1.5 rounded-full" style={{ background: arduinoConnected ? 'var(--jk-ok)' : 'var(--jk-text-dim)' }} />
+        <span className="text-xs font-mono" style={{ color: arduinoConnected ? 'var(--jk-ok)' : 'var(--jk-text-mid)' }}>
           {arduinoConnected ? '下压机已连接' : '下压机未连接'}
         </span>
       </div>
@@ -119,7 +119,7 @@ export default function PressController({
       {/* 参数设置 */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>下压次数 / 采集</span>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>下压次数 / 采集</span>
           <input
             type="number"
             min={1}
@@ -128,14 +128,14 @@ export default function PressController({
             disabled={isRunning}
             className="w-16 px-1.5 py-0.5 rounded text-xs font-mono text-right outline-none"
             style={{
-              background: 'oklch(0.20 0.025 265)',
-              border: '1px solid oklch(0.28 0.03 265)',
-              color: 'oklch(0.70 0.02 240)',
+              background: 'var(--jk-s3)',
+              border: '1px solid var(--jk-line-2)',
+              color: 'var(--jk-text-strong)',
             }}
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>循环次数</span>
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>循环次数</span>
           <input
             type="number"
             min={1}
@@ -144,16 +144,16 @@ export default function PressController({
             disabled={isRunning}
             className="w-16 px-1.5 py-0.5 rounded text-xs font-mono text-right outline-none"
             style={{
-              background: 'oklch(0.20 0.025 265)',
-              border: '1px solid oklch(0.28 0.03 265)',
-              color: 'oklch(0.70 0.02 240)',
+              background: 'var(--jk-s3)',
+              border: '1px solid var(--jk-line-2)',
+              color: 'var(--jk-text-strong)',
             }}
           />
         </div>
       </div>
 
       {/* 统计信息 */}
-      <div className="flex gap-3 text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>
+      <div className="flex gap-3 text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>
         <span>总下压: {totalPresses}</span>
         <span>总采集: {totalCollections}</span>
       </div>
@@ -165,8 +165,8 @@ export default function PressController({
           disabled={isRunning || !arduinoConnected}
           className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-xs font-mono font-bold transition-opacity"
           style={{
-            background: (isRunning || !arduinoConnected) ? 'oklch(0.25 0.03 265)' : 'oklch(0.72 0.20 145 / 0.85)',
-            color: (isRunning || !arduinoConnected) ? 'oklch(0.40 0.02 240)' : '#0a0e1a',
+            background: (isRunning || !arduinoConnected) ? 'var(--jk-line-1)' : 'color-mix(in srgb, var(--jk-ok) 85%, transparent)',
+            color: (isRunning || !arduinoConnected) ? 'var(--jk-text-dim)' : 'var(--jk-on-primary)',
             opacity: (isRunning || !arduinoConnected) ? 0.5 : 1,
             cursor: (isRunning || !arduinoConnected) ? 'not-allowed' : 'pointer',
           }}
@@ -179,8 +179,8 @@ export default function PressController({
           disabled={!isRunning}
           className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-xs font-mono font-bold transition-opacity"
           style={{
-            background: !isRunning ? 'oklch(0.25 0.03 265)' : 'oklch(0.65 0.22 25 / 0.85)',
-            color: !isRunning ? 'oklch(0.40 0.02 240)' : '#fff',
+            background: !isRunning ? 'var(--jk-line-1)' : 'color-mix(in srgb, var(--jk-danger) 85%, transparent)',
+            color: !isRunning ? 'var(--jk-text-dim)' : '#fff',
             opacity: !isRunning ? 0.5 : 1,
             cursor: !isRunning ? 'not-allowed' : 'pointer',
           }}

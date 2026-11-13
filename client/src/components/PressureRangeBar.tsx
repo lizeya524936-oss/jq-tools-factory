@@ -96,18 +96,18 @@ function PressureRangeBarInner({
     <div
       className={`flex items-center gap-3 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} rounded`}
       style={{
-        background: 'oklch(0.14 0.02 265)',
-        border: '1px solid oklch(0.22 0.03 265)',
+        background: 'var(--jk-sunken)',
+        border: '1px solid var(--jk-s4)',
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="text-xs font-mono font-medium flex-shrink-0" style={{ color: 'oklch(0.55 0.02 240)', fontSize: compact ? '9px' : '11px' }}>
+      <span className="text-xs font-mono font-medium flex-shrink-0" style={{ color: 'var(--jk-text-body)', fontSize: compact ? '9px' : '11px' }}>
         压力范围
       </span>
 
       {/* 滑块 */}
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>0</span>
+        <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>0</span>
         <input
           type="range"
           min={5}
@@ -119,11 +119,11 @@ function PressureRangeBarInner({
           onTouchEnd={handleSliderCommit}
           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
           style={{
-            background: `linear-gradient(to right, oklch(0.58 0.18 200) 0%, oklch(0.58 0.18 200) ${(sliderDisplayValue / sliderMax) * 100}%, oklch(0.25 0.02 240) ${(sliderDisplayValue / sliderMax) * 100}%, oklch(0.25 0.02 240) 100%)`,
-            accentColor: 'oklch(0.58 0.18 200)',
+            background: `linear-gradient(to right, var(--jk-accent) 0%, var(--jk-accent) ${(sliderDisplayValue / sliderMax) * 100}%, var(--jk-text-faint) ${(sliderDisplayValue / sliderMax) * 100}%, var(--jk-text-faint) 100%)`,
+            accentColor: 'var(--jk-accent)',
           }}
         />
-        <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>{sliderMax}N</span>
+        <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>{sliderMax}N</span>
       </div>
 
       {/* 输入框 */}
@@ -136,18 +136,18 @@ function PressureRangeBarInner({
           onKeyDown={(e) => { if (e.key === 'Enter') handleInputConfirm(); }}
           className="w-16 px-2 py-1 rounded text-xs font-mono text-center"
           style={{
-            background: 'oklch(0.20 0.025 265)',
-            border: '1px solid oklch(0.30 0.03 265)',
-            color: 'oklch(0.80 0.02 240)',
+            background: 'var(--jk-s3)',
+            border: '1px solid var(--jk-line-3)',
+            color: 'var(--jk-text-max)',
             outline: 'none',
             fontSize: '10px',
           }}
         />
-        <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>N</span>
+        <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>N</span>
       </div>
 
       {/* 分隔线 */}
-      <div className="w-px h-5 flex-shrink-0" style={{ background: 'oklch(0.25 0.03 265)' }} />
+      <div className="w-px h-5 flex-shrink-0" style={{ background: 'var(--jk-line-1)' }} />
 
       {/* 快捷按钮 */}
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -157,9 +157,9 @@ function PressureRangeBarInner({
             onClick={() => handlePreset(preset)}
             className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
             style={{
-              background: pressureMax === preset ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
-              border: `1px solid ${pressureMax === preset ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-              color: pressureMax === preset ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
+              background: pressureMax === preset ? 'color-mix(in srgb, var(--jk-accent) 25%, transparent)' : 'var(--jk-s3)',
+              border: `1px solid ${pressureMax === preset ? 'color-mix(in srgb, var(--jk-accent) 50%, transparent)' : 'var(--jk-line-2)'}`,
+              color: pressureMax === preset ? 'var(--jk-accent)' : 'var(--jk-text-body)',
               cursor: 'pointer',
               fontSize: '10px',
             }}
@@ -173,9 +173,9 @@ function PressureRangeBarInner({
             onClick={() => handlePreset(dataMaxPressure)}
             className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
             style={{
-              background: pressureMax === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.25)' : 'oklch(0.20 0.02 265)',
-              border: `1px solid ${pressureMax === dataMaxPressure ? 'oklch(0.58 0.18 200 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-              color: pressureMax === dataMaxPressure ? 'oklch(0.75 0.15 200)' : 'oklch(0.55 0.02 240)',
+              background: pressureMax === dataMaxPressure ? 'color-mix(in srgb, var(--jk-accent) 25%, transparent)' : 'var(--jk-s3)',
+              border: `1px solid ${pressureMax === dataMaxPressure ? 'color-mix(in srgb, var(--jk-accent) 50%, transparent)' : 'var(--jk-line-2)'}`,
+              color: pressureMax === dataMaxPressure ? 'var(--jk-accent)' : 'var(--jk-text-body)',
               cursor: 'pointer',
               fontSize: '10px',
             }}
@@ -188,8 +188,8 @@ function PressureRangeBarInner({
       {/* 分析点数提示 */}
       {showPointCount !== undefined && (
         <>
-          <div className="w-px h-5 flex-shrink-0" style={{ background: 'oklch(0.25 0.03 265)' }} />
-          <span className="text-xs font-mono flex-shrink-0" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+          <div className="w-px h-5 flex-shrink-0" style={{ background: 'var(--jk-line-1)' }} />
+          <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
             {showPointCount} 个分析点
           </span>
         </>

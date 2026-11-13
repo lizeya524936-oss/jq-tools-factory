@@ -151,24 +151,24 @@ const ROLE_CONFIG = {
   force: {
     label: '检测设备',
     icon: Cpu,
-    accentColor: 'oklch(0.70 0.18 200)',
-    accentBg: 'oklch(0.70 0.18 200 / 0.12)',
-    accentBorder: 'oklch(0.70 0.18 200 / 0.35)',
+    accentColor: 'var(--jk-accent)',
+    accentBg: 'color-mix(in srgb, var(--jk-accent) 12%, transparent)',
+    accentBorder: 'color-mix(in srgb, var(--jk-accent) 35%, transparent)',
   },
   sensor: {
     label: '传感器产品',
     icon: Layers,
-    accentColor: 'oklch(0.72 0.20 145)',
-    accentBg: 'oklch(0.72 0.20 145 / 0.12)',
-    accentBorder: 'oklch(0.72 0.20 145 / 0.35)',
+    accentColor: 'var(--jk-ok)',
+    accentBg: 'color-mix(in srgb, var(--jk-ok) 12%, transparent)',
+    accentBorder: 'color-mix(in srgb, var(--jk-ok) 35%, transparent)',
   },
 };
 
 const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string }> = {
-  disconnected: { label: '未连接', color: 'oklch(0.42 0.02 240)' },
-  connecting: { label: '连接中...', color: 'oklch(0.75 0.18 55)' },
-  connected: { label: '已连接', color: 'oklch(0.72 0.20 145)' },
-  error: { label: '连接错误', color: 'oklch(0.65 0.22 25)' },
+  disconnected: { label: '未连接', color: 'var(--jk-text-dim)' },
+  connecting: { label: '连接中...', color: 'var(--jk-warn)' },
+  connected: { label: '已连接', color: 'var(--jk-ok)' },
+  error: { label: '连接错误', color: 'var(--jk-danger)' },
 };
 
 export default function SerialConnectPanel({
@@ -273,8 +273,8 @@ export default function SerialConnectPanel({
       <div
         className="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-all"
         style={{
-          background: isConnected ? cfg.accentBg : 'oklch(0.20 0.025 265)',
-          border: `1px solid ${isConnected ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
+          background: isConnected ? cfg.accentBg : 'var(--jk-s3)',
+          border: `1px solid ${isConnected ? cfg.accentBorder : 'var(--jk-line-2)'}`,
         }}
         onClick={() => setShowDetails(!showDetails)}
       >
@@ -288,11 +288,11 @@ export default function SerialConnectPanel({
           }}
         />
 
-        <Icon size={11} style={{ color: isConnected ? cfg.accentColor : 'oklch(0.55 0.02 240)', flexShrink: 0 }} />
+        <Icon size={11} style={{ color: isConnected ? cfg.accentColor : 'var(--jk-text-body)', flexShrink: 0 }} />
 
         <span
           className="text-xs font-mono max-w-32 truncate"
-          style={{ color: isConnected ? cfg.accentColor : 'oklch(0.55 0.02 240)' }}
+          style={{ color: isConnected ? cfg.accentColor : 'var(--jk-text-body)' }}
         >
           {displayLabel}
         </span>
@@ -307,7 +307,7 @@ export default function SerialConnectPanel({
         ) : (
           <Settings2
             size={10}
-            style={{ color: 'oklch(0.42 0.02 240)' }}
+            style={{ color: 'var(--jk-text-dim)' }}
           />
         )}
       </div>
@@ -317,8 +317,8 @@ export default function SerialConnectPanel({
         <div
           className="absolute right-0 top-full mt-1 rounded shadow-2xl z-50 p-3"
           style={{
-            background: 'oklch(0.16 0.025 265)',
-            border: '1px solid oklch(0.28 0.04 265)',
+            background: 'var(--jk-s1)',
+            border: '1px solid var(--jk-line-2)',
             minWidth: '300px',
           }}
         >
@@ -331,14 +331,14 @@ export default function SerialConnectPanel({
               </span>
             </div>
             <button onClick={() => setShowDetails(false)}>
-              <X size={12} style={{ color: 'oklch(0.45 0.02 240)' }} />
+              <X size={12} style={{ color: 'var(--jk-text-low)' }} />
             </button>
           </div>
 
           {/* force role：设备类型切换 */}
           {role === 'force' && (
             <div className="mb-3">
-              <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--jk-text-body)', fontFamily: "'IBM Plex Mono', monospace" }}>
                 检测仪器类型
               </label>
               <div className="flex gap-2">
@@ -351,10 +351,10 @@ export default function SerialConnectPanel({
                       onClick={() => handleDeviceChange(key)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-medium transition-all"
                       style={{
-                        background: isActive ? cfg.accentBg : 'oklch(0.20 0.025 265)',
-                        border: `1px solid ${isActive ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
-                        color: isActive ? cfg.accentColor : 'oklch(0.55 0.02 240)',
-                        boxShadow: isActive ? `0 0 6px oklch(0.70 0.18 200 / 0.15)` : 'none',
+                        background: isActive ? cfg.accentBg : 'var(--jk-s3)',
+                        border: `1px solid ${isActive ? cfg.accentBorder : 'var(--jk-line-2)'}`,
+                        color: isActive ? cfg.accentColor : 'var(--jk-text-body)',
+                        boxShadow: isActive ? `0 0 6px color-mix(in srgb, var(--jk-accent) 15%, transparent)` : 'none',
                       }}
                     >
                       <DevIcon size={11} />
@@ -363,7 +363,7 @@ export default function SerialConnectPanel({
                   );
                 })}
               </div>
-              <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
                 {deviceCfg!.sublabel} · {deviceCfg!.hint}
               </p>
             </div>
@@ -372,7 +372,7 @@ export default function SerialConnectPanel({
           {/* sensor role：传感器产品下拉选择 */}
           {role === 'sensor' && (
             <div className="mb-3">
-              <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--jk-text-body)', fontFamily: "'IBM Plex Mono', monospace" }}>
                 传感器产品类型
               </label>
               <select
@@ -380,8 +380,8 @@ export default function SerialConnectPanel({
                 onChange={e => handleSensorChange(parseInt(e.target.value, 10))}
                 className="w-full px-2.5 py-2 rounded text-xs font-mono cursor-pointer outline-none appearance-none"
                 style={{
-                  background: `oklch(0.20 0.025 265) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center`,
-                  border: `1px solid oklch(0.28 0.03 265)`,
+                  background: `var(--jk-s3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center`,
+                  border: `1px solid var(--jk-line-2)`,
                   color: cfg.accentColor,
                 }}
               >
@@ -389,13 +389,13 @@ export default function SerialConnectPanel({
                   // 找到该产品在原始数组中的索引用于 value
                   const originalIdx = SENSOR_PRODUCTS.findIndex(p => p.label === prod.label);
                   return (
-                    <option key={prod.label} value={originalIdx >= 0 ? originalIdx : idx} style={{ background: '#16213e', color: '#e0e0e0' }}>
+                    <option key={prod.label} value={originalIdx >= 0 ? originalIdx : idx} style={{ background: 'var(--jk-s2)', color: 'var(--jk-ink)' }}>
                       {prod.label}{prod.sublabel ? ` (${prod.sublabel})` : ''}
                     </option>
                   );
                 })}
               </select>
-              <p className="text-xs mt-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>
                 {sensorCfg!.sublabel} · {sensorCfg!.hint}
               </p>
             </div>
@@ -405,10 +405,10 @@ export default function SerialConnectPanel({
           {!supported && (
             <div
               className="flex items-start gap-2 p-2 rounded mb-3"
-              style={{ background: 'oklch(0.65 0.22 25 / 0.1)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}
+              style={{ background: 'color-mix(in srgb, var(--jk-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)' }}
             >
-              <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
-              <p className="text-xs" style={{ color: 'oklch(0.65 0.22 25)' }}>
+              <AlertCircle size={12} style={{ color: 'var(--jk-danger)', flexShrink: 0, marginTop: '1px' }} />
+              <p className="text-xs" style={{ color: 'var(--jk-danger)' }}>
                 当前浏览器不支持 Web Serial API。请使用 Chrome 89+ 或 Edge 89+，并确保通过 HTTPS 访问。
               </p>
             </div>
@@ -418,16 +418,16 @@ export default function SerialConnectPanel({
           {state.errorMsg && (
             <div
               className="flex items-start gap-2 p-2 rounded mb-3"
-              style={{ background: 'oklch(0.65 0.22 25 / 0.1)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}
+              style={{ background: 'color-mix(in srgb, var(--jk-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)' }}
             >
-              <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
-              <p className="text-xs" style={{ color: 'oklch(0.65 0.22 25)' }}>{state.errorMsg}</p>
+              <AlertCircle size={12} style={{ color: 'var(--jk-danger)', flexShrink: 0, marginTop: '1px' }} />
+              <p className="text-xs" style={{ color: 'var(--jk-danger)' }}>{state.errorMsg}</p>
             </div>
           )}
 
           {/* 波特率设置 */}
           <div className="mb-3">
-            <label className="block text-xs mb-1.5" style={{ color: 'oklch(0.55 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <label className="block text-xs mb-1.5" style={{ color: 'var(--jk-text-body)', fontFamily: "'IBM Plex Mono', monospace" }}>
               采样波特率（可自定义）
             </label>
             <div className="flex gap-2">
@@ -438,9 +438,9 @@ export default function SerialConnectPanel({
                   onChange={e => setBaudInput(e.target.value)}
                   className="w-full px-2 py-1.5 rounded text-xs font-mono outline-none"
                   style={{
-                    background: 'oklch(0.12 0.02 265)',
-                    border: '1px solid oklch(0.25 0.03 265)',
-                    color: 'oklch(0.82 0.01 220)',
+                    background: 'var(--jk-bg)',
+                    border: '1px solid var(--jk-line-1)',
+                    color: 'var(--jk-ink)',
                   }}
                   placeholder={defaultBaud === 0 ? '自动探测' : defaultBaud.toString()}
                   min={0}
@@ -452,9 +452,9 @@ export default function SerialConnectPanel({
                   onClick={() => setShowBaudMenu(!showBaudMenu)}
                   className="px-2 py-1.5 rounded text-xs font-mono transition-colors"
                   style={{
-                    background: 'oklch(0.20 0.025 265)',
-                    border: '1px solid oklch(0.28 0.03 265)',
-                    color: 'oklch(0.55 0.02 240)',
+                    background: 'var(--jk-s3)',
+                    border: '1px solid var(--jk-line-2)',
+                    color: 'var(--jk-text-body)',
                   }}
                 >
                   全部
@@ -463,8 +463,8 @@ export default function SerialConnectPanel({
                   <div
                     className="absolute right-0 top-full mt-1 rounded shadow-xl z-50 py-1"
                     style={{
-                      background: 'oklch(0.18 0.025 265)',
-                      border: '1px solid oklch(0.28 0.04 265)',
+                      background: 'var(--jk-s2)',
+                      border: '1px solid var(--jk-line-2)',
                       minWidth: '100px',
                     }}
                   >
@@ -474,7 +474,7 @@ export default function SerialConnectPanel({
                         onClick={() => { setBaudInput(b.toString()); setShowBaudMenu(false); }}
                         className="w-full px-3 py-1 text-left text-xs font-mono hover:bg-white/5 transition-colors"
                         style={{
-                          color: parseInt(baudInput) === b ? cfg.accentColor : 'oklch(0.65 0.02 240)',
+                          color: parseInt(baudInput) === b ? cfg.accentColor : 'var(--jk-text-high)',
                         }}
                       >
                         {b.toLocaleString()}
@@ -495,9 +495,9 @@ export default function SerialConnectPanel({
                     onClick={() => setBaudInput(b.toString())}
                     className="flex-1 py-1 rounded text-xs font-mono font-medium transition-all"
                     style={{
-                      background: isActive ? cfg.accentBg : 'oklch(0.20 0.025 265)',
-                      border: `1px solid ${isActive ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
-                      color: isActive ? cfg.accentColor : 'oklch(0.55 0.02 240)',
+                      background: isActive ? cfg.accentBg : 'var(--jk-s3)',
+                      border: `1px solid ${isActive ? cfg.accentBorder : 'var(--jk-line-2)'}`,
+                      color: isActive ? cfg.accentColor : 'var(--jk-text-body)',
                       boxShadow: isActive ? `0 0 6px ${cfg.accentColor.replace(')', ' / 0.15)')}` : 'none',
                     }}
                   >
@@ -506,7 +506,7 @@ export default function SerialConnectPanel({
                 );
               })}
             </div>
-            <div className="mt-1.5 text-xs font-mono" style={{ color: 'oklch(0.38 0.02 240)', fontSize: '9px' }}>
+            <div className="mt-1.5 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
               点击快捷按钮或输入自定义值，点"全部"查看更多
             </div>
           </div>
@@ -517,9 +517,9 @@ export default function SerialConnectPanel({
             disabled={!supported || isConnecting}
             className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-mono font-medium transition-all disabled:opacity-50"
             style={{
-              background: supported ? cfg.accentBg : 'oklch(0.20 0.025 265)',
-              border: `1px solid ${supported ? cfg.accentBorder : 'oklch(0.28 0.03 265)'}`,
-              color: supported ? cfg.accentColor : 'oklch(0.45 0.02 240)',
+              background: supported ? cfg.accentBg : 'var(--jk-s3)',
+              border: `1px solid ${supported ? cfg.accentBorder : 'var(--jk-line-2)'}`,
+              color: supported ? cfg.accentColor : 'var(--jk-text-low)',
             }}
           >
             {isConnecting ? (
@@ -535,7 +535,7 @@ export default function SerialConnectPanel({
             )}
           </button>
 
-          <p className="text-xs mt-2 text-center" style={{ color: 'oklch(0.38 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
+          <p className="text-xs mt-2 text-center" style={{ color: 'var(--jk-text-dim)', fontFamily: "'IBM Plex Mono', monospace" }}>
             点击后将弹出系统串口选择对话框
           </p>
         </div>
@@ -546,7 +546,7 @@ export default function SerialConnectPanel({
         <div
           className="absolute right-0 top-full mt-1 rounded shadow-2xl z-50 p-3"
           style={{
-            background: 'oklch(0.16 0.025 265)',
+            background: 'var(--jk-s1)',
             border: `1px solid ${cfg.accentBorder}`,
             minWidth: '240px',
           }}
@@ -559,7 +559,7 @@ export default function SerialConnectPanel({
               </span>
             </div>
             <button onClick={() => setShowDetails(false)}>
-              <X size={12} style={{ color: 'oklch(0.45 0.02 240)' }} />
+              <X size={12} style={{ color: 'var(--jk-text-low)' }} />
             </button>
           </div>
           <div className="space-y-1.5 text-xs font-mono">
@@ -570,10 +570,10 @@ export default function SerialConnectPanel({
               { label: '最新数据', value: state.lastData ?? '等待数据...' }
             ].map(row => (
               <div key={row.label} className="flex justify-between gap-3">
-                <span style={{ color: 'oklch(0.45 0.02 240)' }}>{row.label}</span>
+                <span style={{ color: 'var(--jk-text-low)' }}>{row.label}</span>
                 <span
                   className="truncate max-w-32 text-right"
-                  style={{ color: row.label === '设备类型' ? cfg.accentColor : 'oklch(0.72 0.01 220)' }}
+                  style={{ color: row.label === '设备类型' ? cfg.accentColor : 'var(--jk-ink)' }}
                 >
                   {row.value}
                 </span>
@@ -584,8 +584,8 @@ export default function SerialConnectPanel({
             onClick={() => { handleDisconnect(); setShowDetails(false); }}
             className="w-full mt-3 py-1.5 rounded text-xs font-mono transition-colors hover:bg-white/5"
             style={{
-              border: '1px solid oklch(0.65 0.22 25 / 0.4)',
-              color: 'oklch(0.65 0.22 25)',
+              border: '1px solid color-mix(in srgb, var(--jk-danger) 40%, transparent)',
+              color: 'var(--jk-danger)',
             }}
           >
             断开连接

@@ -4,6 +4,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useClient } from '@/contexts/ClientContext';
+import ThemeToggle from '@/components/ThemeToggle';
+import { APP_VERSION } from '@/version';
 import { Key, User } from 'lucide-react';
 
 export default function LoginPage() {
@@ -31,28 +33,33 @@ export default function LoginPage() {
   return (
     <div
       className="flex flex-col items-center justify-center min-h-screen"
-      style={{ background: 'oklch(0.13 0.03 265)' }}
+      style={{ background: 'var(--jk-sunken)' }}
     >
+      {/* 主题切换（登录前也能切，方便确认配色） */}
+      <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 50 }}>
+        <ThemeToggle compact={false} />
+      </div>
+
       {/* 卡片 */}
       <div
         className="rounded-2xl p-8 w-full max-w-sm"
         style={{
-          background: 'oklch(0.17 0.025 265)',
-          border: '1px solid oklch(0.25 0.03 265)',
-          boxShadow: '0 0 60px oklch(0.15 0.04 265 / 0.4)',
+          background: 'var(--jk-s2)',
+          border: '1px solid var(--jk-line-1)',
+          boxShadow: '0 0 60px color-mix(in srgb, var(--jk-ink) 12%, transparent)',
         }}
       >
         {/* 标题 */}
         <div className="text-center mb-6">
           <h1
             className="text-xl font-bold mb-1"
-            style={{ color: 'oklch(0.72 0.20 145)', fontFamily: "'IBM Plex Mono', monospace" }}
+            style={{ color: 'var(--jk-ok)', fontFamily: "'IBM Plex Mono', monospace" }}
           >
             JQ Tools Factory
           </h1>
           <p
             className="text-xs"
-            style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+            style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace" }}
           >
             产品出厂检测工具
           </p>
@@ -60,7 +67,7 @@ export default function LoginPage() {
 
         <div
           className="mb-6"
-          style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}
+          style={{ borderTop: '1px solid var(--jk-s4)' }}
         />
 
         {/* 表单 */}
@@ -69,13 +76,13 @@ export default function LoginPage() {
           <div>
             <label
               className="block text-xs mb-1"
-              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+              style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace" }}
             >
               用户名
             </label>
             <div className="relative">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
-                <User size={14} style={{ color: 'oklch(0.40 0.02 240)' }} />
+                <User size={14} style={{ color: 'var(--jk-text-dim)' }} />
               </div>
               <input
                 type="text"
@@ -84,9 +91,9 @@ export default function LoginPage() {
                 placeholder="请输入用户名"
                 className="w-full pl-8 pr-3 py-2 text-sm font-mono rounded outline-none transition-colors"
                 style={{
-                  background: 'oklch(0.20 0.025 265)',
-                  border: `1px solid ${error ? 'oklch(0.65 0.22 25 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-                  color: 'oklch(0.70 0.02 240)',
+                  background: 'var(--jk-s3)',
+                  border: `1px solid ${error ? 'color-mix(in srgb, var(--jk-danger) 50%, transparent)' : 'var(--jk-line-2)'}`,
+                  color: 'var(--jk-text-strong)',
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
                 autoComplete="username"
@@ -98,13 +105,13 @@ export default function LoginPage() {
           <div>
             <label
               className="block text-xs mb-1"
-              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+              style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace" }}
             >
               密码
             </label>
             <div className="relative">
               <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
-                <Key size={14} style={{ color: 'oklch(0.40 0.02 240)' }} />
+                <Key size={14} style={{ color: 'var(--jk-text-dim)' }} />
               </div>
               <input
                 type="password"
@@ -113,9 +120,9 @@ export default function LoginPage() {
                 placeholder="请输入密码"
                 className="w-full pl-8 pr-3 py-2 text-sm font-mono rounded outline-none transition-colors"
                 style={{
-                  background: 'oklch(0.20 0.025 265)',
-                  border: `1px solid ${error ? 'oklch(0.65 0.22 25 / 0.5)' : 'oklch(0.28 0.03 265)'}`,
-                  color: 'oklch(0.70 0.02 240)',
+                  background: 'var(--jk-s3)',
+                  border: `1px solid ${error ? 'color-mix(in srgb, var(--jk-danger) 50%, transparent)' : 'var(--jk-line-2)'}`,
+                  color: 'var(--jk-text-strong)',
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
                 autoComplete="current-password"
@@ -129,8 +136,8 @@ export default function LoginPage() {
             <p
               className="text-xs py-1 px-2 rounded"
               style={{
-                color: 'oklch(0.70 0.22 25)',
-                background: 'oklch(0.65 0.22 25 / 0.08)',
+                color: 'var(--jk-danger)',
+                background: 'color-mix(in srgb, var(--jk-danger) 8%, transparent)',
                 fontFamily: "'IBM Plex Mono', monospace",
               }}
             >
@@ -146,12 +153,12 @@ export default function LoginPage() {
               onChange={e => setRemember(e.target.checked)}
               className="w-3.5 h-3.5 rounded cursor-pointer"
               style={{
-                accentColor: 'oklch(0.72 0.20 145)',
+                accentColor: 'var(--jk-ok)',
               }}
             />
             <span
               className="text-xs"
-              style={{ color: 'oklch(0.50 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}
+              style={{ color: 'var(--jk-text-mid)', fontFamily: "'IBM Plex Mono', monospace" }}
             >
               记住登录状态
             </span>
@@ -164,9 +171,9 @@ export default function LoginPage() {
             className="w-full py-2.5 rounded-lg text-sm font-bold transition-all mt-2"
             style={{
               background: (username.trim() && password.trim())
-                ? 'oklch(0.72 0.20 145 / 0.85)'
-                : 'oklch(0.25 0.03 265)',
-              color: (username.trim() && password.trim()) ? '#0a0e1a' : 'oklch(0.40 0.02 240)',
+                ? 'color-mix(in srgb, var(--jk-ok) 85%, transparent)'
+                : 'var(--jk-line-1)',
+              color: (username.trim() && password.trim()) ? 'var(--jk-on-primary)' : 'var(--jk-text-dim)',
               cursor: (username.trim() && password.trim()) ? 'pointer' : 'not-allowed',
               opacity: (username.trim() && password.trim()) ? 1 : 0.5,
               fontFamily: "'IBM Plex Mono', monospace",
@@ -177,8 +184,8 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-4 text-center">
-          <p className="text-xs" style={{ color: 'oklch(0.30 0.02 240)', fontFamily: "'IBM Plex Mono', monospace" }}>
-            v1.9.18 · Web Serial API
+          <p className="text-xs" style={{ color: 'var(--jk-text-faint)', fontFamily: "'IBM Plex Mono', monospace" }}>
+            {APP_VERSION} · Web Serial API
           </p>
         </div>
       </div>

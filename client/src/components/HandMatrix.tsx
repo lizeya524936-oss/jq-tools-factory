@@ -136,7 +136,7 @@ function adcToColor(adc: number, selected: boolean): string {
     return `oklch(${0.40 + intensity * 0.35} 0.22 145)`;
   }
   // 未选中：蓝→绿→红热力图
-  if (v === 0) return 'oklch(0.16 0.02 265)';
+  if (v === 0) return 'var(--jk-s1)';
   if (v < 64) {
     const t = v / 64;
     return `oklch(${0.25 + t * 0.10} ${0.08 + t * 0.08} ${260})`;
@@ -155,12 +155,12 @@ function adcToColor(adc: number, selected: boolean): string {
 
 function selectedBorder(selected: boolean): string {
   return selected
-    ? '2px solid oklch(0.72 0.22 145)'
-    : '1px solid oklch(0.35 0.08 25 / 0.6)';
+    ? '2px solid var(--jk-ok)'
+    : '1px solid color-mix(in srgb, var(--jk-danger) 60%, transparent)';
 }
 
 function selectedGlow(selected: boolean): string {
-  return selected ? '0 0 5px oklch(0.72 0.22 145 / 0.5)' : 'none';
+  return selected ? '0 0 5px color-mix(in srgb, var(--jk-ok) 50%, transparent)' : 'none';
 }
 
 // ─────────────────────────────────────────────
@@ -248,18 +248,18 @@ export default function HandMatrix({
           style={{
             fontSize: '11px',
             fontWeight: 700,
-            color: side === 'LH' ? 'oklch(0.72 0.20 200)' : 'oklch(0.72 0.20 145)',
+            color: side === 'LH' ? 'var(--jk-accent)' : 'var(--jk-ok)',
             letterSpacing: '0.06em',
           }}
         >
           {side === 'LH' ? '◀ LH  Left Hand' : 'RH  Right Hand ▶'}
         </span>
         {selectedCount > 0 && (
-          <span style={{ fontSize: '9px', color: 'oklch(0.72 0.20 145)' }}>
+          <span style={{ fontSize: '9px', color: 'var(--jk-ok)' }}>
             已选 {selectedCount} 点
           </span>
         )}
-        <span style={{ fontSize: '9px', color: 'oklch(0.40 0.02 240)' }}>
+        <span style={{ fontSize: '9px', color: 'var(--jk-text-dim)' }}>
           {showIndex ? '格内显示原始编号' : ''}
         </span>
       </div>
@@ -269,7 +269,7 @@ export default function HandMatrix({
         <div
           style={{
             fontSize: '8px',
-            color: 'oklch(0.65 0.22 25)',
+            color: 'var(--jk-danger)',
             marginBottom: 4,
             letterSpacing: '0.04em',
             fontWeight: 600,
@@ -293,7 +293,7 @@ export default function HandMatrix({
               <span
                 style={{
                   fontSize: '9px',
-                  color: 'oklch(0.65 0.02 240)',
+                  color: 'var(--jk-text-high)',
                   letterSpacing: '0.02em',
                   whiteSpace: 'nowrap',
                 }}
@@ -305,8 +305,8 @@ export default function HandMatrix({
               <div
                 style={{
                   padding: FINGER_PAD,
-                  background: 'oklch(0.65 0.22 25 / 0.08)',
-                  border: '1.5px solid oklch(0.65 0.22 25 / 0.55)',
+                  background: 'color-mix(in srgb, var(--jk-danger) 8%, transparent)',
+                  border: '1.5px solid color-mix(in srgb, var(--jk-danger) 55%, transparent)',
                   borderRadius: 5,
                   display: 'flex',
                   flexDirection: 'column',
@@ -344,7 +344,7 @@ export default function HandMatrix({
                             <span
                               style={{
                                 fontSize: '6px',
-                                color: sel ? 'oklch(0.90 0.10 145)' : 'oklch(0.55 0.02 240)',
+                                color: sel ? 'var(--jk-ok)' : 'var(--jk-text-body)',
                                 lineHeight: 1,
                                 userSelect: 'none',
                                 pointerEvents: 'none',
@@ -369,7 +369,7 @@ export default function HandMatrix({
         <div
           style={{
             fontSize: '8px',
-            color: 'oklch(0.70 0.18 55)',
+            color: 'var(--jk-warn)',
             marginBottom: 4,
             letterSpacing: '0.04em',
             fontWeight: 600,
@@ -404,7 +404,7 @@ export default function HandMatrix({
                     height: DOT,
                     background: sel ? adcToColor(adc, true) : finger.color + '28',
                     border: sel
-                      ? '2px solid oklch(0.72 0.22 145)'
+                      ? '2px solid var(--jk-ok)'
                       : `2px solid ${finger.color}`,
                     borderRadius: 4,
                     display: 'flex',
@@ -425,7 +425,7 @@ export default function HandMatrix({
                       top: 0,
                       bottom: 0,
                       width: `${pct}%`,
-                      background: sel ? 'oklch(0.72 0.22 145 / 0.3)' : finger.color + '40',
+                      background: sel ? 'color-mix(in srgb, var(--jk-ok) 30%, transparent)' : finger.color + '40',
                       transition: 'width 0.15s',
                     }}
                   />
@@ -434,7 +434,7 @@ export default function HandMatrix({
                       style={{
                         position: 'relative',
                         fontSize: '7px',
-                        color: sel ? 'oklch(0.90 0.10 145)' : finger.color,
+                        color: sel ? 'var(--jk-ok)' : finger.color,
                         fontWeight: 700,
                         zIndex: 1,
                       }}
@@ -447,7 +447,7 @@ export default function HandMatrix({
                 <span
                   style={{
                     fontSize: isEdge ? '8px' : '7px',
-                    color: isEdge ? finger.color : 'oklch(0.45 0.02 240)',
+                    color: isEdge ? finger.color : 'var(--jk-text-low)',
                     fontWeight: isEdge ? 700 : 400,
                     whiteSpace: 'nowrap',
                   }}
@@ -465,7 +465,7 @@ export default function HandMatrix({
         <div
           style={{
             fontSize: '8px',
-            color: 'oklch(0.60 0.06 265)',
+            color: 'var(--jk-line-4)',
             marginBottom: 4,
             letterSpacing: '0.04em',
             fontWeight: 600,
@@ -477,8 +477,8 @@ export default function HandMatrix({
           style={{
             width: fingersAreaWidth,
             padding: '6px',
-            background: 'oklch(0.20 0.03 265 / 0.6)',
-            border: '1px solid oklch(0.35 0.05 265 / 0.6)',
+            background: 'color-mix(in srgb, var(--jk-s3) 60%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--jk-line-4) 60%, transparent)',
             borderRadius: 6,
             display: 'flex',
             flexDirection: 'column',
@@ -501,8 +501,8 @@ export default function HandMatrix({
                       height: PALM_DOT,
                       background: adcToColor(adc, sel),
                       border: sel
-                        ? '2px solid oklch(0.72 0.22 145)'
-                        : '1px solid oklch(0.32 0.04 265 / 0.7)',
+                        ? '2px solid var(--jk-ok)'
+                        : '1px solid color-mix(in srgb, var(--jk-line-4) 70%, transparent)',
                       borderRadius: 2,
                       boxShadow: selectedGlow(sel),
                       flexShrink: 0,
@@ -517,7 +517,7 @@ export default function HandMatrix({
                       <span
                         style={{
                           fontSize: '5px',
-                          color: sel ? 'oklch(0.90 0.10 145)' : 'oklch(0.50 0.02 240)',
+                          color: sel ? 'var(--jk-ok)' : 'var(--jk-text-mid)',
                           lineHeight: 1,
                           pointerEvents: 'none',
                         }}
@@ -535,7 +535,7 @@ export default function HandMatrix({
 
       {/* ── 底部色阶图例 ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-        <span style={{ fontSize: '8px', color: 'oklch(0.40 0.02 240)' }}>压力:</span>
+        <span style={{ fontSize: '8px', color: 'var(--jk-text-dim)' }}>压力:</span>
         {[0, 32, 64, 96, 128, 160, 192, 224, 255].map((v) => (
           <div
             key={v}
@@ -544,17 +544,17 @@ export default function HandMatrix({
               height: 8,
               borderRadius: 1,
               background: adcToColor(v, false),
-              border: '1px solid oklch(0.25 0.03 265)',
+              border: '1px solid var(--jk-line-1)',
             }}
           />
         ))}
-        <span style={{ fontSize: '7px', color: 'oklch(0.35 0.02 240)' }}>低</span>
-        <span style={{ fontSize: '7px', color: 'oklch(0.35 0.02 240)', marginLeft: 'auto' }}>
+        <span style={{ fontSize: '7px', color: 'var(--jk-text-dim)' }}>低</span>
+        <span style={{ fontSize: '7px', color: 'var(--jk-text-dim)', marginLeft: 'auto' }}>
           高
         </span>
         {selectable && (
           <>
-            <span style={{ fontSize: '8px', color: 'oklch(0.40 0.02 240)', marginLeft: 8 }}>
+            <span style={{ fontSize: '8px', color: 'var(--jk-text-dim)', marginLeft: 8 }}>
               选中:
             </span>
             <div
@@ -562,8 +562,8 @@ export default function HandMatrix({
                 width: 12,
                 height: 8,
                 borderRadius: 1,
-                background: 'oklch(0.55 0.22 145)',
-                border: '2px solid oklch(0.72 0.22 145)',
+                background: 'var(--jk-ok)',
+                border: '2px solid var(--jk-ok)',
               }}
             />
           </>

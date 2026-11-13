@@ -43,20 +43,20 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div
         className="rounded p-2.5"
         style={{
-          background: 'oklch(0.17 0.025 265)',
-          border: '1px solid oklch(0.35 0.04 265)',
+          background: 'var(--jk-s2)',
+          border: '1px solid var(--jk-line-4)',
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: '11px',
           boxShadow: '0 4px 12px oklch(0 0 0 / 0.4)',
         }}
       >
-        <div style={{ color: 'oklch(0.55 0.02 240)', marginBottom: '4px', fontSize: '10px' }}>
+        <div style={{ color: 'var(--jk-text-body)', marginBottom: '4px', fontSize: '10px' }}>
           样本 #{data?.index} · {data?.time}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-            <span style={{ color: 'oklch(0.75 0.18 55)' }}>压力:</span>
-            <span style={{ color: 'oklch(0.75 0.18 55)', fontWeight: 600 }}>{data?.pressure.toFixed(2)} N</span>
+            <span style={{ color: 'var(--jk-warn)' }}>压力:</span>
+            <span style={{ color: 'var(--jk-warn)', fontWeight: 600 }}>{data?.pressure.toFixed(2)} N</span>
           </div>
         </div>
       </div>
@@ -199,29 +199,29 @@ export default function PressureChart({ showControls = true, externalData }: { s
       {/* 统计信息卡片 */}
       {showControls && (hasData || isForceConnected) && (
         <div className="grid grid-cols-3 gap-2 flex-shrink-0">
-          <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
+          <div className="rounded p-2" style={{ background: 'var(--jk-s3)', border: '1px solid var(--jk-line-2)' }}>
+            <div style={{ color: 'var(--jk-text-low)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               采集速率
             </div>
-            <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
+            <div style={{ color: 'var(--jk-accent)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
               {collectionRate} <span style={{ fontSize: '9px' }}>Hz</span>
             </div>
           </div>
 
-          <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
+          <div className="rounded p-2" style={{ background: 'var(--jk-s3)', border: '1px solid var(--jk-line-2)' }}>
+            <div style={{ color: 'var(--jk-text-low)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               数据点数
             </div>
-            <div style={{ color: 'oklch(0.72 0.20 145)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
+            <div style={{ color: 'var(--jk-ok)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
               {totalDataPoints}
             </div>
           </div>
 
-          <div className="rounded p-2" style={{ background: 'oklch(0.20 0.025 265)', border: '1px solid oklch(0.28 0.03 265)' }}>
-            <div style={{ color: 'oklch(0.45 0.02 240)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
+          <div className="rounded p-2" style={{ background: 'var(--jk-s3)', border: '1px solid var(--jk-line-2)' }}>
+            <div style={{ color: 'var(--jk-text-low)', fontSize: '9px', marginBottom: '2px', fontFamily: "'IBM Plex Mono', monospace" }}>
               采集时长
             </div>
-            <div style={{ color: 'oklch(0.75 0.18 55)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
+            <div style={{ color: 'var(--jk-warn)', fontSize: '13px', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>
               {formatTime(elapsedTime)}
             </div>
           </div>
@@ -232,23 +232,23 @@ export default function PressureChart({ showControls = true, externalData }: { s
       {showControls && (
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.75 0.18 55)' }}>
+          <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-warn)' }}>
             {isExternalMode ? '压力数据可视化 · 采集区间' : '压力数据可视化'}
           </span>
           {isExternalMode ? (
-            <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-body)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
               {displayData.length} 点
             </span>
           ) : isForceConnected ? (
             <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 55)' }} />
-              <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--jk-warn)' }} />
+              <span style={{ color: 'var(--jk-warn)', fontSize: '8px', fontFamily: "'IBM Plex Mono', monospace" }}>
                 实时采集中
               </span>
             </div>
           ) : null}
           {(isExternalMode ? displayData[displayData.length - 1]?.pressure : latestPressure) !== null && (isExternalMode ? displayData.length > 0 : latestPressure !== null) && (
-            <span style={{ color: 'oklch(0.75 0.18 55)', fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
+            <span style={{ color: 'var(--jk-warn)', fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
               {(isExternalMode ? displayData[displayData.length - 1]?.pressure : latestPressure)!.toFixed(2)} N
             </span>
           )}
@@ -259,9 +259,9 @@ export default function PressureChart({ showControls = true, externalData }: { s
               onClick={handleReset}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors"
               style={{
-                background: 'oklch(0.20 0.025 265)',
-                border: '1px solid oklch(0.28 0.03 265)',
-                color: 'oklch(0.60 0.02 240)',
+                background: 'var(--jk-s3)',
+                border: '1px solid var(--jk-line-2)',
+                color: 'var(--jk-text-high)',
                 fontSize: '9px',
               }}
               title="重置图表数据和统计信息"
@@ -278,65 +278,65 @@ export default function PressureChart({ showControls = true, externalData }: { s
       {errorMsg && (
         <div
           className="flex items-start gap-2 p-2 rounded text-xs flex-shrink-0"
-          style={{ background: 'oklch(0.65 0.22 25 / 0.1)', border: '1px solid oklch(0.65 0.22 25 / 0.3)' }}
+          style={{ background: 'color-mix(in srgb, var(--jk-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)' }}
         >
-          <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
-          <span style={{ color: 'oklch(0.65 0.22 25)' }}>{errorMsg}</span>
+          <AlertCircle size={12} style={{ color: 'var(--jk-danger)', flexShrink: 0, marginTop: '1px' }} />
+          <span style={{ color: 'var(--jk-danger)' }}>{errorMsg}</span>
         </div>
       )}
 
       {/* 图表容器 */}
       {!hasData ? (
-        <div className="flex-1 flex items-center justify-center rounded" style={{ background: 'oklch(0.15 0.025 265)', border: '1px dashed oklch(0.25 0.03 265)' }}>
+        <div className="flex-1 flex items-center justify-center rounded" style={{ background: 'var(--jk-s1)', border: '1px dashed var(--jk-line-1)' }}>
           <div className="text-center">
-            <div className="text-sm font-mono mb-1" style={{ color: 'oklch(0.45 0.02 240)' }}>
+            <div className="text-sm font-mono mb-1" style={{ color: 'var(--jk-text-low)' }}>
               {isForceConnected ? '等待数据...' : '等待数据'}
             </div>
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.35 0.02 240)' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
               {isForceConnected ? '已连接，正在接收压力数据' : '请在右上角连接检测设备后开始采集'}
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex-1 rounded" style={{ background: 'oklch(0.14 0.025 265)', border: '1px solid oklch(0.25 0.03 265)', minHeight: 0 }}>
+        <div className="flex-1 rounded" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)', minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={displayData} margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
               <defs>
                 <linearGradient id="pressureGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="oklch(0.75 0.18 55)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="oklch(0.75 0.18 55)" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="var(--jk-warn)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--jk-warn)" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="oklch(0.25 0.03 265)"
+                stroke="var(--jk-line-1)"
                 strokeOpacity={0.6}
               />
               <XAxis
                 dataKey="index"
                 type="number"
                 domain={['dataMin', 'dataMax']}
-                tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
+                tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                axisLine={{ stroke: 'var(--jk-line-3)' }}
+                tickLine={{ stroke: 'var(--jk-line-3)' }}
                 label={{
                   value: '采样点',
                   position: 'insideBottom',
                   offset: -5,
-                  fill: 'oklch(0.75 0.18 55)',
+                  fill: 'var(--jk-warn)',
                   fontSize: 10,
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
               />
               <YAxis
-                tick={{ fill: 'oklch(0.50 0.02 240)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                axisLine={{ stroke: 'oklch(0.30 0.03 265)' }}
-                tickLine={{ stroke: 'oklch(0.30 0.03 265)' }}
+                tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
+                axisLine={{ stroke: 'var(--jk-line-3)' }}
+                tickLine={{ stroke: 'var(--jk-line-3)' }}
                 label={{
                   value: '压力值 (N)',
                   angle: -90,
                   position: 'insideLeft',
-                  fill: 'oklch(0.75 0.18 55)',
+                  fill: 'var(--jk-warn)',
                   fontSize: 10,
                   fontFamily: "'IBM Plex Mono', monospace",
                 }}
@@ -352,7 +352,7 @@ export default function PressureChart({ showControls = true, externalData }: { s
               <Line
                 type="monotone"
                 dataKey="pressure"
-                stroke="oklch(0.75 0.18 55)"
+                stroke="var(--jk-warn)"
                 strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}

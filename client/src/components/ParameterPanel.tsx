@@ -42,7 +42,7 @@ function ParamRow({ label, value, onChange, min, max, step = 1, unit = '', hint 
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-1 flex-1 min-w-0">
-        <label className="text-xs font-mono truncate" style={{ color: 'oklch(0.60 0.02 240)' }}>
+        <label className="text-xs font-mono truncate" style={{ color: 'var(--jk-text-high)' }}>
           {label}
         </label>
         {hint && (
@@ -52,15 +52,15 @@ function ParamRow({ label, value, onChange, min, max, step = 1, unit = '', hint 
               onMouseLeave={() => setShowHint(false)}
               className="flex items-center"
             >
-              <Info size={9} style={{ color: 'oklch(0.40 0.02 240)' }} />
+              <Info size={9} style={{ color: 'var(--jk-text-dim)' }} />
             </button>
             {showHint && (
               <div
                 className="absolute left-4 top-0 z-50 rounded p-2 text-xs font-mono shadow-xl"
                 style={{
-                  background: 'oklch(0.20 0.03 265)',
-                  border: '1px solid oklch(0.32 0.04 265)',
-                  color: 'oklch(0.65 0.02 240)',
+                  background: 'var(--jk-s3)',
+                  border: '1px solid var(--jk-line-4)',
+                  color: 'var(--jk-text-high)',
                   width: '180px',
                   fontSize: '10px',
                   lineHeight: '1.4',
@@ -85,13 +85,13 @@ function ParamRow({ label, value, onChange, min, max, step = 1, unit = '', hint 
           }}
           className="w-16 text-right text-xs font-mono rounded px-1.5 py-0.5 outline-none"
           style={{
-            background: 'oklch(0.14 0.02 265)',
-            border: '1px solid oklch(0.28 0.03 265)',
-            color: 'oklch(0.85 0.01 220)',
+            background: 'var(--jk-sunken)',
+            border: '1px solid var(--jk-line-2)',
+            color: 'var(--jk-ink)',
           }}
         />
         {unit && (
-          <span className="text-xs font-mono w-7 text-left" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>
+          <span className="text-xs font-mono w-7 text-left" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>
             {unit}
           </span>
         )}
@@ -105,8 +105,8 @@ function SectionTitle({ label }: { label: string }) {
     <div
       className="text-xs font-mono pt-1.5 pb-1"
       style={{
-        color: 'oklch(0.45 0.02 240)',
-        borderBottom: '1px solid oklch(0.20 0.025 265)',
+        color: 'var(--jk-text-low)',
+        borderBottom: '1px solid var(--jk-s3)',
         letterSpacing: '0.04em',
         fontSize: '10px',
       }}
@@ -127,8 +127,8 @@ export default function ParameterPanel({ params, onChange, mode }: ParameterPane
     <div
       className="rounded"
       style={{
-        background: 'oklch(0.17 0.025 265)',
-        border: '1px solid oklch(0.28 0.03 265)',
+        background: 'var(--jk-s2)',
+        border: '1px solid var(--jk-line-2)',
       }}
     >
       {/* 标题 */}
@@ -137,24 +137,24 @@ export default function ParameterPanel({ params, onChange, mode }: ParameterPane
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-1.5">
-          <Settings size={12} style={{ color: 'oklch(0.58 0.22 265)' }} />
-          <span className="text-xs font-mono" style={{ color: 'oklch(0.75 0.01 220)' }}>
+          <Settings size={12} style={{ color: 'var(--jk-primary)' }} />
+          <span className="text-xs font-mono" style={{ color: 'var(--jk-ink)' }}>
             检测参数
           </span>
           {collapsed && (
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.48 0.02 240)', fontSize: '10px' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>
               阈值±{params.threshold}%
             </span>
           )}
         </div>
         {collapsed
-          ? <ChevronDown size={12} style={{ color: 'oklch(0.50 0.02 240)' }} />
-          : <ChevronUp size={12} style={{ color: 'oklch(0.50 0.02 240)' }} />
+          ? <ChevronDown size={12} style={{ color: 'var(--jk-text-mid)' }} />
+          : <ChevronUp size={12} style={{ color: 'var(--jk-text-mid)' }} />
         }
       </button>
 
       {!collapsed && (
-        <div className="px-3 pb-3 space-y-2" style={{ borderTop: '1px solid oklch(0.22 0.03 265)' }}>
+        <div className="px-3 pb-3 space-y-2" style={{ borderTop: '1px solid var(--jk-s4)' }}>
           {/* 通用参数 */}
           <div className="pt-2 space-y-2">
             <SectionTitle label="通用参数" />
@@ -258,9 +258,9 @@ export default function ParameterPanel({ params, onChange, mode }: ParameterPane
           {/* 参数预览 */}
           <div
             className="rounded p-2 mt-1"
-            style={{ background: 'oklch(0.13 0.02 265)', border: '1px solid oklch(0.20 0.025 265)' }}
+            style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-s3)' }}
           >
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
               {mode === 'consistency' && (
                 <>判定方法A：{params.forceMin}N-{params.forceMax}N范围内，选取{params.checkPoints}个间隔一致的数据点，误差范围±{params.threshold}%</>
               )}

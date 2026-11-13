@@ -331,37 +331,37 @@ export default function SerialMonitor({
     <div
       className="flex flex-col rounded overflow-hidden"
       style={{
-        background: 'oklch(0.17 0.025 265)',
-        border: '1px solid oklch(0.25 0.03 265)',
+        background: 'var(--jk-s2)',
+        border: '1px solid var(--jk-line-1)',
       }}
     >
       {/* 标题栏 */}
       <div
         className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-        style={{ background: 'oklch(0.15 0.025 265)', borderBottom: '1px solid oklch(0.20 0.03 265)' }}
+        style={{ background: 'var(--jk-s1)', borderBottom: '1px solid var(--jk-s3)' }}
       >
         <div className="flex items-center gap-2">
-          <FileText size={14} style={{ color: 'oklch(0.70 0.18 200)' }} />
-          <span className="text-sm font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)' }}>
+          <FileText size={14} style={{ color: 'var(--jk-accent)' }} />
+          <span className="text-sm font-mono font-medium" style={{ color: 'var(--jk-accent)' }}>
             数据采集控制
           </span>
         </div>
-        <div className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
-          已采集: <span style={{ color: 'oklch(0.72 0.20 145)', fontWeight: 600 }}>{recordCount}</span> 条数据
+        <div className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
+          已采集: <span style={{ color: 'var(--jk-ok)', fontWeight: 600 }}>{recordCount}</span> 条数据
         </div>
       </div>
 
       {/* 实时数据显示 */}
       {(isForceConnected || isSensorConnected) && (
-        <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid oklch(0.20 0.03 265)' }}>
+        <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--jk-s3)' }}>
           <div className="grid grid-cols-3 gap-3 text-xs font-mono">
             {(isForceConnected || latestForceN !== null) && (
               <div
                 className="rounded p-2"
-                style={{ background: 'oklch(0.12 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+                style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-line-1)' }}
               >
-                <div style={{ color: 'oklch(0.50 0.02 240)' }}>压力 (N)</div>
-                <div style={{ color: 'oklch(0.72 0.20 145)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
+                <div style={{ color: 'var(--jk-text-mid)' }}>压力 (N)</div>
+                <div style={{ color: 'var(--jk-ok)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
                   {latestForceN !== null ? latestForceN.toFixed(2) : '--'}
                 </div>
               </div>
@@ -370,19 +370,19 @@ export default function SerialMonitor({
               <>
                 <div
                   className="rounded p-2"
-                  style={{ background: 'oklch(0.12 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+                  style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-line-1)' }}
                 >
-                  <div style={{ color: 'oklch(0.50 0.02 240)' }}>ADC Sum</div>
-                  <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
+                  <div style={{ color: 'var(--jk-text-mid)' }}>ADC Sum</div>
+                  <div style={{ color: 'var(--jk-accent)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
                     {adcSum}
                   </div>
                 </div>
                 <div
                   className="rounded p-2"
-                  style={{ background: 'oklch(0.12 0.02 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+                  style={{ background: 'var(--jk-bg)', border: '1px solid var(--jk-line-1)' }}
                 >
-                  <div style={{ color: 'oklch(0.50 0.02 240)' }}>ADC Sum (HEX)</div>
-                  <div style={{ color: 'oklch(0.70 0.18 200)', fontSize: '14px', fontWeight: 600, marginTop: '4px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                  <div style={{ color: 'var(--jk-text-mid)' }}>ADC Sum (HEX)</div>
+                  <div style={{ color: 'var(--jk-accent)', fontSize: '14px', fontWeight: 600, marginTop: '4px', fontFamily: "'IBM Plex Mono', monospace" }}>
                     0x{adcSum.toString(16).toUpperCase().padStart(4, '0')}
                   </div>
                 </div>
@@ -394,8 +394,8 @@ export default function SerialMonitor({
 
       {/* 采集状态显示 */}
       {isRecording && (
-        <div className="px-4 py-2 flex items-center gap-2 text-xs font-mono" style={{ color: 'oklch(0.70 0.18 200)', borderBottom: '1px solid oklch(0.20 0.03 265)' }}>
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'oklch(0.65 0.22 25)' }} />
+        <div className="px-4 py-2 flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--jk-accent)', borderBottom: '1px solid var(--jk-s3)' }}>
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--jk-danger)' }} />
           采集中... 数据源: {isForceConnected ? '压力计' : ''}{isForceConnected && isSensorConnected ? ' + ' : ''}{isSensorConnected ? '传感器' : ''}
         </div>
       )}
@@ -408,9 +408,9 @@ export default function SerialMonitor({
             disabled={!isForceConnected && !isSensorConnected}
             className="flex items-center gap-2 px-4 py-2 rounded text-sm font-mono font-medium transition-colors disabled:opacity-50"
             style={{
-              background: (isForceConnected || isSensorConnected) ? 'oklch(0.72 0.20 145 / 0.2)' : 'oklch(0.20 0.025 265)',
-              border: `1px solid ${(isForceConnected || isSensorConnected) ? 'oklch(0.72 0.20 145 / 0.4)' : 'oklch(0.28 0.03 265)'}`,
-              color: (isForceConnected || isSensorConnected) ? 'oklch(0.72 0.20 145)' : 'oklch(0.45 0.02 240)',
+              background: (isForceConnected || isSensorConnected) ? 'color-mix(in srgb, var(--jk-ok) 20%, transparent)' : 'var(--jk-s3)',
+              border: `1px solid ${(isForceConnected || isSensorConnected) ? 'color-mix(in srgb, var(--jk-ok) 40%, transparent)' : 'var(--jk-line-2)'}`,
+              color: (isForceConnected || isSensorConnected) ? 'var(--jk-ok)' : 'var(--jk-text-low)',
             }}
             title="开始采集数据"
           >
@@ -422,9 +422,9 @@ export default function SerialMonitor({
             onClick={handleStopRecording}
             className="flex items-center gap-2 px-4 py-2 rounded text-sm font-mono font-medium transition-colors"
             style={{
-              background: 'oklch(0.65 0.22 25 / 0.2)',
-              border: '1px solid oklch(0.65 0.22 25 / 0.4)',
-              color: 'oklch(0.65 0.22 25)',
+              background: 'color-mix(in srgb, var(--jk-danger) 20%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--jk-danger) 40%, transparent)',
+              color: 'var(--jk-danger)',
             }}
             title="停止采集并自动保存CSV"
           >
@@ -438,9 +438,9 @@ export default function SerialMonitor({
             onClick={handleGenerateBaseline}
             className="flex items-center gap-2 px-4 py-2 rounded text-sm font-mono font-medium transition-colors"
             style={{
-              background: 'oklch(0.70 0.18 200 / 0.2)',
-              border: '1px solid oklch(0.70 0.18 200 / 0.4)',
-              color: 'oklch(0.70 0.18 200)',
+              background: 'color-mix(in srgb, var(--jk-accent) 20%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--jk-accent) 40%, transparent)',
+              color: 'var(--jk-accent)',
             }}
             title="生成基准测试文件（JSON格式）"
           >

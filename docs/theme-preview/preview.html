@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="A">
+<head>
+<meta charset="utf-8">
+<title>JQ Tools Factory — 配色方案预览</title>
+<style>
+[data-theme="A"]{
+  --bg:#0C0F12; --panel:#14181C; --panel2:#101418; --border:#262C33;
+  --fg:#E6EDF3; --fg-muted:#8B98A5;
+  --primary:#22D3EE; --on-primary:#04222A; --accent:#67E8F9;
+  --pass:#34D399; --fail:#F87171; --warn:#FBBF24;
+  --heat-low:#10202A; --heat-high:#67E8F9;
+}
+[data-theme="B"]{
+  --bg:#06110F; --panel:#0B1A17; --panel2:#081512; --border:#1B3A33;
+  --fg:#E3F5EF; --fg-muted:#7FA79B;
+  --primary:#2DD4BF; --on-primary:#04211C; --accent:#5EEAD4;
+  --pass:#34D399; --fail:#FB7185; --warn:#FCD34D;
+  --heat-low:#0A211C; --heat-high:#6EE7B7;
+}
+[data-theme="C"]{
+  --bg:#000000; --panel:#0A0A0B; --panel2:#060607; --border:#1F2024;
+  --fg:#F5F7FA; --fg-muted:#9AA3AE;
+  --primary:#7DD3FC; --on-primary:#04202E; --accent:#BAE6FD;
+  --pass:#4ADE80; --fail:#F87171; --warn:#FDE047;
+  --heat-low:#0C1A22; --heat-high:#A5F3FC;
+}
+[data-theme="D"]{
+  --bg:#12100E; --panel:#1A1714; --panel2:#16130F; --border:#332C24;
+  --fg:#F2EDE6; --fg-muted:#A79C8E;
+  --primary:#F59E0B; --on-primary:#241603; --accent:#FBBF24;
+  --pass:#4ADE80; --fail:#EF4444; --warn:#FBBF24;
+  --heat-low:#2A1B0B; --heat-high:#FCD34D;
+}
+[data-theme="E"]{
+  --bg:#F4F6F8; --panel:#FFFFFF; --panel2:#FAFBFC; --border:#D8DEE4;
+  --fg:#16202B; --fg-muted:#64748B;
+  --primary:#0E7490; --on-primary:#FFFFFF; --accent:#0891B2;
+  --pass:#059669; --fail:#DC2626; --warn:#D97706;
+  --heat-low:#EAF6FA; --heat-high:#0E7490;
+}
+[data-theme="F"]{
+  --bg:#0A0D0A; --panel:#111511; --panel2:#0D110D; --border:#22301F;
+  --fg:#E9F5E4; --fg-muted:#86A07A;
+  --primary:#3FB950; --on-primary:#06120A; --accent:#A3E635;
+  --pass:#4ADE80; --fail:#F87171; --warn:#FBBF24;
+  --heat-low:#14200E; --heat-high:#BBF7D0;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1200px;height:860px;overflow:hidden}
+body{background:var(--bg);color:var(--fg);
+  font-family:'IBM Plex Sans','Segoe UI',system-ui,'Microsoft YaHei',sans-serif;font-size:11px}
+.mono{font-family:'IBM Plex Mono','Cascadia Mono',Consolas,monospace}
+.app{display:flex;flex-direction:column;height:860px}
+
+/* ---------- top bar ---------- */
+.topbar{height:38px;display:flex;align-items:center;gap:14px;padding:0 10px;
+  background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:7px}
+.mark{width:18px;height:18px;border-radius:3px;background:var(--primary);
+  display:flex;align-items:center;justify-content:center;color:var(--on-primary);
+  font-weight:700;font-size:10px}
+.brand-t{font-weight:600;letter-spacing:.10em;font-size:10px}
+.tabs{display:flex;gap:2px;margin-left:6px}
+.tab{padding:4px 9px;border-radius:4px;color:var(--fg-muted);font-size:10.5px;
+  border:1px solid transparent;white-space:nowrap}
+.tab.on{background:color-mix(in srgb,var(--primary) 14%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 40%,transparent);color:var(--primary)}
+.spacer{flex:1}
+.chip{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;
+  border:1px solid var(--border);background:var(--panel2);color:var(--fg-muted);font-size:10px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--fg-muted)}
+.dot.p{background:var(--primary)}
+
+/* ---------- layout ---------- */
+.body{display:flex;flex:1;min-height:0}
+.sidebar{width:152px;background:var(--panel2);border-right:1px solid var(--border);
+  padding:10px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:3px}
+.side-brand{display:flex;align-items:center;gap:7px;padding:8px;border-radius:5px;
+  background:var(--panel);border:1px solid var(--border);margin-bottom:10px}
+.side-brand .mark{width:22px;height:22px;font-size:11px}
+.nav{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:5px;
+  color:var(--fg-muted);border:1px solid transparent}
+.nav.on{background:color-mix(in srgb,var(--primary) 13%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 34%,transparent);color:var(--primary)}
+.nav i{width:11px;height:11px;border-radius:2px;border:1.4px solid currentColor;opacity:.85}
+.content{flex:1;padding:11px;display:grid;grid-template-columns:1.32fr 1fr;gap:11px;min-height:0}
+.col{display:flex;flex-direction:column;gap:9px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:9px}
+.card-h{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.card-h .t{font-weight:600;font-size:10.5px}
+.card-h .sub{color:var(--fg-muted);font-size:9.5px}
+
+/* buttons */
+.btns{display:flex;gap:4px;margin-left:auto}
+.btn{padding:3px 7px;border-radius:4px;border:1px solid var(--border);
+  background:var(--panel2);color:var(--fg-muted);font-size:9.5px}
+.btn.k{background:color-mix(in srgb,var(--primary) 16%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 45%,transparent);color:var(--primary)}
+.btn.solid{background:var(--primary);border-color:var(--primary);
+  color:var(--on-primary);font-weight:600}
+.btn.wide{flex:1;text-align:center;padding:6px;font-size:10px}
+.row{display:flex;gap:6px}
+
+/* matrix */
+.matrix{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;padding:7px;
+  width:392px;margin:0 auto;
+  background:var(--panel2);border:1px solid var(--border);border-radius:5px}
+.cell{aspect-ratio:1;border-radius:1.5px}
+.legend{display:flex;align-items:center;gap:5px;margin-top:7px;font-size:9px;
+  color:var(--fg-muted)}
+.sw{width:9px;height:9px;border-radius:2px}
+
+/* stats */
+.stats{display:flex;gap:14px;margin-top:2px}
+.stat .k{color:var(--fg-muted);font-size:9px}
+.stat .v{font-size:14px;font-weight:600;margin-top:1px}
+.stat .v.a{color:var(--primary)}
+
+/* chart */
+.chart{background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+  padding:6px;position:relative}
+.axis{stroke:var(--border);stroke-width:1}
+.tick{fill:var(--fg-muted);font-size:8px;
+  font-family:'IBM Plex Mono',Consolas,monospace}
+.grid{stroke:var(--border);stroke-width:.6;stroke-dasharray:2 3;opacity:.75}
+
+/* badges */
+.badges{display:flex;gap:5px;margin-top:7px}
+.badge{padding:2px 7px;border-radius:3px;font-size:9px;border:1px solid}
+.b-pass{color:var(--pass);border-color:color-mix(in srgb,var(--pass) 38%,transparent);
+  background:color-mix(in srgb,var(--pass) 15%,transparent)}
+.b-fail{color:var(--fail);border-color:color-mix(in srgb,var(--fail) 38%,transparent);
+  background:color-mix(in srgb,var(--fail) 15%,transparent)}
+.b-pend{color:var(--fg-muted);border-color:var(--border);background:var(--panel2)}
+
+/* empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;color:var(--fg-muted);min-height:96px;font-size:10px}
+
+/* status bar */
+.statusbar{height:24px;display:flex;align-items:center;gap:16px;padding:0 10px;
+  background:var(--panel2);border-top:1px solid var(--border);
+  color:var(--fg-muted);font-size:9px;flex-shrink:0}
+.statusbar .r{margin-left:auto;display:flex;gap:16px;align-items:center}
+
+/* label + swatch strip */
+.theme-tag{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;
+  background:color-mix(in srgb,var(--primary) 11%,transparent);
+  border:1px solid color-mix(in srgb,var(--primary) 32%,transparent);
+  color:var(--primary);font-weight:600;font-size:10.5px;margin-bottom:9px}
+.sw-strip{display:flex;gap:3px;margin-left:auto}
+.sw-strip{flex-shrink:0}
+.sw-strip b{width:14px;height:14px;border-radius:3px;display:block;flex:0 0 auto}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">JQ</div>
+      <div>
+        <div class="brand-t">JQ TOOLS FACTORY</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab">测试页</div>
+      <div class="tab on">一致性</div>
+      <div class="tab">重复性</div>
+      <div class="tab">耐久性</div>
+      <div class="tab">数据记录</div>
+      <div class="tab">关于</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="chip"><span class="dot p"></span>选择检测设备</div>
+    <div class="chip"><span class="dot p"></span>选择传感器产品</div>
+    <div class="chip"><span class="dot"></span>数据模式</div>
+    <div class="chip mono">12:58:23</div>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar">
+      <div class="side-brand">
+        <div class="mark">JQ</div>
+        <div>
+          <div style="font-size:10.5px;font-weight:600">Tools Factory</div>
+          <div style="font-size:8.5px;color:var(--fg-muted)">精密传感器检测平台</div>
+        </div>
+      </div>
+      <div class="nav"><i></i>测试页</div>
+      <div class="nav on"><i></i>一致性</div>
+      <div class="nav"><i></i>重复性</div>
+      <div class="nav"><i></i>耐久性</div>
+      <div class="nav"><i></i>数据记录</div>
+      <div class="nav"><i></i>关于</div>
+    </aside>
+
+    <main class="content">
+      <!-- left column -->
+      <div class="col">
+        <div class="card" style="display:flex;flex-direction:column">
+          <div id="tag" class="theme-tag">
+            <span id="tagtext">A · 石墨青</span>
+            <span class="sw-strip">
+              <b style="background:var(--bg)"></b>
+              <b style="background:var(--panel)"></b>
+              <b style="background:var(--primary)"></b>
+              <b style="background:var(--accent)"></b>
+              <b style="background:var(--pass)"></b>
+              <b style="background:var(--fail)"></b>
+            </span>
+          </div>
+          <div class="card-h">
+            <span class="t">传感器数组</span>
+            <span class="sub mono">16×16</span>
+            <div class="btns">
+              <span class="btn">全部</span><span class="btn">清空</span>
+              <span class="btn">中心区域</span><span class="btn">边缘区域</span>
+              <span class="btn k">已选 0/256</span>
+            </div>
+          </div>
+          <div class="matrix" id="matrix"></div>
+          <div class="legend">
+            <span class="sw" style="background:var(--heat-low)"></span>
+            <span class="mono">低</span>
+            <span style="width:96px;height:7px;border-radius:3px;background:linear-gradient(90deg,var(--heat-low),var(--heat-high))"></span>
+            <span class="mono">高</span>
+            <span class="badges" style="margin-left:auto;margin-top:0">
+              <span class="badge b-pass">● 已判(0)</span>
+              <span class="badge b-fail">—</span>
+              <span class="badge b-pend">● 待判(0)</span>
+            </span>
+          </div>
+          <div class="row" style="margin-top:9px">
+            <span class="btn wide">导出数据</span>
+            <span class="btn wide">重置</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="t">一致性判定</span></div>
+          <div style="color:var(--fg-muted);font-size:9.5px;line-height:1.6">
+            判定方法 A：平滑曲线 10N 到 50N 范围内，选取 5 个间隔一致的数据，判断误差范围是否在 18% 范围内
+          </div>
+          <div class="badges"><span class="badge b-pend">等待检测…</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="t">数据采集控制</span>
+            <span class="sub mono" style="margin-left:auto">已采集：0 条数据</span>
+          </div>
+          <div class="row"><span class="btn wide">开始采集</span></div>
+        </div>
+      </div>
+
+      <!-- right column -->
+      <div class="col">
+        <div class="card">
+          <div class="card-h">
+            <span class="t">手动垂直下压机</span>
+            <span class="sub">一人上下压检测</span>
+            <span class="btn k" style="margin-left:auto">连接</span>
+          </div>
+          <div style="color:var(--fg-muted);font-size:9.5px;line-height:1.6">
+            检测方法：离散采样力学数据 + 多个压力传感器点 ADC 求和
+          </div>
+          <div class="stats" style="margin-top:6px">
+            <div class="stat"><div class="k">产量</div><div class="v" style="font-size:12px">16×16</div></div>
+            <div class="stat"><div class="k">采样帧率</div><div class="v a" style="font-size:12px">200 Hz</div></div>
+            <div class="stat"><div class="k">状态</div><div class="v" style="font-size:12px;color:var(--warn)">待连接</div></div>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="card-h">
+            <span class="t">压力数据可视化</span>
+            <div class="btns"><span class="btn k">综合视图</span><span class="btn">上传 CSV (0/20)</span></div>
+          </div>
+          <div class="chart" style="flex:1;min-height:0">
+            <svg width="100%" height="150" viewBox="0 0 380 150" preserveAspectRatio="none">
+              <line class="grid" x1="30" y1="20" x2="370" y2="20"/>
+              <line class="grid" x1="30" y1="55" x2="370" y2="55"/>
+              <line class="grid" x1="30" y1="90" x2="370" y2="90"/>
+              <line class="grid" x1="30" y1="125" x2="370" y2="125"/>
+              <line class="axis" x1="30" y1="12" x2="30" y2="132"/>
+              <line class="axis" x1="30" y1="132" x2="372" y2="132"/>
+              <polyline fill="none" stroke="var(--primary)" stroke-width="1.7"
+                points="30,126 60,120 90,112 120,96 150,82 180,66 210,52 240,41 270,33 300,27 330,23 360,21"/>
+              <polyline fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 3"
+                points="30,124 60,118 90,113 120,98 150,85 180,70 210,57 240,45 270,36 300,29 330,25 360,22"/>
+              <line class="axis" x1="30" y1="132" x2="30" y2="132"/>
+              <text class="tick" x="8" y="24">50</text>
+              <text class="tick" x="8" y="59">37</text>
+              <text class="tick" x="8" y="94">25</text>
+              <text class="tick" x="8" y="129">12</text>
+              <text class="tick" x="26" y="143">0</text>
+              <text class="tick" x="196" y="143">压力 (N)</text>
+              <text class="tick" x="340" y="143">50</text>
+            </svg>
+          </div>
+          <div class="legend" style="margin-top:6px">
+            <span class="sw" style="background:var(--primary)"></span><span>实测曲线</span>
+            <span class="sw" style="background:var(--accent)"></span><span>Hill 拟合</span>
+            <span style="margin-left:auto" class="mono">R² = 0.9766 · RMSE = 4.55</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="t">关键压力点 CV 分析</span>
+            <span class="btn k" style="margin-left:auto">18% 阈值</span>
+          </div>
+          <div class="row">
+            <div class="stat"><div class="k">平均 CV</div><div class="v a">2.41%</div></div>
+            <div class="stat"><div class="k">最大偏差</div><div class="v" style="color:var(--warn)">7.8 %FS</div></div>
+            <div class="stat"><div class="k">判定</div><div class="v" style="color:var(--pass);font-size:12px">PASS</div></div>
+          </div>
+          <div class="badges">
+            <span class="badge b-pass">● 10N 通过</span>
+            <span class="badge b-pass">● 20N 通过</span>
+            <span class="badge b-fail">● 30N 超差</span>
+            <span class="badge b-pend">● 50N 待判</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar mono">
+    <span style="color:var(--primary)">● 就绪</span>
+    <span>传感器: 未连接</span>
+    <span>力学: 未连接</span>
+    <span class="r">
+      <span>JQ Tools Factory v1.9.41</span>
+      <span>矩侨工业</span>
+      <span>2026/11/14 12:58:23</span>
+    </span>
+  </footer>
+</div>
+
+<script>
+// ---- theme from query string ----
+const THEMES = {
+  A: 'A · 石墨青 Graphite + Cyan',
+  B: 'B · 深青绿 Deep Teal + Mint',
+  C: 'C · 纯黑冰蓝 True Black + Ice',
+  D: 'D · 暖炭琥珀 Charcoal + Amber',
+  E: 'E · 浅色仪器 Light Instrument',
+  F: 'F · 磷光绿 Phosphor Terminal',
+};
+const key = (new URLSearchParams(location.search).get('theme') || 'A').toUpperCase();
+document.documentElement.setAttribute('data-theme', key);
+document.getElementById('tagtext').textContent = THEMES[key] || key;
+
+// ---- deterministic noise so every theme shows the SAME pattern ----
+let seed = 20261114;
+function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+// smooth-ish field: a few gaussian blobs (like real pressure hotspots)
+const blobs = [
+  {x: 4.2, y: 4.8, r: 2.6, a: 1.00},
+  {x: 11.0, y: 3.6, r: 2.2, a: 0.72},
+  {x: 7.8, y: 10.4, r: 3.0, a: 0.88},
+  {x: 13.2, y: 12.0, r: 2.0, a: 0.55},
+  {x: 2.0, y: 12.6, r: 1.8, a: 0.40},
+];
+function field(c, r) {
+  let v = 0;
+  for (const b of blobs) {
+    const dx = c - b.x, dy = r - b.y;
+    v += b.a * Math.exp(-(dx * dx + dy * dy) / (2 * b.r * b.r));
+  }
+  return Math.min(1, Math.max(0, v));
+}
+
+// ---- colour helpers: lerp two hex colours ----
+function hex2rgb(h) {
+  h = h.trim().replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function mix(a, b, t) {
+  const A = hex2rgb(a), B = hex2rgb(b);
+  return `rgb(${Math.round(A[0] + (B[0] - A[0]) * t)},${Math.round(A[1] + (B[1] - A[1]) * t)},${Math.round(A[2] + (B[2] - A[2]) * t)})`;
+}
+const cs = getComputedStyle(document.documentElement);
+const LOW = cs.getPropertyValue('--heat-low');
+const HIGH = cs.getPropertyValue('--heat-high');
+
+// ---- build 16x16 matrix ----
+const mx = document.getElementById('matrix');
+for (let r = 0; r < 16; r++) {
+  for (let c = 0; c < 16; c++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    let v = field(c, r) * (0.86 + 0.28 * rnd());
+    v = Math.min(1, v);
+    d.style.background = mix(LOW, HIGH, Math.pow(v, 0.85));
+    mx.appendChild(d);
+  }
+}
+</script>
+</body>
+</html>

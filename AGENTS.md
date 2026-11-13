@@ -2,8 +2,8 @@
 
 > **面向 AI Agent 的项目级规则文件。** 本文件由 DeepSeek Harness（DSH）在每次会话自动加载。
 >
-> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（已对齐 v1.9.41）。
-> - **最后同步**：2026-11-04 | **对应代码版本**：`v1.9.41`
+> - **来源**：迁移自上一任 Reasonix agent 的全局记忆（3 条，见 `docs/agent-memory/`）+ 项目约束文档 `docs/JQFactory-project-constraints.md`（已对齐 v1.9.42）。
+> - **最后同步**：2026-11-14 | **对应代码版本**：`v1.9.42`
 > - **维护约定**：规则变更直接改本文件；需要保留出处的历史决策放到 `docs/agent-memory/`。
 
 ---
@@ -321,7 +321,14 @@ useSerialPort('force', callbacks, options);
 
 - **路径别名**：`@/*` → `client/src/*`，`@shared/*` → `shared/*`（tsconfig 与 vite 都要一致）
 - **命名**：组件 PascalCase / Hook `useXxx` camelCase / lib 模块 camelCase / `ui/` 下 kebab-case 文件名导出 PascalCase 组件 / 全局单例获取函数 `getXxx()` / Ref 变量 `xxxRef` / 事件处理 `handleVerb`
-- **颜色**：**新增**颜色一律用 **oklch()** 色彩空间（历史遗留例外：`SerialConnectPanel.tsx` 里仍有 `#16213e` / `#e0e0e0` 两处 hex，未清理）
+- **颜色**：⚠️ **不要再写死任何颜色字面量。** 全站配色已抽成语义变量 `--jk-*`（定义在 `index.css` 的 `:root` = 白天 / `.dark` = 黑夜），必须用 `var(--jk-xxx)`：
+  - 面：`--jk-bg` `--jk-sunken` `--jk-s1`~`--jk-s4` `--jk-surface-hi`
+  - 线：`--jk-line-1`~`--jk-line-4`
+  - 文字：`--jk-ink` `--jk-text-max/strong/high/body/mid/low/dim/faint`（由深到浅，但语义是「强调→次要」）
+  - 强调：`--jk-primary`（主色）`--jk-on-primary`（主色上的文字）`--jk-accent` `--jk-accent-2` `--jk-ok` `--jk-warn` `--jk-danger` `--jk-fit`
+  - 透明度：`color-mix(in srgb, var(--jk-x) N%, transparent)`，不要写 `oklch(... / N)`
+  - 唯一允许保留字面量的场景：**图表系列色**与**数据驱动的动态热力色**（`${}` 插值）
+- **主题**：切换只切 `<html>` 上的 `.dark` 类，颜色全部走 CSS 变量，因此**不需要重渲染**。存储键 `jq_theme`；`?theme=light|dark` 可强制。新增颜色若只服务于单一主题，加在 `.dark {}` 里覆盖即可
 - **字体**：界面 `'IBM Plex Sans'`；数据/代码用 `'IBM Plex Mono', monospace`
 - **TS**：`strict: true`，`moduleResolution: "bundler"`，`jsx: "preserve"`
 - **文件下载**：临时 `<a>` + Blob URL + `revokeObjectURL`（照抄既有 `downloadFile()`）
@@ -349,7 +356,7 @@ useSerialPort('force', callbacks, options);
 ✅ 高频数据走全局单例 + Ref
 ✅ 回调用 ref 代理（`cbRef.current = fn` + `useEffect(..., [])`）
 ✅ 文件下载用 `<a>` + Blob URL
-✅ 颜色用 oklch
+✅ 颜色一律用语义变量 `var(--jk-*)`，不写字面量
 ✅ 订阅回调 try-catch 包裹
 ✅ 改完跑 `& pnpm.cmd run check`
 
@@ -389,7 +396,7 @@ useSerialPort('force', callbacks, options);
 |---------|------|
 | **Agent 规则**（本文件） | `AGENTS.md` |
 | 上一任 agent 的原始记忆 | `docs/agent-memory/` |
-| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（**已对齐 v1.9.41，全文不引用行号**） |
+| 部署约束 / 数据流 / 导出逻辑 / 状态管理详解 | `docs/JQFactory-project-constraints.md`（**已对齐 v1.9.42，全文不引用行号**） |
 | 相对约束文档的**代码漂移审计** | `docs/agent-handoff/codebase-drift-audit.md` |
 | 版本变动全部历史 | `README.md` 的「版本变动记录」（倒序） |
 | 版本号 + 构建日期 | `client/src/version.ts` |
@@ -399,13 +406,13 @@ useSerialPort('force', callbacks, options);
 
 ---
 
-## 10. 当前状态（交接快照 · 2026-11-04）
+## 10. 当前状态（交接快照 · 2026-11-14）
 
-- **代码版本**：`v1.9.41`（`BUILD_DATE` = 2026-11-04）。
-- **部署状态**：`v1.9.41` 待部署到测试环境复验；**正式环境仍是 `v1.9.38`**。
-  版本演进：v1.9.39 读不到数据（候选帧长漏 278/268/298）→ v1.9.40 补全帧长 → **v1.9.41 修掉「四元数被算进矩阵」**（单/双包判定误用长度比大小）。
-- **最近完成**：修复自适应 16×16 误判单/双包导致四元数混入矩阵（v1.9.41）、补全 8 种帧长（v1.9.40）、自适应 16×16 产品（v1.9.39）、SUM/AVG 切换联动 CV（v1.9.38）、图表区拖拽 CSV（v1.9.37）、机器人足底产品（v1.9.36）。
-- **下一步待办**：部署 `v1.9.41` 到测试环境 → 用户接真机复验 → 通过后 `deploy:prod`。
+- **代码版本**：`v1.9.42`（`BUILD_DATE` = 2026-11-14）。
+- **部署状态**：`v1.9.42` 待部署到测试环境；**正式环境仍是 `v1.9.38`**。
+  版本演进：v1.9.39 读不到数据（候选帧长漏 278/268/298）→ v1.9.40 补全帧长 → v1.9.41 修掉「四元数被算进矩阵」→ **v1.9.42 双主题配色重构**。
+- **最近完成**：双主题配色（白天 E 浅色仪器 / 黑夜 A 石墨青，可切换 + 跟随系统 + 记忆）、全站 1197 处内联颜色语义化（v1.9.42）；自适应 16×16 的两个解析 bug（v1.9.40/41）；自适应 16×16 产品（v1.9.39）；SUM/AVG 联动 CV（v1.9.38）。
+- **下一步待办**：部署 `v1.9.42` 到测试环境 → 用户确认配色与自适应硬件 → 通过后 `deploy:prod`（正式会一次性带上 v1.9.39~42 的全部改动）。
 - **Git**：分支 `master`，本地与远端保持同步。**最新提交请看 `git log -1`**（此处不写死 SHA，避免过期）。
 
 ### 10.1 上一轮未竟事项：「非线性度」指标

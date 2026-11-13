@@ -71,6 +71,33 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.42（2026-11-14）
+
+**Feat：全新双主题配色（白天 / 黑夜），去掉原有蓝紫底色**
+
+- 原配色是「深蓝黑 + 蓝紫主色」，观感偏闷。重新设计为两套 **科技风** 配色，可手动切换：
+  | 模式 | 方案 | 底色 | 主色 | 定位 |
+  |------|------|------|------|------|
+  | 白天 | E 浅色仪器 | 亮灰 `#F1F4F7` | 青 `#0E7490` | 车间强光/打印/截图存档可读性最好 |
+  | 黑夜 | A 石墨青 | 中性近黑 `#0C0F12` | 青 `#22D3EE` | 精密仪器感，久看不累，无蓝紫 |
+- **切换方式**：登录页右上角、主界面底部状态栏右下角各有一个切换按钮；首次访问跟随系统 `prefers-color-scheme`，手动选择后写入 `localStorage.jq_theme` 并记忆；也可用 `?theme=light|dark` 强制（便于 QA 与截图）
+- **关键改造**：全站配色原本散落在 22 个组件的 **1245 处内联 `oklch()`** 里，而内联样式优先级高于 CSS，导致亮色主题无法生效。本次把它们按「色相 + 彩度 + 明度」归并为 **25 个语义变量**（`--jk-bg` / `--jk-s1..s4` / `--jk-line-1..4` / `--jk-text-*` / `--jk-primary` / `--jk-accent` / `--jk-ok` / `--jk-warn` / `--jk-danger` / `--jk-fit` 等），一次性转换 **1197 处**；带透明度的转为 `color-mix(in srgb, var(--jk-x) N%, transparent)`，保留原有 alpha 层次
+- 保留原样的 48 处：**13 处 `${}` 动态插值**（数据驱动的热力色，本就应该逐帧计算）、**35 处长尾色相**（图表系列色、黑色遮罩）
+- `index.css` 重构为 `:root` = 白天、`.dark` = 黑夜，两套共用同一批语义变量；同时补 `color-scheme` 让原生控件（input/select/滚动条）跟随主题
+- 顺手修复：登录页版本号写死为 `v1.9.18`，改为读取 `APP_VERSION`
+- 迁移脚本可复用：[`scripts/theme/retheme.mjs`](scripts/theme/retheme.mjs)（含试运行模式）、[`scripts/theme/fix-literals.mjs`](scripts/theme/fix-literals.mjs)、CDP 截图 [`scripts/theme/shot-cdp.mjs`](scripts/theme/shot-cdp.mjs)
+
+**修改文件：**
+- 修改 `client/src/index.css` — 双主题语义变量 + 组件类改为引用变量
+- 修改 `client/src/contexts/ThemeContext.tsx` — 支持切换、跟随系统、`?theme=` 强制、迁移到新存储键 `jq_theme`
+- 修改 `client/src/App.tsx` — 开启 `switchable` / `respectSystem`
+- 修改 `client/index.html` — 首屏前置主题脚本（避免加载闪色）
+- 新增 `client/src/components/ThemeToggle.tsx` — 主题切换按钮
+- 修改 `client/src/pages/Home.tsx`、`client/src/pages/LoginPage.tsx` — 接入切换按钮；登录页改用 `APP_VERSION`
+- 修改 22 个组件/页面的内联颜色为语义变量（见上）
+- 新增 `scripts/theme/*` — 配色迁移与截图工具
+- 新增 `docs/theme-preview/` — 6 套备选方案预览图与实机截图
+
 ### v1.9.41（2026-11-04）
 
 **Fix：自适应 16×16 把四元数/九轴字节算进了传感器矩阵**

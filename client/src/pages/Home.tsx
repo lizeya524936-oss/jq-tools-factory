@@ -25,6 +25,7 @@ import { getRealtimeDataPipeline } from '@/lib/realtimeDataPipeline';
 import { Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { APP_VERSION } from '@/version';
+import ThemeToggle from '@/components/ThemeToggle';
 import { buildEnablePacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
 
 // 全局串口数据上下文，供子页面消费
@@ -291,14 +292,14 @@ export default function Home() {
     <SerialCtx.Provider value={{ latestForceN, latestSensorMatrix, latestAdcValues: effectiveAdcValues, latestRawFrame, isForceConnected, isSensorConnected, sensorDeviceType, latestAdcValuesRef, sendForceCommand: forceSerial.sendCommand, forceDeviceMode, sensorProtocol, sensorMatrixSize, sensorMatrixCols, sensorFps, forceFps }}>
       <div
         className="flex flex-col h-screen overflow-hidden"
-        style={{ background: 'oklch(0.13 0.02 265)', fontFamily: "'IBM Plex Sans', sans-serif" }}
+        style={{ background: 'var(--jk-sunken)', fontFamily: "'IBM Plex Sans', sans-serif" }}
       >
         {/* 顶部标题栏 */}
         <header
           className="flex items-center justify-between px-4 flex-shrink-0"
           style={{
-            background: 'oklch(0.15 0.025 265)',
-            borderBottom: '1px solid oklch(0.22 0.03 265)',
+            background: 'var(--jk-s1)',
+            borderBottom: '1px solid var(--jk-s4)',
             height: '48px',
           }}
         >
@@ -306,20 +307,20 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div
               className="flex items-center gap-2 pr-3"
-              style={{ borderRight: '1px solid oklch(0.22 0.03 265)' }}
+              style={{ borderRight: '1px solid var(--jk-s4)' }}
             >
               <div
                 className="w-6 h-6 rounded flex items-center justify-center"
                 style={{
-                  background: 'oklch(0.58 0.22 265 / 0.2)',
-                  border: '1px solid oklch(0.58 0.22 265 / 0.4)',
+                  background: 'color-mix(in srgb, var(--jk-primary) 20%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--jk-primary) 40%, transparent)',
                 }}
               >
-                <Activity size={12} style={{ color: 'oklch(0.70 0.18 200)' }} />
+                <Activity size={12} style={{ color: 'var(--jk-accent)' }} />
               </div>
               <span
                 className="text-xs font-mono font-semibold"
-                style={{ color: 'oklch(0.75 0.01 220)', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--jk-ink)', letterSpacing: '0.05em' }}
               >
                 JQ TOOLS FACTORY
               </span>
@@ -327,13 +328,13 @@ export default function Home() {
             <div>
               <h1
                 className="text-sm font-semibold leading-tight"
-                style={{ color: 'oklch(0.92 0.01 220)' }}
+                style={{ color: 'var(--jk-ink)' }}
               >
                 {current.title}
               </h1>
               <p
                 className="leading-tight font-mono"
-                style={{ color: 'oklch(0.48 0.02 240)', fontSize: '10px' }}
+                style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}
               >
                 {current.subtitle}
               </p>
@@ -351,16 +352,16 @@ export default function Home() {
             />
 
             {/* 分隔 */}
-            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+            <div className="w-px h-4" style={{ background: 'var(--jk-line-1)' }} />
 
             {/* 下压机连接 */}
             <button
               onClick={() => pressArduinoConnected ? disconnectArduino() : connectArduino()}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-opacity hover:opacity-80"
               style={{
-                background: pressArduinoConnected ? 'oklch(0.72 0.20 145 / 0.12)' : 'oklch(0.25 0.03 265)',
-                border: `1px solid ${pressArduinoConnected ? 'oklch(0.72 0.20 145 / 0.35)' : 'oklch(0.30 0.03 265)'}`,
-                color: pressArduinoConnected ? 'oklch(0.72 0.20 145)' : 'oklch(0.55 0.02 240)',
+                background: pressArduinoConnected ? 'color-mix(in srgb, var(--jk-ok) 12%, transparent)' : 'var(--jk-line-1)',
+                border: `1px solid ${pressArduinoConnected ? 'color-mix(in srgb, var(--jk-ok) 35%, transparent)' : 'var(--jk-line-3)'}`,
+                color: pressArduinoConnected ? 'var(--jk-ok)' : 'var(--jk-text-body)',
               }}
             >
               <Zap size={10} />
@@ -368,7 +369,7 @@ export default function Home() {
             </button>
 
             {/* 分隔 */}
-            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+            <div className="w-px h-4" style={{ background: 'var(--jk-line-1)' }} />
 
             {/* 传感器串口 */}
             <SerialConnectPanel
@@ -380,7 +381,7 @@ export default function Home() {
             />
 
             {/* 分隔 */}
-            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+            <div className="w-px h-4" style={{ background: 'var(--jk-line-1)' }} />
 
             {/* 实时数据预览 */}
             {(isForceConnected || isSensorConnected) && (
@@ -388,16 +389,16 @@ export default function Home() {
                 <div className="flex items-center gap-2 px-2">
                   {isForceConnected && (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>F:</span>
-                      <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.70 0.18 200)', fontSize: '10px' }}>
+                      <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>F:</span>
+                      <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-accent)', fontSize: '10px' }}>
                         {latestForceN !== null ? `${latestForceN.toFixed(2)}N` : '--'}
                       </span>
                     </div>
                   )}
                   {isSensorConnected && (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.02 240)', fontSize: '10px' }}>ADC:</span>
-                      <span className="text-xs font-mono font-medium" style={{ color: 'oklch(0.72 0.20 145)', fontSize: '10px', minWidth: '40px', textAlign: 'right' }}>
+                      <span className="text-xs font-mono" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>ADC:</span>
+                      <span className="text-xs font-mono font-medium" style={{ color: 'var(--jk-ok)', fontSize: '10px', minWidth: '40px', textAlign: 'right' }}>
                         {latestAdcValues !== null
                           ? String(latestAdcValues.reduce((a, b) => a + b, 0)).padStart(5, ' ')
                           : '    --'}
@@ -414,25 +415,25 @@ export default function Home() {
                 className="w-1.5 h-1.5 rounded-full"
                 style={{
                   background: bothConnected
-                    ? 'oklch(0.72 0.20 145)'
+                    ? 'var(--jk-ok)'
                     : anyConnected
-                    ? 'oklch(0.75 0.18 55)'
+                    ? 'var(--jk-warn)'
                     : webSerialSupported
-                    ? 'oklch(0.40 0.02 240)'
-                    : 'oklch(0.65 0.22 25)',
-                  boxShadow: bothConnected ? '0 0 6px oklch(0.72 0.20 145 / 0.6)' : 'none',
+                    ? 'var(--jk-text-dim)'
+                    : 'var(--jk-danger)',
+                  boxShadow: bothConnected ? '0 0 6px color-mix(in srgb, var(--jk-ok) 60%, transparent)' : 'none',
                 }}
               />
               <span
                 className="text-xs font-mono"
                 style={{
                   color: bothConnected
-                    ? 'oklch(0.72 0.20 145)'
+                    ? 'var(--jk-ok)'
                     : anyConnected
-                    ? 'oklch(0.75 0.18 55)'
+                    ? 'var(--jk-warn)'
                     : webSerialSupported
-                    ? 'oklch(0.40 0.02 240)'
-                    : 'oklch(0.65 0.22 25)',
+                    ? 'var(--jk-text-dim)'
+                    : 'var(--jk-danger)',
                   fontSize: '10px',
                 }}
               >
@@ -447,28 +448,28 @@ export default function Home() {
             </div>
 
             {/* 分隔 */}
-            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+            <div className="w-px h-4" style={{ background: 'var(--jk-line-1)' }} />
 
             {/* 时钟 */}
-            <span className="text-xs font-mono" style={{ color: 'oklch(0.42 0.02 240)', fontSize: '10px' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '10px' }}>
               {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
             </span>
 
             {/* 分隔 */}
-            <div className="w-px h-4" style={{ background: 'oklch(0.25 0.03 265)' }} />
+            <div className="w-px h-4" style={{ background: 'var(--jk-line-1)' }} />
 
             {/* 当前客户 + 退出 */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '10px' }}>
+              <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)', fontSize: '10px' }}>
                 {client?.name ?? '未知'}
               </span>
               <button
                 onClick={logout}
                 className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono transition-opacity hover:opacity-75"
                 style={{
-                  background: 'oklch(0.65 0.22 25 / 0.15)',
-                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                  color: 'oklch(0.65 0.22 25)',
+                  background: 'color-mix(in srgb, var(--jk-danger) 15%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)',
+                  color: 'var(--jk-danger)',
                   fontSize: '9px',
                 }}
                 title="退出登录"
@@ -497,47 +498,49 @@ export default function Home() {
           className="flex items-center justify-between px-4 flex-shrink-0"
           style={{
             height: '24px',
-            background: 'oklch(0.12 0.02 265)',
-            borderTop: '1px solid oklch(0.20 0.025 265)',
+            background: 'var(--jk-bg)',
+            borderTop: '1px solid var(--jk-s3)',
           }}
         >
           <div className="flex items-center gap-3">
-            <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               JQ Tools Factory {APP_VERSION}
             </span>
-            <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
-            <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               矩侨工业 · 织物触觉传感器检测平台
             </span>
             {!webSerialSupported && (
               <>
-                <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
-                <span style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+                <span style={{ color: 'var(--jk-danger)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
                   ⚠ 请使用 Chrome/Edge 89+ 以启用串口连接
                 </span>
               </>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               力学: {isForceConnected ? `${forceSerial.state.portInfo} @ ${forceSerial.state.baudRate}` : '未连接'}
             </span>
-            <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
-            <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               传感器: {isSensorConnected ? `${sensorSerial.state.portInfo} @ ${sensorSerial.state.baudRate}${sensorDeviceType ? ` · ${sensorDeviceType}` : ''}` : '未连接'}
             </span>
             {(isForceConnected || isSensorConnected) && (
               <>
-                <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
-                <span style={{ color: 'oklch(0.58 0.18 200)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+                <span style={{ color: 'var(--jk-accent)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
                   {isForceConnected && `F:${forceFps}Hz`}{isForceConnected && isSensorConnected && ' '}{isSensorConnected && `S:${sensorFps}Hz`}
                 </span>
               </>
             )}
-            <span style={{ color: 'oklch(0.28 0.02 240)', fontSize: '10px' }}>|</span>
-            <span style={{ color: 'oklch(0.38 0.02 240)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+            <span style={{ color: 'var(--jk-text-dim)', fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
               {currentTime.toLocaleString('zh-CN', { hour12: false })}
             </span>
+            <span style={{ color: 'var(--jk-text-faint)', fontSize: '10px' }}>|</span>
+            <ThemeToggle />
           </div>
         </footer>
       </div>

@@ -20,12 +20,12 @@ export default function TestResultCard({ result, title, description, isRunning }
     <div
       className="rounded p-3"
       style={{
-        background: 'oklch(0.17 0.025 265)',
+        background: 'var(--jk-s2)',
         border: `1px solid ${
-          !result ? 'oklch(0.28 0.03 265)'
-          : result.passed === true ? 'oklch(0.72 0.20 145 / 0.4)'
-          : result.passed === false ? 'oklch(0.65 0.22 25 / 0.4)'
-          : 'oklch(0.28 0.03 265)'
+          !result ? 'var(--jk-line-2)'
+          : result.passed === true ? 'color-mix(in srgb, var(--jk-ok) 40%, transparent)'
+          : result.passed === false ? 'color-mix(in srgb, var(--jk-danger) 40%, transparent)'
+          : 'var(--jk-line-2)'
         }`,
         transition: 'border-color 0.3s ease',
       }}
@@ -36,44 +36,44 @@ export default function TestResultCard({ result, title, description, isRunning }
             {isRunning ? (
               <div
                 className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
-                style={{ borderColor: 'oklch(0.58 0.22 265)', borderTopColor: 'transparent' }}
+                style={{ borderColor: 'var(--jk-primary)', borderTopColor: 'transparent' }}
               />
             ) : !result || result.passed === null ? (
-              <AlertCircle size={14} style={{ color: 'oklch(0.50 0.02 240)' }} />
+              <AlertCircle size={14} style={{ color: 'var(--jk-text-mid)' }} />
             ) : result.passed ? (
-              <CheckCircle size={14} style={{ color: 'oklch(0.72 0.20 145)' }} />
+              <CheckCircle size={14} style={{ color: 'var(--jk-ok)' }} />
             ) : (
-              <XCircle size={14} style={{ color: 'oklch(0.65 0.22 25)' }} />
+              <XCircle size={14} style={{ color: 'var(--jk-danger)' }} />
             )}
-            <span className="text-xs font-medium" style={{ color: 'oklch(0.85 0.01 220)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--jk-ink)' }}>
               {title}
             </span>
           </div>
           {description && (
-            <p className="text-xs mb-2" style={{ color: 'oklch(0.55 0.02 240)' }}>
+            <p className="text-xs mb-2" style={{ color: 'var(--jk-text-body)' }}>
               {description}
             </p>
           )}
           {result && result.passed !== null && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
                   最大偏差
                 </span>
                 <span
                   className="text-xs font-mono font-medium"
                   style={{
-                    color: result.passed ? 'oklch(0.72 0.20 145)' : 'oklch(0.65 0.22 25)',
+                    color: result.passed ? 'var(--jk-ok)' : 'var(--jk-danger)',
                   }}
                 >
                   {maxError.toFixed(2)}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)' }}>
                   判定阈值
                 </span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.60 0.02 240)' }}>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-high)' }}>
                   ±{threshold}%
                 </span>
               </div>
@@ -81,21 +81,21 @@ export default function TestResultCard({ result, title, description, isRunning }
               <div className="mt-2">
                 <div
                   className="h-1.5 rounded-full overflow-hidden"
-                  style={{ background: 'oklch(0.22 0.03 265)' }}
+                  style={{ background: 'var(--jk-s4)' }}
                 >
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${Math.min(100, (maxError / (threshold * 2)) * 100)}%`,
                       background: result.passed
-                        ? 'oklch(0.72 0.20 145)'
-                        : 'oklch(0.65 0.22 25)',
+                        ? 'var(--jk-ok)'
+                        : 'var(--jk-danger)',
                     }}
                   />
                 </div>
                 <div className="flex justify-between mt-0.5">
-                  <span className="text-xs font-mono" style={{ fontSize: '9px', color: 'oklch(0.45 0.02 240)' }}>0%</span>
-                  <span className="text-xs font-mono" style={{ fontSize: '9px', color: 'oklch(0.45 0.02 240)' }}>
+                  <span className="text-xs font-mono" style={{ fontSize: '9px', color: 'var(--jk-text-low)' }}>0%</span>
+                  <span className="text-xs font-mono" style={{ fontSize: '9px', color: 'var(--jk-text-low)' }}>
                     阈值 {threshold}%
                   </span>
                 </div>
@@ -104,10 +104,10 @@ export default function TestResultCard({ result, title, description, isRunning }
               {result.details && result.details.length > 0 && (
                 <div
                   className="mt-1 p-1.5 rounded space-y-0.5"
-                  style={{ background: 'oklch(0.14 0.02 265)' }}
+                  style={{ background: 'var(--jk-sunken)' }}
                 >
                   {result.details.map((d, i) => (
-                    <div key={i} className="text-xs font-mono" style={{ color: 'oklch(0.55 0.02 240)', fontSize: '10px' }}>
+                    <div key={i} className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '10px' }}>
                       {d}
                     </div>
                   ))}
@@ -117,8 +117,8 @@ export default function TestResultCard({ result, title, description, isRunning }
               <div
                 className="text-xs font-mono mt-1 p-1.5 rounded"
                 style={{
-                  background: result.passed ? 'oklch(0.72 0.20 145 / 0.08)' : 'oklch(0.65 0.22 25 / 0.08)',
-                  color: result.passed ? 'oklch(0.72 0.20 145)' : 'oklch(0.65 0.22 25)',
+                  background: result.passed ? 'color-mix(in srgb, var(--jk-ok) 8%, transparent)' : 'color-mix(in srgb, var(--jk-danger) 8%, transparent)',
+                  color: result.passed ? 'var(--jk-ok)' : 'var(--jk-danger)',
                   fontSize: '10px',
                 }}
               >
@@ -127,12 +127,12 @@ export default function TestResultCard({ result, title, description, isRunning }
             </div>
           )}
           {(!result || result.passed === null) && !isRunning && (
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.40 0.02 240)' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-text-dim)' }}>
               等待检测...
             </div>
           )}
           {isRunning && (
-            <div className="text-xs font-mono" style={{ color: 'oklch(0.58 0.22 265)' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--jk-primary)' }}>
               正在采集数据...
             </div>
           )}
@@ -142,10 +142,10 @@ export default function TestResultCard({ result, title, description, isRunning }
             className="px-2 py-1 rounded text-xs font-mono font-medium flex-shrink-0"
             style={{
               background: result.passed
-                ? 'oklch(0.72 0.20 145 / 0.12)'
-                : 'oklch(0.65 0.22 25 / 0.12)',
-              color: result.passed ? 'oklch(0.72 0.20 145)' : 'oklch(0.65 0.22 25)',
-              border: `1px solid ${result.passed ? 'oklch(0.72 0.20 145 / 0.3)' : 'oklch(0.65 0.22 25 / 0.3)'}`,
+                ? 'color-mix(in srgb, var(--jk-ok) 12%, transparent)'
+                : 'color-mix(in srgb, var(--jk-danger) 12%, transparent)',
+              color: result.passed ? 'var(--jk-ok)' : 'var(--jk-danger)',
+              border: `1px solid ${result.passed ? 'color-mix(in srgb, var(--jk-ok) 30%, transparent)' : 'color-mix(in srgb, var(--jk-danger) 30%, transparent)'}`,
             }}
           >
             {result.passed ? 'PASS' : 'FAIL'}

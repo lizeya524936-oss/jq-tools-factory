@@ -437,18 +437,18 @@ export default function OmniHandControl({
   const availableActions = customActions || PRESET_ACTIONS;
   
   return (
-    <div className="rounded-lg overflow-hidden" style={{ background: 'oklch(0.15 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}>
+    <div className="rounded-lg overflow-hidden" style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-line-1)' }}>
       {/* 标题栏 */}
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid oklch(0.22 0.03 265)' }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--jk-s4)' }}>
         <div className="flex items-center gap-2">
-          <Hand size={14} style={{ color: 'oklch(0.75 0.15 180)' }} />
-          <span className="text-xs font-mono font-semibold" style={{ color: 'oklch(0.75 0.15 180)' }}>
+          <Hand size={14} style={{ color: 'var(--jk-accent-2)' }} />
+          <span className="text-xs font-mono font-semibold" style={{ color: 'var(--jk-accent-2)' }}>
             灵巧手控制
           </span>
           {isConnected && (
             <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'oklch(0.75 0.18 150)' }} />
-              <span style={{ color: 'oklch(0.55 0.02 240)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--jk-ok)' }} />
+              <span style={{ color: 'var(--jk-text-body)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
                 已连接
               </span>
             </div>
@@ -461,9 +461,9 @@ export default function OmniHandControl({
             disabled={isTesting}
             className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
             style={{
-              background: 'oklch(0.20 0.025 265)',
-              border: '1px solid oklch(0.28 0.03 265)',
-              color: 'oklch(0.60 0.02 240)',
+              background: 'var(--jk-s3)',
+              border: '1px solid var(--jk-line-2)',
+              color: 'var(--jk-text-high)',
               fontSize: '9px',
             }}
             title="加载自定义动作 JSON 文件"
@@ -478,9 +478,9 @@ export default function OmniHandControl({
               disabled={isTesting}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
               style={{
-                background: 'oklch(0.65 0.22 25 / 0.12)',
-                border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                color: 'oklch(0.65 0.22 25)',
+                background: 'color-mix(in srgb, var(--jk-danger) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)',
+                color: 'var(--jk-danger)',
                 fontSize: '9px',
               }}
             >
@@ -493,9 +493,9 @@ export default function OmniHandControl({
               disabled={isConnecting}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors disabled:opacity-40"
               style={{
-                background: 'oklch(0.75 0.15 180 / 0.12)',
-                border: '1px solid oklch(0.75 0.15 180 / 0.3)',
-                color: 'oklch(0.75 0.15 180)',
+                background: 'color-mix(in srgb, var(--jk-accent-2) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--jk-accent-2) 30%, transparent)',
+                color: 'var(--jk-accent-2)',
                 fontSize: '9px',
               }}
             >
@@ -508,9 +508,9 @@ export default function OmniHandControl({
       
       {/* 错误提示 */}
       {errorMsg && (
-        <div className="flex items-start gap-2 px-4 py-2 text-xs" style={{ background: 'oklch(0.65 0.22 25 / 0.08)' }}>
-          <AlertCircle size={12} style={{ color: 'oklch(0.65 0.22 25)', flexShrink: 0, marginTop: '1px' }} />
-          <span style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px' }}>{errorMsg}</span>
+        <div className="flex items-start gap-2 px-4 py-2 text-xs" style={{ background: 'color-mix(in srgb, var(--jk-danger) 8%, transparent)' }}>
+          <AlertCircle size={12} style={{ color: 'var(--jk-danger)', flexShrink: 0, marginTop: '1px' }} />
+          <span style={{ color: 'var(--jk-danger)', fontSize: '10px' }}>{errorMsg}</span>
         </div>
       )}
       
@@ -518,7 +518,7 @@ export default function OmniHandControl({
         {/* 循环参数 */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+            <label className="block text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
               循环次数
             </label>
             <input
@@ -530,15 +530,15 @@ export default function OmniHandControl({
               disabled={isTesting}
               className="w-full px-2 py-1.5 rounded text-xs font-mono disabled:opacity-40"
               style={{
-                background: 'oklch(0.12 0.025 265)',
-                border: '1px solid oklch(0.28 0.03 265)',
-                color: 'oklch(0.82 0.01 220)',
+                background: 'var(--jk-bg)',
+                border: '1px solid var(--jk-line-2)',
+                color: 'var(--jk-ink)',
                 fontSize: '11px',
               }}
             />
           </div>
           <div>
-            <label className="block text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+            <label className="block text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
               动作间隔 (ms)
             </label>
             <input
@@ -551,9 +551,9 @@ export default function OmniHandControl({
               disabled={isTesting}
               className="w-full px-2 py-1.5 rounded text-xs font-mono disabled:opacity-40"
               style={{
-                background: 'oklch(0.12 0.025 265)',
-                border: '1px solid oklch(0.28 0.03 265)',
-                color: 'oklch(0.82 0.01 220)',
+                background: 'var(--jk-bg)',
+                border: '1px solid var(--jk-line-2)',
+                color: 'var(--jk-ink)',
                 fontSize: '11px',
               }}
             />
@@ -562,7 +562,7 @@ export default function OmniHandControl({
         
         {/* 手动动作按钮 */}
         <div>
-          <div className="text-xs font-mono mb-1.5" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+          <div className="text-xs font-mono mb-1.5" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
             手动执行 {customActions ? '(自定义)' : '(预设)'}
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -574,12 +574,12 @@ export default function OmniHandControl({
                 className="px-2.5 py-1 rounded text-xs font-mono transition-colors disabled:opacity-30"
                 style={{
                   background: currentAction === action.name
-                    ? 'oklch(0.75 0.15 180 / 0.2)'
-                    : 'oklch(0.20 0.025 265)',
-                  border: `1px solid ${currentAction === action.name ? 'oklch(0.75 0.15 180 / 0.4)' : 'oklch(0.28 0.03 265)'}`,
+                    ? 'color-mix(in srgb, var(--jk-accent-2) 20%, transparent)'
+                    : 'var(--jk-s3)',
+                  border: `1px solid ${currentAction === action.name ? 'color-mix(in srgb, var(--jk-accent-2) 40%, transparent)' : 'var(--jk-line-2)'}`,
                   color: currentAction === action.name
-                    ? 'oklch(0.75 0.15 180)'
-                    : 'oklch(0.60 0.02 240)',
+                    ? 'var(--jk-accent-2)'
+                    : 'var(--jk-text-high)',
                   fontSize: '10px',
                 }}
               >
@@ -597,9 +597,9 @@ export default function OmniHandControl({
               disabled={!isConnected}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-semibold transition-colors disabled:opacity-30"
               style={{
-                background: isConnected ? 'oklch(0.75 0.15 180 / 0.15)' : 'oklch(0.20 0.025 265)',
-                border: `1px solid ${isConnected ? 'oklch(0.75 0.15 180 / 0.3)' : 'oklch(0.28 0.03 265)'}`,
-                color: isConnected ? 'oklch(0.75 0.15 180)' : 'oklch(0.45 0.02 240)',
+                background: isConnected ? 'color-mix(in srgb, var(--jk-accent-2) 15%, transparent)' : 'var(--jk-s3)',
+                border: `1px solid ${isConnected ? 'color-mix(in srgb, var(--jk-accent-2) 30%, transparent)' : 'var(--jk-line-2)'}`,
+                color: isConnected ? 'var(--jk-accent-2)' : 'var(--jk-text-low)',
               }}
             >
               <Play size={12} />
@@ -610,9 +610,9 @@ export default function OmniHandControl({
               onClick={handleStopTest}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-semibold transition-colors"
               style={{
-                background: 'oklch(0.65 0.22 25 / 0.15)',
-                border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                color: 'oklch(0.65 0.22 25)',
+                background: 'color-mix(in srgb, var(--jk-danger) 15%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)',
+                color: 'var(--jk-danger)',
               }}
             >
               <Square size={12} />
@@ -624,9 +624,9 @@ export default function OmniHandControl({
             disabled={isTesting}
             className="px-3 py-2 rounded text-xs font-mono transition-colors disabled:opacity-30"
             style={{
-              background: 'oklch(0.20 0.025 265)',
-              border: '1px solid oklch(0.28 0.03 265)',
-              color: 'oklch(0.60 0.02 240)',
+              background: 'var(--jk-s3)',
+              border: '1px solid var(--jk-line-2)',
+              color: 'var(--jk-text-high)',
             }}
             title="清除日志"
           >
@@ -637,20 +637,20 @@ export default function OmniHandControl({
         {/* 进度条 */}
         {(isTesting || currentCycle > 0) && (
           <div>
-            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'oklch(0.50 0.02 240)', fontSize: '9px' }}>
+            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: 'var(--jk-text-mid)', fontSize: '9px' }}>
               <span>
                 {isTesting ? `正在执行: ${currentAction || '...'}` : '已完成'}
               </span>
               <span>{currentCycle} / {totalCycles}</span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'oklch(0.20 0.025 265)' }}>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--jk-s3)' }}>
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${progress}%`,
                   background: isTesting
-                    ? 'oklch(0.75 0.15 180)'
-                    : 'oklch(0.75 0.18 150)',
+                    ? 'var(--jk-accent-2)'
+                    : 'var(--jk-ok)',
                 }}
               />
             </div>
@@ -662,8 +662,8 @@ export default function OmniHandControl({
           <div
             className="rounded overflow-y-auto font-mono"
             style={{
-              background: 'oklch(0.10 0.02 265)',
-              border: '1px solid oklch(0.22 0.03 265)',
+              background: 'var(--jk-bg-deep)',
+              border: '1px solid var(--jk-s4)',
               maxHeight: '120px',
               fontSize: '9px',
               padding: '6px 8px',
@@ -674,10 +674,10 @@ export default function OmniHandControl({
                 key={i}
                 style={{
                   color: msg.includes('失败') || msg.includes('错误') || msg.includes('异常')
-                    ? 'oklch(0.65 0.22 25)'
+                    ? 'var(--jk-danger)'
                     : msg.includes('成功') || msg.includes('完成')
-                    ? 'oklch(0.75 0.18 150)'
-                    : 'oklch(0.50 0.02 240)',
+                    ? 'var(--jk-ok)'
+                    : 'var(--jk-text-mid)',
                   lineHeight: '1.6',
                 }}
               >

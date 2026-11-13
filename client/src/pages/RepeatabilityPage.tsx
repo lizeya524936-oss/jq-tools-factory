@@ -427,7 +427,7 @@ export default function RepeatabilityPage() {
         style={{
           width: '280px',
           minWidth: '280px',
-          borderRight: '1px solid oklch(0.22 0.03 265)',
+          borderRight: '1px solid var(--jk-s4)',
         }}
       >
         <SensorMatrix
@@ -445,13 +445,13 @@ export default function RepeatabilityPage() {
             disabled={isRunning}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-mono font-medium transition-all disabled:opacity-50"
             style={{
-              background: isRunning ? 'oklch(0.58 0.22 265 / 0.3)' : 'oklch(0.58 0.22 265)',
-              color: 'white',
+              background: isRunning ? 'color-mix(in srgb, var(--jk-primary) 30%, transparent)' : 'var(--jk-primary)',
+              color: 'var(--jk-on-primary)',
             }}
           >
             {isRunning ? (
               <>
-                <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin" style={{ borderColor: 'white', borderTopColor: 'transparent' }} />
+                <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--jk-on-primary)', borderTopColor: 'transparent' }} />
                 采集中...
               </>
             ) : (
@@ -463,9 +463,9 @@ export default function RepeatabilityPage() {
             disabled={isRunning || records.length === 0}
             className="px-3 py-2 rounded text-xs font-mono transition-all disabled:opacity-40"
             style={{
-              background: 'oklch(0.72 0.20 145 / 0.15)',
-              border: '1px solid oklch(0.72 0.20 145 / 0.3)',
-              color: 'oklch(0.72 0.20 145)',
+              background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)',
+              color: 'var(--jk-ok)',
             }}
             title="导出CSV"
           >
@@ -476,9 +476,9 @@ export default function RepeatabilityPage() {
             disabled={isRunning}
             className="px-3 py-2 rounded text-xs font-mono transition-all disabled:opacity-50"
             style={{
-              background: 'oklch(0.22 0.03 265)',
-              border: '1px solid oklch(0.30 0.03 265)',
-              color: 'oklch(0.60 0.02 240)',
+              background: 'var(--jk-s4)',
+              border: '1px solid var(--jk-line-3)',
+              color: 'var(--jk-text-high)',
             }}
           >
             <RefreshCw size={12} />
@@ -513,9 +513,9 @@ export default function RepeatabilityPage() {
         {records.length > 0 && (
           <div
             className="rounded p-3 space-y-2"
-            style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+            style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
           >
-            <div className="text-xs font-mono mb-2" style={{ color: 'oklch(0.55 0.02 240)' }}>
+            <div className="text-xs font-mono mb-2" style={{ color: 'var(--jk-text-body)' }}>
               统计摘要
             </div>
             {[
@@ -538,8 +538,8 @@ export default function RepeatabilityPage() {
               },
             ].map(s => (
               <div key={s.label} className="flex justify-between">
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.02 240)' }}>{s.label}</span>
-                <span className="text-xs font-mono" style={{ color: 'oklch(0.75 0.01 220)' }}>{s.value}</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>{s.label}</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--jk-ink)' }}>{s.value}</span>
               </div>
             ))}
           </div>
@@ -551,21 +551,21 @@ export default function RepeatabilityPage() {
         {/* 工具说明条 */}
         <div
           className="flex items-center gap-3 px-3 py-1.5 rounded text-xs font-mono"
-          style={{ background: 'oklch(0.17 0.025 265)', border: '1px solid oklch(0.25 0.03 265)' }}
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
         >
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'oklch(0.72 0.20 145)', flexShrink: 0 }} />
-            <span style={{ color: 'oklch(0.72 0.20 145)' }}>PLC可编程垂直下压机 / 机器人灵巧手套</span>
-            <span style={{ color: 'oklch(0.40 0.02 240)' }}>——编程检测重复性</span>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--jk-ok)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--jk-ok)' }}>PLC可编程垂直下压机 / 机器人灵巧手套</span>
+            <span style={{ color: 'var(--jk-text-dim)' }}>——编程检测重复性</span>
           </div>
-          <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
-          <span style={{ color: 'oklch(0.50 0.02 240)' }}>检测方法B：对传感器特定区域按照"检测方法B"测试，并进行逻辑判定</span>
-          <div className="w-px h-3" style={{ background: 'oklch(0.28 0.03 265)' }} />
-          <span style={{ color: 'oklch(0.55 0.02 240)' }}>同隔{params.repeatInterval}分钟取一次压力数值和ADC求和，共{params.repeatCount}次</span>
+          <div className="w-px h-3" style={{ background: 'var(--jk-line-2)' }} />
+          <span style={{ color: 'var(--jk-text-mid)' }}>检测方法B：对传感器特定区域按照"检测方法B"测试，并进行逻辑判定</span>
+          <div className="w-px h-3" style={{ background: 'var(--jk-line-2)' }} />
+          <span style={{ color: 'var(--jk-text-body)' }}>同隔{params.repeatInterval}分钟取一次压力数值和ADC求和，共{params.repeatCount}次</span>
           <div className="ml-auto flex items-center gap-2">
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>{selectedSensors.length} 个传感器点已选</span>
-            <span style={{ color: 'oklch(0.35 0.02 240)' }}>|</span>
-            <span style={{ color: 'oklch(0.45 0.02 240)' }}>矩阵 {matrixRows}×{matrixCols}</span>
+            <span style={{ color: 'var(--jk-text-low)' }}>{selectedSensors.length} 个传感器点已选</span>
+            <span style={{ color: 'var(--jk-text-dim)' }}>|</span>
+            <span style={{ color: 'var(--jk-text-low)' }}>矩阵 {matrixRows}×{matrixCols}</span>
           </div>
         </div>
 
@@ -581,9 +581,9 @@ export default function RepeatabilityPage() {
               onClick={() => setActiveView(v.id as typeof activeView)}
               className="px-3 py-1 rounded text-xs font-mono transition-all"
               style={{
-                background: activeView === v.id ? 'oklch(0.58 0.22 265 / 0.2)' : 'oklch(0.17 0.025 265)',
-                border: `1px solid ${activeView === v.id ? 'oklch(0.58 0.22 265 / 0.5)' : 'oklch(0.25 0.03 265)'}`,
-                color: activeView === v.id ? 'oklch(0.70 0.18 200)' : 'oklch(0.55 0.02 240)',
+                background: activeView === v.id ? 'color-mix(in srgb, var(--jk-primary) 20%, transparent)' : 'var(--jk-s2)',
+                border: `1px solid ${activeView === v.id ? 'color-mix(in srgb, var(--jk-primary) 50%, transparent)' : 'var(--jk-line-1)'}`,
+                color: activeView === v.id ? 'var(--jk-accent)' : 'var(--jk-text-body)',
               }}
             >
               {v.label}
@@ -593,9 +593,9 @@ export default function RepeatabilityPage() {
             {uploadedSeries.length > 0 && (
               <span className="px-2 py-0.5 rounded text-xs font-mono"
                 style={{
-                  background: 'oklch(0.72 0.20 145 / 0.15)',
-                  border: '1px solid oklch(0.72 0.20 145 / 0.3)',
-                  color: 'oklch(0.72 0.20 145)',
+                  background: 'color-mix(in srgb, var(--jk-ok) 15%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--jk-ok) 30%, transparent)',
+                  color: 'var(--jk-ok)',
                   fontSize: '9px',
                 }}
               >
@@ -607,9 +607,9 @@ export default function RepeatabilityPage() {
                 onClick={handleClearAllSeries}
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all"
                 style={{
-                  background: 'oklch(0.65 0.22 25 / 0.12)',
-                  border: '1px solid oklch(0.65 0.22 25 / 0.3)',
-                  color: 'oklch(0.65 0.22 25)',
+                  background: 'color-mix(in srgb, var(--jk-danger) 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--jk-danger) 30%, transparent)',
+                  color: 'var(--jk-danger)',
                 }}
               >
                 清除全部
@@ -628,9 +628,9 @@ export default function RepeatabilityPage() {
               disabled={uploadedSeries.length >= 20}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all disabled:opacity-40"
               style={{
-                background: 'oklch(0.58 0.22 265 / 0.15)',
-                border: '1px solid oklch(0.58 0.22 265 / 0.3)',
-                color: 'oklch(0.70 0.18 200)',
+                background: 'color-mix(in srgb, var(--jk-primary) 15%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--jk-primary) 30%, transparent)',
+                color: 'var(--jk-accent)',
               }}
               title={uploadedSeries.length >= 20 ? '已达最大文件数量' : '上传 CSV 文件（最多20个）'}
             >
@@ -644,7 +644,7 @@ export default function RepeatabilityPage() {
         {(uploadedSeries.length > 0 || records.length > 0) && activeView === 'scatter' && (
           <div
             className="flex flex-wrap gap-x-3 gap-y-1 px-2 py-1.5 rounded overflow-y-auto"
-            style={{ background: 'oklch(0.15 0.02 265)', border: '1px solid oklch(0.22 0.03 265)', maxHeight: '100px' }}
+            style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)', maxHeight: '100px' }}
           >
             {/* Hill 拟合曲线 checkbox */}
             <label
@@ -656,12 +656,12 @@ export default function RepeatabilityPage() {
                 checked={showFitCurve}
                 onChange={() => setShowFitCurve(v => !v)}
                 className="w-3 h-3 rounded cursor-pointer"
-                style={{ accentColor: '#f0a030' }}
+                style={{ accentColor: 'var(--jk-fit)' }}
               />
               <svg width="14" height="10" style={{ flexShrink: 0 }}>
-                <line x1="0" y1="5" x2="14" y2="5" stroke="#f0a030" strokeWidth="2" strokeDasharray="3 2" />
+                <line x1="0" y1="5" x2="14" y2="5" stroke="var(--jk-fit)" strokeWidth="2" strokeDasharray="3 2" />
               </svg>
-              <span style={{ color: showFitCurve ? '#f0a030' : 'oklch(0.40 0.02 240)' }}>
+              <span style={{ color: showFitCurve ? 'var(--jk-fit)' : 'var(--jk-text-dim)' }}>
                 Hill 拟合
               </span>
             </label>
@@ -685,7 +685,7 @@ export default function RepeatabilityPage() {
                 />
                 <span
                   style={{
-                    color: s.visible ? s.color : 'oklch(0.40 0.02 240)',
+                    color: s.visible ? s.color : 'var(--jk-text-dim)',
                     textDecoration: s.visible ? 'none' : 'line-through',
                     maxWidth: '120px',
                     overflow: 'hidden',
@@ -696,13 +696,13 @@ export default function RepeatabilityPage() {
                 >
                   {s.name}
                 </span>
-                <span style={{ color: 'oklch(0.40 0.02 240)', fontSize: '9px' }}>
+                <span style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
                   ({s.records.length})
                 </span>
                 <button
                   onClick={(e) => { e.preventDefault(); handleRemoveSeries(s.id); }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
-                  style={{ color: 'oklch(0.65 0.22 25)', fontSize: '10px', lineHeight: 1 }}
+                  style={{ color: 'var(--jk-danger)', fontSize: '10px', lineHeight: 1 }}
                   title="移除此文件"
                 >
                   ×
@@ -746,9 +746,9 @@ export default function RepeatabilityPage() {
               {isDragOver && (
                 <div
                   className="absolute inset-0 z-50 flex items-center justify-center rounded pointer-events-none"
-                  style={{ background: 'oklch(0.70 0.18 200 / 0.12)', border: '2px dashed oklch(0.70 0.18 200 / 0.65)' }}
+                  style={{ background: 'color-mix(in srgb, var(--jk-accent) 12%, transparent)', border: '2px dashed color-mix(in srgb, var(--jk-accent) 65%, transparent)' }}
                 >
-                  <div className="text-sm font-mono px-4 py-2 rounded" style={{ color: 'oklch(0.88 0.14 200)', background: 'oklch(0.15 0.03 265 / 0.9)' }}>
+                  <div className="text-sm font-mono px-4 py-2 rounded" style={{ color: 'var(--jk-accent)', background: 'color-mix(in srgb, var(--jk-s1) 90%, transparent)' }}>
                     松开以导入 CSV 文件
                   </div>
                 </div>
