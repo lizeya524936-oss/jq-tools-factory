@@ -789,11 +789,11 @@ export default function ConsistencyPage() {
   ], [records, uploadedSeries]);
 
   return (
-    <div className="flex gap-3 p-3" style={{ minHeight: '100%' }}>
+    <div className="flex gap-3 p-3 h-full min-h-0 overflow-hidden">
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
-      <div className="flex flex-col gap-3" style={{ width: '520px', flexShrink: 0 }}>
-        {/* 传感器矩阵 - 放大区域 */}
-        <div className="rounded" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0, padding: '10px', overflowX: 'auto' }}>
+      <div className="flex flex-col gap-3 min-w-0 min-h-0" style={{ flex: '0 0 44%', minWidth: '340px' }}>
+        {/* 传感器矩阵 - 放大区域（占用剩余高度，内部自动缩放不滚动） */}
+        <div className="rounded flex flex-col min-h-0" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flex: '1 1 auto', padding: '10px' }}>
           {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
           {handSide && (
             <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}>
@@ -823,25 +823,27 @@ export default function ConsistencyPage() {
               </button>
             </div>
           )}
-          {showHandLayout && handSide ? (
-            /* 手形矩阵（LH/RH 专用） */
-            <HandMatrix
-              side={handSide}
-              adcValues={latestAdcValues}
-              showIndex={true}
-              selectedIndices={handSelectedIndices}
-              onToggleSelect={handleHandToggleSelect}
-            />
-          ) : (
-            /* 通用矩阵 */
-            <SensorMatrix
-              rows={matrixRows}
-              cols={matrixCols}
-              sensors={sensors}
-              onSelectionChange={setSensors}
-              onResize={handleMatrixResize}
-            />
-          )}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {showHandLayout && handSide ? (
+              /* 手形矩阵（LH/RH 专用） */
+              <HandMatrix
+                side={handSide}
+                adcValues={latestAdcValues}
+                showIndex={true}
+                selectedIndices={handSelectedIndices}
+                onToggleSelect={handleHandToggleSelect}
+              />
+            ) : (
+              /* 通用矩阵 */
+              <SensorMatrix
+                rows={matrixRows}
+                cols={matrixCols}
+                sensors={sensors}
+                onSelectionChange={setSensors}
+                onResize={handleMatrixResize}
+              />
+            )}
+          </div>
         </div>
 
         {/* 操作按钮：全选/取消 + 导出 + 重置 */}
@@ -920,38 +922,44 @@ export default function ConsistencyPage() {
           isRunning={isRunning}
         /> */}
 
-        {/* 数据采集控制面板 */}
-        <SerialMonitor
-          isRunning={isRunning}
-          isForceConnected={isForceConnected}
-          isSensorConnected={isSensorConnected}
-          realSensorData={latestRawFrame}
-          latestForceN={latestForceN}
-          latestAdcValues={latestAdcValues}
-          selectedSensors={selectedSensors}
-          matrixCols={matrixCols}
-          handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
-          onStartRecording={() => {
-            if (isForceConnected && sendForceCommand) {
-              sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
-            }
-          }}
-        />
-
-        {/* 下压机控制面板 */}
-        <PressController
-          config={pressConfig}
-          onConfigChange={setPressConfig}
-          onCycleTick={() => {}}
-          onCollectionTrigger={async () => {}}
-          isRunning={isRunning}
-          onStart={() => { setPressMode(true); handleStartPress(); }}
-          onStop={() => { setPressMode(false); pressAbortRef.current = true; setIsRunning(false); }}
-        />
+        {/* 底部控制：数据采集 + 下压机 并排，把省下的纵向空间全部让给上方矩阵 */}
+        <div className="flex gap-3 items-stretch" style={{ flexShrink: 0 }}>
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* 数据采集控制面板 */}
+            <SerialMonitor
+              isRunning={isRunning}
+              isForceConnected={isForceConnected}
+              isSensorConnected={isSensorConnected}
+              realSensorData={latestRawFrame}
+              latestForceN={latestForceN}
+              latestAdcValues={latestAdcValues}
+              selectedSensors={selectedSensors}
+              matrixCols={matrixCols}
+              handSelectedIndices={showHandLayout ? handSelectedIndices : undefined}
+              onStartRecording={() => {
+                if (isForceConnected && sendForceCommand) {
+                  sendForceCommand(new Uint8Array([0x23, 0x55, 0x00, 0x0A]));
+                }
+              }}
+            />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* 下压机控制面板 */}
+            <PressController
+              config={pressConfig}
+              onConfigChange={setPressConfig}
+              onCycleTick={() => {}}
+              onCollectionTrigger={async () => {}}
+              isRunning={isRunning}
+              onStart={() => { setPressMode(true); handleStartPress(); }}
+              onStop={() => { setPressMode(false); pressAbortRef.current = true; setIsRunning(false); }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* 右侧：图表区域 */}
-      <div className="flex-1 flex flex-col min-w-0 p-3 gap-3">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
         {/* 工具说明条 */}
         <div
           className="flex items-center gap-3 px-3 py-1.5 rounded text-xs font-mono"

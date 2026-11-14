@@ -71,6 +71,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.43（2026-11-14）
+
+**Feat：一致性页矩阵自适应放大，去掉页面内滚动**
+
+- **矩阵按可用空间自动缩放**：`SensorMatrix` 用 `ResizeObserver` 量出容器实际大小，按 `min(可用宽/列数, 可用高/行数)` 反推格子尺寸（3~40px 自适应）。不再是原来写死的 `14px / 10px / 6px` 三档
+- 效果：16×16 矩阵显示面积 **224px → 545px**（格子约 34px）；**32×32 也能一次完整显示**（约 420px，格子 13px），此前需要滚动
+- 去掉了矩阵容器的 `maxHeight` 与 `overflow-auto`，格子太挤时自动隐藏行列号与格内编号，保证任何尺寸都不出滚动条
+- **页面不再滚动**：一致性页根节点由 `minHeight: 100%`（内容超出就滚动）改为 `h-full min-h-0 overflow-hidden`，改为内部按视口分配高度
+- **左栏由固定 520px 改为 44% 伸缩**，把宽裕的横向空间让给右侧图表
+- **数据采集控制 + 下压机控制改为并排**，腾出约 120px 纵向空间全部给矩阵（左栏矩阵卡片 444px → 565px）
+- 其它页面（测试页 / 重复性 / 耐久性）共用 `SensorMatrix`，矩阵同样自动缩放且无滚动；容器高度不确定时保留 `min-height: 260px` 兜底
+- 说明：传感器矩阵**热力色阶保持原样**（ADC 0→127 蓝→绿、127→255 绿→红，红色为最高值），本次未改动
+
+**修改文件：**
+- 修改 `client/src/components/SensorMatrix.tsx` — ResizeObserver 自适应格子尺寸、去掉滚动、标签按密度自动隐藏
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 填满视口不滚动、左栏 44% 伸缩、采集与下压机并排
+- 新增 `scripts/theme/shot-layout.mjs`、`probe-layout.mjs`、`check-other-pages.mjs` — 布局验证与回归检查脚本
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.43
+
 ### v1.9.42（2026-11-14）
 
 **Feat：全新双主题配色（白天 / 黑夜），去掉原有蓝紫底色**

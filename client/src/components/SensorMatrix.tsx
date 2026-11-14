@@ -53,6 +53,23 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const [zoom, setZoom] = useState<ZoomState>({ active: false, centerRow: 0, centerCol: 0, radius: 3 });
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 自适应格子尺寸：按容器实际可用空间等比缩放，保证任何矩阵尺寸（含 64×64）都不出现滚动条
+  const [fitBox, setFitBox] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(entries => {
+      const r = entries[0].contentRect;
+      setFitBox(prev =>
+        Math.abs(prev.w - r.width) < 1 && Math.abs(prev.h - r.height) < 1
+          ? prev
+          : { w: r.width, h: r.height },
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // 拖拽判定
   const mouseDownRef = useRef<{ row: number; col: number; ctrl: boolean } | null>(null);
   const dragDistanceRef = useRef(0);
@@ -252,11 +269,26 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     setShowSizeEditor(false);
   };
 
-  // 计算点尺寸
+  // 计算点尺寸：优先按容器实际可用空间自适应；容器尺寸未知时退回固定档位
   const maxDim = Math.max(rows, cols);
-  const dotSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
+  const LEGEND_H = 26;   // 底部图例占高
+  const COL_HDR_H = 12;  // 列号行占高
+  const GAP = 1;
+  const rowLabelW = Math.max(20, String(rows).length * 8 + 8);
+
   const showLabels = maxDim <= 32;
-  const showLabelInDot = maxDim <= 16 && displayMode !== 'off';
+  const availW = fitBox.w > 0 ? fitBox.w - rowLabelW - (cols - 1) * GAP - 4 : 0;
+  const availH = fitBox.h > 0
+    ? fitBox.h - LEGEND_H - (showLabels ? COL_HDR_H : 0) - (rows - 1) * GAP - 4
+    : 0;
+  const fitted = Math.min(availW / cols, availH / rows);
+  const fallbackSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
+  const dotSize = fitBox.h > 0 && fitted > 2
+    ? Math.max(3, Math.min(40, Math.floor(fitted)))
+    : fallbackSize;
+
+  const showAxisLabels = showLabels && dotSize >= 7;      // 行列号太挤时隐藏
+  const showLabelInDot = maxDim <= 16 && displayMode !== 'off' && dotSize >= 11;
 
   // 缓存已选传感器的数组索引列表
   const selectedIndices = useMemo(
@@ -368,7 +400,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 h-full min-h-0">
       {/* 标题栏 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -506,16 +538,17 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         ))}
       </div>
 
-      {/* 矩阵区域 */}
+      {/* 矩阵区域 —— 按可用空间自适应缩放，始终完整显示、不滚动 */}
       <div
         ref={containerRef}
-        className="relative p-2 rounded overflow-auto"
+        className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-start"
         style={{
           background: 'var(--jk-sunken)',
           border: '1px solid var(--jk-line-1)',
-          maxHeight: rows > 32 ? '140px' : rows > 16 ? '300px' : rows > 8 ? '300px' : '360px',
           userSelect: 'none',
           cursor: 'default',
+          // 父容器没有确定高度时（例如其它页面）仍有足够可用高度，避免矩阵被压小
+          minHeight: '260px',
         }}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { handleMouseUp(); handleSensorHoverLeave(); }}
@@ -586,8 +619,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         })()}
 
         {/* 列标签 */}
-        {showLabels && (
-          <div className="flex mb-0.5" style={{ paddingLeft: showLabels ? `${Math.max(20, String(rows).length * 8 + 8)}px` : '0px', gap: '1px' }}>
+        {showAxisLabels && (
+          <div className="flex mb-0.5 flex-shrink-0" style={{ paddingLeft: `${rowLabelW}px`, gap: '1px' }}>
             {Array.from({ length: cols }, (_, c) => (
               <div
                 key={c}
@@ -602,9 +635,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
         {/* 矩阵行 */}
         {Array.from({ length: rows }, (_, r) => (
-          <div key={r} className="flex items-center" style={{ gap: '1px', marginBottom: '1px' }}>
-            {showLabels && (
-              <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '7px', color: 'var(--jk-text-dim)', width: `${Math.max(20, String(rows).length * 8 + 8)}px`, paddingRight: '3px' }}>
+          <div key={r} className="flex items-center flex-shrink-0" style={{ gap: '1px', marginBottom: '1px' }}>
+            {showAxisLabels && (
+              <div className="font-mono text-right flex-shrink-0" style={{ fontSize: '7px', color: 'var(--jk-text-dim)', width: `${rowLabelW}px`, paddingRight: '3px' }}>
                 {r + 1}
               </div>
             )}
@@ -613,7 +646,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         ))}
 
         {/* 图例 */}
-        <div className="flex gap-2 mt-2 pt-1.5 flex-wrap items-center" style={{ borderTop: '1px solid var(--jk-s3)' }}>
+        <div className="flex gap-2 mt-2 pt-1.5 flex-wrap items-center flex-shrink-0" style={{ borderTop: '1px solid var(--jk-s3)' }}>
           <div className="flex items-center gap-1">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--jk-ok)', border: '1px solid var(--jk-ok)' }} />
             <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '9px' }}>已选中(绿)</span>
