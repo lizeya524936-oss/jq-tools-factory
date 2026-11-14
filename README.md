@@ -71,6 +71,26 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.46（2026-11-15）
+
+**Fix：上传 CSV 后综合曲线不显示 + 矩阵下方成片空白**
+
+- **曲线不显示（严重）**：v1.9.45 给页面根容器加了 `items-start`，导致右栏布局不再是 `stretch`、失去确定高度，Recharts 的容器高度塌成 0 —— 数据已经导入（图例显示 9 个文件）但一根线都画不出来
+  - 修复：去掉 `items-start`，恢复 `stretch`；并在代码里注明**不能加**，否则图表会静默消失
+- **矩阵下方无效空白**：矩阵卡片原来用 `clamp(360px, 100vh-330px, 760px)` 固定高度，格子尺寸又是整数截断，剩余高度全堆在矩阵下方
+  - 改为**按宽度定尺寸、卡片随内容撑开**：格子边长取 `min(可用宽/列数, 视口高度预算/行数)`，0.5px 步长（不再整数截断）
+  - 高度预算改由视口计算（`100vh - 400px`），不再反过来依赖容器高度（那样卡片高度与格子尺寸互为因果）
+  - 结果：矩阵下方空白 = 容器内边距（16px），实测 1876×877 下矩阵区域从 434px 增高到 544px
+- 矩阵内部仍然不滚动，页面仍然可滚动
+
+**验证方式（可复现）**：`node scripts/theme/check-chart.mjs` 会自动生成两份格式 A 的 CSV、通过 CDP `DOM.setFileInputFiles` 上传，然后统计 Recharts 生成的 `path.recharts-curve` 数量 —— 修复后为 4 条曲线 + 7 个采样点。
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 去掉 `items-start`、矩阵卡片改为自适应高度
+- 修改 `client/src/components/SensorMatrix.tsx` — 格子尺寸改为「宽度 + 视口高度预算」驱动、0.5px 步长、跟踪窗口 resize
+- 新增 `scripts/theme/check-chart.mjs` — CSV 上传与曲线渲染回归脚本
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.46
+
 ### v1.9.45（2026-11-14）
 
 **Fix：恢复整页滚动，只让传感器矩阵区域不滚动**

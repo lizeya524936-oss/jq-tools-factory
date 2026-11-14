@@ -788,18 +788,19 @@ export default function ConsistencyPage() {
     ...uploadedSeries.map(s => ({ ...s, visible: true })),
   ], [records, uploadedSeries]);
 
+  // 注意：不要给这个容器加 items-start —— 右栏图表依赖 stretch 才能拿到确定高度，
+  // 否则 Recharts 容器高度为 0，上传 CSV 后曲线画不出来（v1.9.46 修复）。
   return (
-    <div className="flex gap-3 p-3 items-start" style={{ minHeight: '100%' }}>
+    <div className="flex gap-3 p-3" style={{ minHeight: '100%' }}>
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
       <div className="flex flex-col gap-3 min-w-0" style={{ flex: '0 0 44%', minWidth: '340px' }}>
-        {/* 传感器矩阵：卡片高度跟随视口，矩阵内部自适应缩放不滚动；页面本身仍可滚动看下方图表 */}
+        {/* 传感器矩阵：卡片高度随矩阵内容撑开（矩阵按宽度尽量长大），页面滚动承载其余内容 */}
         <div
           className="rounded flex flex-col min-h-0"
           style={{
             background: 'var(--jk-s2)',
             border: '1px solid var(--jk-line-1)',
             padding: '10px',
-            height: 'clamp(360px, calc(100vh - 330px), 760px)',
             flexShrink: 0,
           }}
         >

@@ -55,6 +55,14 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
   // 自适应格子尺寸：按容器实际可用空间等比缩放，保证任何矩阵尺寸（含 64×64）都不出现滚动条
   const [fitBox, setFitBox] = useState({ w: 0, h: 0 });
+  // 视口高度单独跟踪：矩阵卡片高度随内容撑开，格子尺寸不能反过来依赖容器高度
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const sync = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, []);
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -271,17 +279,15 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
   // 自适应格子尺寸的固定开销常量
   const maxDim = Math.max(rows, cols);
-  const LEGEND_H = 26;   // 底部图例占高
-  const COL_HDR_H = 12;  // 列号行占高
   const GAP = 1;
   const PAD = 16;        // 容器 p-2 左右内边距
   const rowLabelW = Math.max(20, String(rows).length * 8 + 8);
   const showLabels = maxDim <= 32;
 
-  const availH = fitBox.h > 0
-    ? fitBox.h - LEGEND_H - (showLabels ? COL_HDR_H : 0) - rows * 2 - 8
-    : 0;
-  const sizeByH = availH > 0 ? availH / rows : 0;
+  // 高度预算来自视口（矩阵卡片本身随内容撑开，因此不能反过来用容器高度定尺寸，
+  // 否则卡片高度和格子尺寸互为因果）。CHROME_H ≈ 卡片外的固定占用 + 卡片内标题/图例。
+  const CHROME_H = 400;
+  const heightBudget = Math.max(200, (viewport.h || 900) - CHROME_H);
 
   // 缓存已选传感器的数组索引列表
   const selectedIndices = useMemo(
@@ -292,8 +298,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   // 有选中就把「已选点位」放到矩阵右侧（不占纵向空间）；
   // 面板宽度优先吃掉「按高度算完格子后剩下的空白」，实在不够才最少占 150px
   const fallbackSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
-  const dotSizeByH = sizeByH > 0 ? Math.max(3, Math.min(40, Math.floor(sizeByH))) : 0;
-  const gridWByH = rowLabelW + cols * (dotSizeByH || fallbackSize) + (cols - 1) * GAP;
+  const dotSizeByH = Math.max(3, Math.min(40, Math.floor((heightBudget / rows) * 2) / 2));
+  const gridWByH = rowLabelW + cols * dotSizeByH + (cols - 1) * GAP;
   const leftoverW = fitBox.w > 0 ? fitBox.w - PAD - gridWByH - 10 : 0;
 
   const showSidePanel = selectedIndices.length > 0 && fitBox.w > 0;
@@ -304,9 +310,10 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const availW = fitBox.w > 0
     ? fitBox.w - rowLabelW - (cols - 1) * GAP - PAD - (sidePanelW ? sidePanelW + 10 : 4)
     : 0;
-  const fitted = Math.min(availW / cols, availH / rows);
-  const dotSize = fitBox.h > 0 && fitted > 2
-    ? Math.max(3, Math.min(40, Math.floor(fitted)))
+  const fitted = Math.min(availW / cols, heightBudget / rows);
+  // 用 0.5px 步长而不是整数截断：整数取整会在低分辨率窗口下留下十几到几十 px 的死白
+  const dotSize = fitBox.w > 0 && fitted > 2
+    ? Math.max(3, Math.min(40, Math.floor(fitted * 2) / 2))
     : fallbackSize;
 
   const showAxisLabels = showLabels && dotSize >= 7;      // 行列号太挤时隐藏
@@ -674,8 +681,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           );
         })()}
 
-        {/* 网格列（矩阵本体 + 图例） */}
-        <div className="flex-1 min-w-0 flex flex-col items-center justify-start min-h-0">
+        {/* 网格列（矩阵本体 + 图例），垂直居中避免底部攒出一块死白 */}
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center min-h-0">
 
         {/* 列标签 */}
         {showAxisLabels && (
