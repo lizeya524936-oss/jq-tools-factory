@@ -269,32 +269,48 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     setShowSizeEditor(false);
   };
 
-  // 计算点尺寸：优先按容器实际可用空间自适应；容器尺寸未知时退回固定档位
+  // 自适应格子尺寸的固定开销常量
   const maxDim = Math.max(rows, cols);
   const LEGEND_H = 26;   // 底部图例占高
   const COL_HDR_H = 12;  // 列号行占高
   const GAP = 1;
+  const PAD = 16;        // 容器 p-2 左右内边距
   const rowLabelW = Math.max(20, String(rows).length * 8 + 8);
-
   const showLabels = maxDim <= 32;
-  const availW = fitBox.w > 0 ? fitBox.w - rowLabelW - (cols - 1) * GAP - 4 : 0;
-  const availH = fitBox.h > 0
-    ? fitBox.h - LEGEND_H - (showLabels ? COL_HDR_H : 0) - (rows - 1) * GAP - 4
-    : 0;
-  const fitted = Math.min(availW / cols, availH / rows);
-  const fallbackSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
-  const dotSize = fitBox.h > 0 && fitted > 2
-    ? Math.max(3, Math.min(40, Math.floor(fitted)))
-    : fallbackSize;
 
-  const showAxisLabels = showLabels && dotSize >= 7;      // 行列号太挤时隐藏
-  const showLabelInDot = maxDim <= 16 && displayMode !== 'off' && dotSize >= 11;
+  const availH = fitBox.h > 0
+    ? fitBox.h - LEGEND_H - (showLabels ? COL_HDR_H : 0) - rows * 2 - 8
+    : 0;
+  const sizeByH = availH > 0 ? availH / rows : 0;
 
   // 缓存已选传感器的数组索引列表
   const selectedIndices = useMemo(
     () => sensors.filter(s => s.selected).map(s => getArrayIndex(s.row, s.col)).sort((a, b) => a - b),
     [sensors, cols]
   );
+
+  // 有选中就把「已选点位」放到矩阵右侧（不占纵向空间）；
+  // 面板宽度优先吃掉「按高度算完格子后剩下的空白」，实在不够才最少占 150px
+  const fallbackSize = maxDim > 32 ? 6 : maxDim > 16 ? 10 : maxDim > 8 ? 14 : 20;
+  const dotSizeByH = sizeByH > 0 ? Math.max(3, Math.min(40, Math.floor(sizeByH))) : 0;
+  const gridWByH = rowLabelW + cols * (dotSizeByH || fallbackSize) + (cols - 1) * GAP;
+  const leftoverW = fitBox.w > 0 ? fitBox.w - PAD - gridWByH - 10 : 0;
+
+  const showSidePanel = selectedIndices.length > 0 && fitBox.w > 0;
+  const sidePanelW = showSidePanel
+    ? Math.min(300, Math.max(150, Math.floor(leftoverW)))
+    : 0;
+
+  const availW = fitBox.w > 0
+    ? fitBox.w - rowLabelW - (cols - 1) * GAP - PAD - (sidePanelW ? sidePanelW + 10 : 4)
+    : 0;
+  const fitted = Math.min(availW / cols, availH / rows);
+  const dotSize = fitBox.h > 0 && fitted > 2
+    ? Math.max(3, Math.min(40, Math.floor(fitted)))
+    : fallbackSize;
+
+  const showAxisLabels = showLabels && dotSize >= 7;      // 行列号太挤时隐藏
+  const showLabelInDot = maxDim <= 16 && displayMode !== 'off' && dotSize >= 11;
 
   // 缓存颜色计算结果
   const colorCache = useMemo(() => {
@@ -398,6 +414,45 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       </div>
     );
   };
+
+  // 已选点位列表：横向有富余时渲染在矩阵右侧，否则渲染在矩阵下方
+  const selectedListPanel = (
+    <div
+      className="rounded p-2 h-full flex flex-col min-h-0"
+      style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)' }}
+    >
+      <div className="flex items-center justify-between mb-1 flex-shrink-0">
+        <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '10px' }}>
+          已选 {selectedIndices.length} 个传感器点 · 数组位序:
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-0.5 content-start flex-1 min-h-0" style={{ overflowY: 'auto' }}>
+        {selectedIndices.map(idx => {
+          const sensor = sensors.find(s => getArrayIndex(s.row, s.col) === idx);
+          if (!sensor) return null;
+          return (
+            <span
+              key={idx}
+              className="px-1 py-0.5 text-xs font-mono rounded flex-shrink-0"
+              style={{
+                background: 'color-mix(in srgb, var(--jk-ok) 12%, transparent)',
+                color: 'var(--jk-ok)',
+                border: '1px solid color-mix(in srgb, var(--jk-ok) 25%, transparent)',
+                fontSize: '9px',
+              }}
+              title={`R${sensor.row + 1}·C${sensor.col + 1} = 数组第${idx}位`}
+            >
+              #{idx}
+            </span>
+          );
+        })}
+      </div>
+      <div className="mt-1 text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
+        范围: #{selectedIndices[0]} ~ #{selectedIndices[selectedIndices.length - 1]}
+        {' '}| ADC Sum(Hex): 0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-2 h-full min-h-0">
@@ -541,7 +596,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       {/* 矩阵区域 —— 按可用空间自适应缩放，始终完整显示、不滚动 */}
       <div
         ref={containerRef}
-        className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-start"
+        className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-row items-stretch justify-center gap-2"
         style={{
           background: 'var(--jk-sunken)',
           border: '1px solid var(--jk-line-1)',
@@ -618,6 +673,9 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           );
         })()}
 
+        {/* 网格列（矩阵本体 + 图例） */}
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-start min-h-0">
+
         {/* 列标签 */}
         {showAxisLabels && (
           <div className="flex mb-0.5 flex-shrink-0" style={{ paddingLeft: `${rowLabelW}px`, gap: '1px' }}>
@@ -670,6 +728,15 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
             </span>
           </div>
         </div>
+
+        </div>{/* /网格列 */}
+
+        {/* 右侧：已选点位面板（横向有富余时放这里，不占矩阵高度） */}
+        {showSidePanel && (
+          <div className="flex-shrink-0 min-h-0 flex flex-col" style={{ width: `${sidePanelW}px` }}>
+            {selectedListPanel}
+          </div>
+        )}
       </div>
 
       {/* 放大视图弹出层 */}
@@ -822,41 +889,10 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         );
       })()}
 
-      {/* 已选传感器索引列表 */}
-      {selectedCount > 0 && (
-        <div className="rounded p-2" style={{ background: 'var(--jk-s1)', border: '1px solid var(--jk-s4)' }}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-mono" style={{ color: 'var(--jk-text-body)', fontSize: '10px' }}>
-              已选 {selectedCount} 个传感器点 · 数组位序:
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-0.5" style={{ maxHeight: '60px', overflowY: 'auto' }}>
-            {selectedIndices.map(idx => {
-              const sensor = sensors.find(s => getArrayIndex(s.row, s.col) === idx);
-              if (!sensor) return null;
-              return (
-                <span
-                  key={idx}
-                  className="px-1 py-0.5 text-xs font-mono rounded"
-                  style={{
-                    background: 'color-mix(in srgb, var(--jk-ok) 12%, transparent)',
-                    color: 'var(--jk-ok)',
-                    border: '1px solid color-mix(in srgb, var(--jk-ok) 25%, transparent)',
-                    fontSize: '9px',
-                  }}
-                  title={`R${sensor.row + 1}·C${sensor.col + 1} = 数组第${idx}位`}
-                >
-                  #{idx}
-                </span>
-              );
-            })}
-          </div>
-          {selectedCount > 0 && (
-            <div className="mt-1 text-xs font-mono" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
-              范围: #{selectedIndices[0]} ~ #{selectedIndices[selectedIndices.length - 1]}
-              {' '}| ADC Sum(Hex): 0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')}
-            </div>
-          )}
+      {/* 已选传感器索引列表 —— 仅在横向放不下时退化到矩阵下方 */}
+      {!showSidePanel && selectedIndices.length > 0 && (
+        <div className="flex-shrink-0" style={{ maxHeight: '110px' }}>
+          {selectedListPanel}
         </div>
       )}
     </div>
