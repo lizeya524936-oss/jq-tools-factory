@@ -178,7 +178,7 @@ export default function TestPage() {
     : undefined;
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4" style={{ background: 'var(--jk-sunken)' }}>
+    <div className="flex flex-col min-h-full p-4 gap-4" style={{ background: 'var(--jk-sunken)' }}>
       {/* 顶部设备连接状态卡片 */}
       <div className="grid grid-cols-2 gap-3">
         {/* 力学仪器连接状态 */}
@@ -246,10 +246,10 @@ export default function TestPage() {
       <div className="flex-1 min-h-0 flex gap-4">
         {/* 左侧纵向容器：传感器数组 + 数据采集控制（对齐） */}
         <div className="flex flex-col min-h-0 gap-4" style={{ flex: '1.3' }}>
-        {/* 传感器数组显示（左侧列，占剩余高度） */}
+        {/* 传感器数组显示（左侧列，卡片高度随矩阵内容撑开） */}
         <div
-          className="rounded p-4 flex flex-col min-h-0 flex-1"
-          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)' }}
+          className="rounded p-4 flex flex-col min-h-0"
+          style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flexShrink: 0 }}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -372,8 +372,8 @@ export default function TestPage() {
             </div>
           )}
 
-          {/* 传感器矩阵 / 手掌布局 */}
-          <div className="flex-1 min-h-0 overflow-auto">
+          {/* 传感器矩阵 / 手掌布局（不滚动，由 SensorMatrix 按空间自适应缩放） */}
+          <div className="flex-1 min-h-0">
             {showHandLayout && handSide ? (
               <HandMatrix
                 side={handSide}
@@ -383,16 +383,14 @@ export default function TestPage() {
                 onToggleSelect={handleHandToggleSelect}
               />
             ) : (
-              <div style={{ transform: 'scale(1.15)', transformOrigin: 'top left', width: '86.96%' }}>
-                <SensorMatrix
-                  sensors={sensors}
-                  onSelectionChange={handleSensorChange}
-                  rows={matrixRows}
-                  cols={matrixCols}
-                  realtimeMatrix={latestSensorMatrix ?? undefined}
-                  isConnected={isSensorConnected}
-                />
-              </div>
+              <SensorMatrix
+                sensors={sensors}
+                onSelectionChange={handleSensorChange}
+                rows={matrixRows}
+                cols={matrixCols}
+                realtimeMatrix={latestSensorMatrix ?? undefined}
+                isConnected={isSensorConnected}
+              />
             )}
           </div>
         </div>

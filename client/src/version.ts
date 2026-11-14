@@ -77,7 +77,8 @@
  * v1.9.44 - 「已选点位」列表从矩阵下方移到矩阵右侧空白区（宽度优先吃剩余空白，最少 150px、最多 300px），不再占用纵向空间挤压矩阵；修正格子尺寸的高度预留（此前少算每行 margin，16×16 会裁掉最后几行）
  * v1.9.45 - 修正 v1.9.43 的过度修改：整页滚动恢复（上传 CSV 后要看下方 CV/残差分析与图表，之前被裁掉），改为只让矩阵区域不滚动——矩阵卡片高度跟随视口 clamp(360px, 100vh-330px, 760px)，内部自适应缩放
  * v1.9.46 - 修复上传 CSV 后综合曲线不显示：v1.9.45 给根容器加的 items-start 让右栏失去确定高度、Recharts 容器高度为 0；同时矩阵改为按宽度定尺寸、卡片随内容撑开（格子尺寸改 0.5px 步长），消除矩阵下方成片的无效空白
+ * v1.9.47 - 测试页传感器数组同样去掉滚动：移除 v1.9.44 遗留的 overflow-auto 与 scale(1.15) 放大 hack，页面根节点改 min-h-full、矩阵卡片随内容撑开，与一致性页统一
  */
-export const APP_VERSION = 'v1.9.46';
+export const APP_VERSION = 'v1.9.47';
 export const APP_NAME = 'JQ Tools Factory';
-export const BUILD_DATE = '2026-11-15';
+export const BUILD_DATE = '2026-11-14';
