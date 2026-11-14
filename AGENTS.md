@@ -91,6 +91,29 @@ pnpm.ps1 cannot be loaded because running scripts is disabled on this system.
 
 **本机当前状态（2026-11-03）**：沙箱已设为 `danger-full-access` 且**审批提示已关闭**，上述命令可**直接执行**（`build` 与 `deploy:test` 均已实测通过）。⚠️ 因为审批被禁用，**不要再设置 `sandbox_permissions` 请求提权 —— 会被直接拒绝**。若将来沙箱被收窄回 `workspace-write` 并再次出现 `spawn EPERM`，只能请用户自行调整设置。
 
+### 2.2.1 `wrangler` 认证刷新需要 IPv4 优先（⚠️ 2026-11-14 实测）
+
+OAuth token 过期（`%APPDATA%\xdg.config\.wrangler\config\default.toml` 里的 `expiration_time`）后，wrangler 会尝试刷新。若此时报：
+
+```
+Your auth token has expired and could not be refreshed because the Cloudflare auth server
+could not be reached. This is usually a network problem (connectivity, proxy, or IPv6)
+```
+
+**但 `api.cloudflare.com:443` 与 `dash.cloudflare.com:443` 实测都通** —— 问题在 Node 解析到 IPv6。
+
+**解决**：执行前设环境变量强制 IPv4 优先
+
+```powershell
+$env:NODE_OPTIONS = "--dns-result-order=ipv4first"
+& pnpm.cmd run deploy:test
+```
+
+已实测：同一条命令加上该变量后认证刷新成功、部署正常。
+
+> 另注：`wrangler` 不读仓库 `.git/config` 里的代理设置，也不看 `HTTPS_PROXY`（当前未设）。
+> 部署走直连。
+
 ### 2.3 `git push` 有两个必须处理的问题（已实测）
 
 **问题 1：`schannel` TLS 后端不可用，必须改用 openssl**
@@ -409,7 +432,7 @@ useSerialPort('force', callbacks, options);
 ## 10. 当前状态（交接快照 · 2026-11-14）
 
 - **代码版本**：`v1.9.42`（`BUILD_DATE` = 2026-11-14）。
-- **部署状态**：`v1.9.42` 待部署到测试环境；**正式环境仍是 `v1.9.38`**。
+- **部署状态**：`v1.9.42` **已在测试环境**上线（source `0587adc`）；**正式环境仍是 `v1.9.38`**。
   版本演进：v1.9.39 读不到数据（候选帧长漏 278/268/298）→ v1.9.40 补全帧长 → v1.9.41 修掉「四元数被算进矩阵」→ **v1.9.42 双主题配色重构**。
 - **最近完成**：双主题配色（白天 E 浅色仪器 / 黑夜 A 石墨青，可切换 + 跟随系统 + 记忆）、全站 1197 处内联颜色语义化（v1.9.42）；自适应 16×16 的两个解析 bug（v1.9.40/41）；自适应 16×16 产品（v1.9.39）；SUM/AVG 联动 CV（v1.9.38）。
 - **下一步待办**：部署 `v1.9.42` 到测试环境 → 用户确认配色与自适应硬件 → 通过后 `deploy:prod`（正式会一次性带上 v1.9.39~42 的全部改动）。
