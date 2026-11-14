@@ -789,11 +789,20 @@ export default function ConsistencyPage() {
   ], [records, uploadedSeries]);
 
   return (
-    <div className="flex gap-3 p-3 h-full min-h-0 overflow-hidden">
+    <div className="flex gap-3 p-3 items-start" style={{ minHeight: '100%' }}>
       {/* 左侧：传感器矩阵（放大展示） + 数据采集控制 */}
-      <div className="flex flex-col gap-3 min-w-0 min-h-0" style={{ flex: '0 0 44%', minWidth: '340px' }}>
-        {/* 传感器矩阵 - 放大区域（占用剩余高度，内部自动缩放不滚动） */}
-        <div className="rounded flex flex-col min-h-0" style={{ background: 'var(--jk-s2)', border: '1px solid var(--jk-line-1)', flex: '1 1 auto', padding: '10px' }}>
+      <div className="flex flex-col gap-3 min-w-0" style={{ flex: '0 0 44%', minWidth: '340px' }}>
+        {/* 传感器矩阵：卡片高度跟随视口，矩阵内部自适应缩放不滚动；页面本身仍可滚动看下方图表 */}
+        <div
+          className="rounded flex flex-col min-h-0"
+          style={{
+            background: 'var(--jk-s2)',
+            border: '1px solid var(--jk-line-1)',
+            padding: '10px',
+            height: 'clamp(360px, calc(100vh - 330px), 760px)',
+            flexShrink: 0,
+          }}
+        >
           {/* 手掌布局/矩阵显示切换开关 - 仅在连接手套(LH/RH)时显示 */}
           {handSide && (
             <div className="flex items-center gap-1 mb-3 p-1 rounded-lg" style={{ background: 'var(--jk-sunken)', border: '1px solid var(--jk-line-1)' }}>
@@ -958,8 +967,8 @@ export default function ConsistencyPage() {
         </div>
       </div>
 
-      {/* 右侧：图表区域 */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
+      {/* 右侧：图表区域（可随内容增高，整页滚动承载分析与展示） */}
+      <div className="flex-1 flex flex-col min-w-0 gap-3">
         {/* 工具说明条 */}
         <div
           className="flex items-center gap-3 px-3 py-1.5 rounded text-xs font-mono"

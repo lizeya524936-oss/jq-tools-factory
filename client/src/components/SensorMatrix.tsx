@@ -596,6 +596,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       {/* 矩阵区域 —— 按可用空间自适应缩放，始终完整显示、不滚动 */}
       <div
         ref={containerRef}
+        data-jk-matrix-area="1"
         className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-row items-stretch justify-center gap-2"
         style={{
           background: 'var(--jk-sunken)',

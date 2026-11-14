@@ -71,6 +71,25 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.45（2026-11-14）
+
+**Fix：恢复整页滚动，只让传感器矩阵区域不滚动**
+
+- v1.9.43 为了消除矩阵滚动条，把一致性页根节点锁成了 `overflow-hidden`，属**过度修改**：上传 CSV 后的 CV 分析、残差分布等内容被裁在视口外，滚不到也看不见
+- 现在明确区分两个层级：
+  | 层级 | 要求 | 实现 |
+  |------|------|------|
+  | 传感器矩阵区域 | **不滚动**，按空间自适应缩放 | `SensorMatrix` 内部 `overflow-hidden` + `ResizeObserver` 自动定格子尺寸 |
+  | 整个页面 | **要滚动**（CSV 分析与图表在下方） | 根节点恢复 `minHeight: 100%`，由 `<main>` 的 `overflow-auto` 承载页面滚动 |
+- 矩阵卡片高度改为跟随视口：`clamp(360px, calc(100vh - 330px), 760px)`，因此矩阵尺寸随窗口高度增长（1920×1040 下矩阵区域 740×597）
+- 验收口径改为：矩阵区域 `scrollHeight/clientHeight` 必须相等，页面允许 `scrollHeight > clientHeight`。实测 1440×900 与 1920×1040 两种视口 × 16×16/32×32 × 无选中/全选，矩阵内部滚动全部为 false，页面滚动全部为 true
+
+**修改文件：**
+- 修改 `client/src/pages/ConsistencyPage.tsx` — 恢复页面滚动、矩阵卡片改为视口相关固定高度
+- 修改 `client/src/components/SensorMatrix.tsx` — 矩阵容器加 `data-jk-matrix-area` 便于回归脚本精确探测
+- 新增 `scripts/theme/check-layout-v2.mjs` — 新的布局验收脚本（矩阵内部滚动 + 页面滚动两套口径）
+- 修改 `client/src/version.ts` — 版本号更新为 v1.9.45
+
 ### v1.9.44（2026-11-14）
 
 **Feat：「已选点位」列表移到矩阵右侧，不再挤占矩阵面积**
