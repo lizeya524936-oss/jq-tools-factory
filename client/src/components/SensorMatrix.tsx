@@ -55,6 +55,19 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
   // 自适应格子尺寸：按容器实际可用空间等比缩放，保证任何矩阵尺寸（含 64×64）都不出现滚动条
   const [fitBox, setFitBox] = useState({ w: 0, h: 0 });
+  // 矩阵网格列的实际高度：用于把右侧「已选点位」面板钉成同样高，避免面板内容撑高容器
+  const gridColRef = useRef<HTMLDivElement>(null);
+  const [gridH, setGridH] = useState(0);
+  useEffect(() => {
+    const el = gridColRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(entries => {
+      const h = Math.round(entries[0].contentRect.height);
+      setGridH(prev => (Math.abs(prev - h) < 1 ? prev : h));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // 视口高度单独跟踪：矩阵卡片高度随内容撑开，格子尺寸不能反过来依赖容器高度
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -302,7 +315,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
   const gridWByH = rowLabelW + cols * dotSizeByH + (cols - 1) * GAP;
   const leftoverW = fitBox.w > 0 ? fitBox.w - PAD - gridWByH - 10 : 0;
 
-  const showSidePanel = selectedIndices.length > 0 && fitBox.w > 0;
+  // 面板常驻（不随选中状态出现/消失），否则矩阵会因可用宽度变化而左右跳动
+  const showSidePanel = fitBox.w > 0;
   const sidePanelW = showSidePanel
     ? Math.min(300, Math.max(150, Math.floor(leftoverW)))
     : 0;
@@ -422,7 +436,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
     );
   };
 
-  // 已选点位列表：横向有富余时渲染在矩阵右侧，否则渲染在矩阵下方
+  // 已选点位面板：常驻在矩阵右侧（即使没有选中也占位），
+  // 否则「清空 / 选中」切换时矩阵会因为可用宽度变化而左右跳动
   const selectedListPanel = (
     <div
       className="rounded p-2 h-full flex flex-col min-h-0"
@@ -434,7 +449,11 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         </span>
       </div>
       <div className="flex flex-wrap gap-0.5 content-start flex-1 min-h-0" style={{ overflowY: 'auto' }}>
-        {selectedIndices.map(idx => {
+        {selectedIndices.length === 0 ? (
+          <span style={{ color: 'var(--jk-text-faint)', fontSize: '9px', fontFamily: "'IBM Plex Mono', monospace" }}>
+            点击或拖拽选择传感器点
+          </span>
+        ) : selectedIndices.map(idx => {
           const sensor = sensors.find(s => getArrayIndex(s.row, s.col) === idx);
           if (!sensor) return null;
           return (
@@ -454,10 +473,12 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           );
         })}
       </div>
-      <div className="mt-1 text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
-        范围: #{selectedIndices[0]} ~ #{selectedIndices[selectedIndices.length - 1]}
-        {' '}| ADC Sum(Hex): 0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')}
-      </div>
+      {selectedIndices.length > 0 && (
+        <div className="mt-1 text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-dim)', fontSize: '9px' }}>
+          范围: #{selectedIndices[0]} ~ #{selectedIndices[selectedIndices.length - 1]}
+          {' '}| ADC Sum(Hex): 0x{sensors.filter(s => s.selected).reduce((sum, s) => sum + getAdcValue(s.row, s.col, s.adcValue), 0).toString(16).toUpperCase().padStart(4, '0')}
+        </div>
+      )}
     </div>
   );
 
@@ -604,7 +625,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
       <div
         ref={containerRef}
         data-jk-matrix-area="1"
-        className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-row items-stretch justify-center gap-2"
+        className="relative p-2 rounded flex-1 min-h-0 overflow-hidden flex flex-row items-start justify-center gap-2"
         style={{
           background: 'var(--jk-sunken)',
           border: '1px solid var(--jk-line-1)',
@@ -681,8 +702,8 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
           );
         })()}
 
-        {/* 网格列（矩阵本体 + 图例），垂直居中避免底部攒出一块死白 */}
-        <div className="flex-1 min-w-0 flex flex-col items-center justify-center min-h-0">
+        {/* 网格列（矩阵本体 + 图例） */}
+        <div ref={gridColRef} className="flex-1 min-w-0 flex flex-col items-center justify-center min-h-0">
 
         {/* 列标签 */}
         {showAxisLabels && (
@@ -739,9 +760,13 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
 
         </div>{/* /网格列 */}
 
-        {/* 右侧：已选点位面板（横向有富余时放这里，不占矩阵高度） */}
+        {/* 右侧：已选点位面板 —— 在流内占位（宽度预留，矩阵不会因选中状态而移动），
+            高度锁定为矩阵网格的实际高度，因此面板内容的多少不会把容器撑高 */}
         {showSidePanel && (
-          <div className="flex-shrink-0 min-h-0 flex flex-col" style={{ width: `${sidePanelW}px` }}>
+          <div
+            className="flex-shrink-0 flex flex-col min-h-0"
+            style={{ width: `${sidePanelW}px`, height: gridH > 0 ? `${gridH}px` : undefined, overflow: 'hidden' }}
+          >
             {selectedListPanel}
           </div>
         )}
@@ -897,12 +922,7 @@ export default function SensorMatrix({ sensors, rows, cols, onSelectionChange, o
         );
       })()}
 
-      {/* 已选传感器索引列表 —— 仅在横向放不下时退化到矩阵下方 */}
-      {!showSidePanel && selectedIndices.length > 0 && (
-        <div className="flex-shrink-0" style={{ maxHeight: '110px' }}>
-          {selectedListPanel}
-        </div>
-      )}
+      {/* 已选点位面板固定在矩阵右侧，不再有「下方」这一分支 */}
     </div>
   );
 }
