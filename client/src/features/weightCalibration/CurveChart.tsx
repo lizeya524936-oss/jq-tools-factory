@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { ArrowUpDown } from 'lucide-react';
 import PressureRangeBar from '@/components/PressureRangeBar';
 import { CALIBRATION_COLOR, FIT_CURVE_COLOR, fileSeriesColor } from '@/components/forceChartStyle';
@@ -43,7 +43,10 @@ export default function CurveChart({ result, points, demo, csv, collecting }: Ch
   const [showReference, setShowReference] = useState(true);
   const [showCalibration, setShowCalibration] = useState(true);
   const [hiddenFiles, setHiddenFiles] = useState<ReadonlySet<number>>(() => new Set());
+  const fileDragDepth = useRef(0);
+  const [fileOverChart, setFileOverChart] = useState(false);
   const { datasets, busy } = csv;
+  const uploadDisabled = collecting || busy;
   const reference = busy ? null : csv.reference;
   useEffect(() => { setHiddenFiles(new Set()); }, [datasets]);
   const visibleFiles = useMemo(() => datasets.map((_, index) => !hiddenFiles.has(index)), [datasets, hiddenFiles]);
@@ -57,8 +60,37 @@ export default function CurveChart({ result, points, demo, csv, collecting }: Ch
     });
   }
 
-  return <section aria-label="力与 ADC 曲线" className="chart-panel wc-chart-section">
-    <CsvUpload csv={csv} collecting={collecting} />
+  function importFiles(files: File[]) {
+    if (!uploadDisabled && files.length) void csv.upload(files);
+  }
+
+  function allowFileDrag(event: DragEvent<HTMLElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return false;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = uploadDisabled ? 'none' : 'copy';
+    return true;
+  }
+
+  return <section aria-label="力与 ADC 曲线" className="chart-panel wc-chart-section"
+    data-file-over={(fileOverChart && !uploadDisabled) || undefined}
+    onDragEnter={event => {
+      if (!allowFileDrag(event)) return;
+      fileDragDepth.current++;
+      setFileOverChart(true);
+    }}
+    onDragOver={allowFileDrag}
+    onDragLeave={() => {
+      fileDragDepth.current = Math.max(0, fileDragDepth.current - 1);
+      if (fileDragDepth.current === 0) setFileOverChart(false);
+    }}
+    onDrop={event => {
+      fileDragDepth.current = 0;
+      setFileOverChart(false);
+      if (!event.dataTransfer.files.length && !event.dataTransfer.types.includes('Files')) return;
+      event.preventDefault();
+      importFiles(Array.from(event.dataTransfer.files));
+    }}>
+    <CsvUpload csv={csv} collecting={collecting} onFiles={importFiles} />
     {(datasets.length > 0 || points.length > 0) && <div className="wc-series-strip" role="group"
       aria-label="图中可见曲线" title="勾选只调整图中显示，CSV 参考拟合和 R² 使用全部已导入文件。">
       {datasets.length > 0 && <SeriesToggle name="CSV Hill 拟合" color={FIT_CURVE_COLOR}
@@ -70,6 +102,9 @@ export default function CurveChart({ result, points, demo, csv, collecting }: Ch
     </div>}
 
     <div className="wc-chart-frame">
+      {fileOverChart && !uploadDisabled && <span className="wc-drop-prompt">
+        {datasets.length ? '松开以替换当前参考 CSV' : '松开以导入 CSV'}
+      </span>}
       <div className="wc-range">
         <PressureRangeBar compact pressureMax={maxN} onPressureMaxChange={setMaxN}
           dataMaxPressure={CURVE_MAX_N} rangeConfig={rangeConfig} />

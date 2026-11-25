@@ -10,7 +10,7 @@ interface CsvControlsProps {
   collecting: boolean;
 }
 
-export function CsvUpload({ csv, collecting }: CsvControlsProps) {
+export function CsvUpload({ csv, collecting, onFiles }: CsvControlsProps & { onFiles: (files: File[]) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const count = csv.datasets.length;
   const uploadLabel = count ? '替换 CSV' : '上传 CSV';
@@ -25,11 +25,11 @@ export function CsvUpload({ csv, collecting }: CsvControlsProps) {
           disabled={collecting || csv.busy} onChange={event => {
             const files = Array.from(event.target.files ?? []);
             event.target.value = '';
-            if (!collecting && !csv.busy) void csv.upload(files);
+            onFiles(files);
           }} />
         <button type="button" className="wc-upload-action" disabled={collecting || csv.busy}
           onClick={() => input.current?.click()}
-          title={collecting ? '采集完成后可上传参考 CSV' : '可一次多选，本次选择将替换全部参考文件；最多 10 个，每个不超过 5 MB。'}>
+          title={collecting ? '采集完成后可上传参考 CSV' : '点击选择或拖放到图表。可同时导入最多 10 个 CSV，每个不超过 5 MB，新一批将替换全部参考文件。'}>
           {csv.busy ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
           {csv.busy ? '正在拟合…' : uploadLabel + ' (' + count + '/10)'}
         </button>

@@ -72,6 +72,15 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.51（2026-11-25）
+
+**修复：砝码页综合曲线支持拖放 CSV**
+
+- 从文件夹将一个或多个 CSV 拖到综合曲线区，松开即可导入。已有参考文件时，拖入一批新文件会替换原先的整批文件。
+- 拖放与点击上传使用相同的格式、大小和数量校验，采集或拟合期间暂停导入。
+
+**修改文件：** `client/src/features/weightCalibration/` 下的 `CurveChart.tsx`、`CsvComparison.tsx`、`WeightCurvePlot.tsx`、`hostTheme.css` 及 `client/src/version.ts`。
+
 ### v1.9.50（2026-11-25）
 
 **界面：砝码页压力与 ADC Avg 综合曲线**

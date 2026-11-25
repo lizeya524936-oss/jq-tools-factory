@@ -88,7 +88,7 @@ function WeightCurvePlot({ datasets, reference, scope = 'legacy-loading', exclud
           shape={s.shape === 'points' || s.shape === 'samples' ? 'circle' : <ModelTarget />}
           isAnimationActive={false} />)}
       </ForceScatterPlot> : <div className="flex h-full items-center justify-center text-xs font-mono" style={{ color: 'var(--jk-text-mid)' }}>
-        {!datasets.length && !points.length ? '完成六档采集，或上传历史 CSV' : '当前显示范围内没有可见曲线或测点'}
+        {!datasets.length && !points.length ? '将历史 CSV 拖到这里，或完成六档采集' : '当前显示范围内没有可见曲线或测点'}
       </div>}
     </div>
     {hasExtrapolation && <p className="hint">六档标定上限 {result.measuredMaxN.toFixed(3)} N。标记区域内为六档模型外推。</p>}
