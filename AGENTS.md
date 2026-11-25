@@ -145,7 +145,14 @@ fatal: could not read Username for 'https://github.com': terminal prompts disabl
 **结论**：`git push` 需要 `danger-full-access`；`git add` / `git commit`（纯本地）不需要。
 
 > 另注：仓库 `.git/config` 里配了本地代理 `http.proxy=http://127.0.0.1:7897`。
-> 代理没开时 push 同样会失败 —— 先确认 7897 端口在监听。
+> 代理没开时 push 报 `Could not connect to server`。**此时直接绕过代理**即可（已实测 2026-11-25）：
+>
+> ```powershell
+> git -c http.proxy= -c http.sslBackend=openssl push origin master
+> ```
+>
+> 判断方法：`Test-NetConnection -ComputerName 127.0.0.1 -Port 7897 -InformationLevel Quiet` 返回 `False` 就是代理没起。
+> 另一类报错 `unexpected eof while reading` 是代理**开着但链路被断**，等几秒重试即可，不必改代理设置。
 
 ### 2.4 其他
 
