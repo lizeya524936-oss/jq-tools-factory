@@ -8,12 +8,13 @@
  * - 连接成功后自动关闭面板
  * - 点击顶部按钮可重新打开面板
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useImperativeHandle, type Ref } from 'react';
 import { Cpu, Layers, Usb, X, AlertCircle, CheckCircle2, Loader2, Settings2, Hand } from 'lucide-react';
 import { useClient } from '@/contexts/ClientContext';
 import { isWebSerialSupported, SerialPortState, SerialStatus, type SensorProtocol } from '@/hooks/useSerialPort';
 
 interface SerialConnectPanelProps {
+  openDetailsRef?: Ref<{ open: () => void }>;
   role: 'force' | 'sensor';
   state: SerialPortState;
   onConnect: (baudRate: number, deviceMode?: 'pressure' | 'robot', sensorProduct?: SensorProductConfig) => Promise<boolean>;
@@ -172,6 +173,7 @@ const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string }> = {
 };
 
 export default function SerialConnectPanel({
+  openDetailsRef,
   role,
   state,
   onConnect,
@@ -210,6 +212,7 @@ export default function SerialConnectPanel({
 
   const [showBaudMenu, setShowBaudMenu] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  useImperativeHandle(openDetailsRef, () => ({ open: () => setShowDetails(true) }), []);
 
   // 切换检测设备时同步波特率
   const handleDeviceChange = useCallback((device: DetectionDevice) => {

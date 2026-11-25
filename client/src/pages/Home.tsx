@@ -8,7 +8,7 @@
  * - 串口2：被测传感器产品（织物触觉传感器），波特率可自定义
  * - 使用 Web Serial API 实现真实硬件连接
  */
-import { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext, useRef, lazy, Suspense } from 'react';
 import { useClient } from '@/contexts/ClientContext';
 import { connectArduino, disconnectArduino, isPressConnected, onPressStateChange } from '@/components/PressController';
 import { LogOut, Zap } from 'lucide-react';
@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import { APP_VERSION } from '@/version';
 import ThemeToggle from '@/components/ThemeToggle';
 import { buildEnablePacket, OMNI_DEVICE_ID } from '@/lib/omniHandProtocol';
+
+const WeightCalibration = lazy(() => import('@/features/weightCalibration/WeightCalibration'));
 
 // 全局串口数据上下文，供子页面消费
 export interface SerialDataContext {
@@ -87,6 +89,10 @@ const tabTitles: Record<TabType, { title: string; subtitle: string }> = {
     title: '一致性检测',
     subtitle: '手动垂直下压机 · 检测方法A · 多产品均值曲线 · 误差阈值可定义',
   },
+  'weight-consistency': {
+    title: '一致性（砝码）',
+    subtitle: '六档砝码标定 · 力与 ADC 平均值曲线 · 历史 CSV 对比',
+  },
   repeatability: {
     title: '重复性检测',
     subtitle: 'PLC可编程垂直下压机 · 检测方法B · 间隔采样 · 误差阈值可定义',
@@ -104,6 +110,14 @@ const tabTitles: Record<TabType, { title: string; subtitle: string }> = {
 export default function Home() {
   const { client, logout } = useClient();
   const [activeTab, setActiveTab] = useState<TabType>('consistency');
+  const [weightPageVisited, setWeightPageVisited] = useState(false);
+  const [sensorSessionId, setSensorSessionId] = useState(0);
+  const sensorPanel = useRef<{ open: () => void }>(null);
+  const openSensorPanel = useCallback(() => sensorPanel.current?.open(), []);
+  const selectTab = (tab: TabType) => {
+    if (tab === 'weight-consistency') setWeightPageVisited(true);
+    setActiveTab(tab);
+  };
   const [currentTime, setCurrentTime] = useState(new Date());
   const [latestForceN, setLatestForceN] = useState<number | null>(null);
   const [latestSensorMatrix, setLatestSensorMatrix] = useState<number[][] | null>(null);
@@ -247,6 +261,7 @@ export default function Home() {
     setSensorProtocol(protocol);
     const ok = await sensorSerial.connect(baudRate);
     if (ok) {
+      setSensorSessionId(id => id + 1);
       const productLabel = sensorProduct ? sensorProduct.label : '传感器';
       // 自适应产品可能自动探测出波特率，用实际生效值而不是传入值
       toast.success(`${productLabel}已连接，波特率 ${sensorSerial.getBaudRate().toLocaleString()}`);
@@ -374,6 +389,7 @@ export default function Home() {
             {/* 传感器串口 */}
             <SerialConnectPanel
               role="sensor"
+              openDetailsRef={sensorPanel}
               state={sensorSerial.state}
               onConnect={handleSensorConnect}
               onDisconnect={handleSensorDisconnect}
@@ -483,10 +499,17 @@ export default function Home() {
 
         {/* 主体区域 */}
         <div className="flex flex-1 min-h-0">
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <Sidebar activeTab={activeTab} onTabChange={selectTab} />
           <main className="flex-1 min-w-0 overflow-auto">
             {activeTab === 'test' && <TestPage />}
             {activeTab === 'consistency' && <ConsistencyPage />}
+            {weightPageVisited && <div hidden={activeTab !== 'weight-consistency'}>
+              <Suspense fallback={<p className="p-4 text-sm" role="status">正在打开砝码标定…</p>}>
+                <WeightCalibration active={activeTab === 'weight-consistency'}
+                  connected={isSensorConnected} protocol={sensorProtocol} deviceType={sensorDeviceType}
+                  baudRate={sensorSerial.state.baudRate} sessionId={sensorSessionId} onConnect={openSensorPanel} />
+              </Suspense>
+            </div>}
             {activeTab === 'repeatability' && <RepeatabilityPage />}
             {activeTab === 'durability' && <DurabilityPage />}
             {activeTab === 'about' && <AboutPage />}

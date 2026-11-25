@@ -20,6 +20,7 @@
 | 压力数据可视化 | 实时绘制压力计 200Hz 采集数据曲线，保持最近 200 个数据点 |
 | 传感器矩阵热力图 | 16x16 ADC 矩阵实时热力图展示 |
 | 一致性检测 | 多产品均值曲线对比分析 |
+| 一致性（砝码） | 使用六档已知质量建立力与 ADC 平均值曲线，并与历史 CSV 比较 |
 | 重复性检测 | 间隔采样误差分析 |
 | 耐久性检测 | 机械手循环抓握测试 |
 | 数据导出 | CSV 格式测试数据导出 |
@@ -70,6 +71,17 @@ pnpm deploy:prod
 ---
 
 ## 版本变动记录
+
+### v1.9.49（2026-11-25）
+
+**功能：一致性（砝码）**
+
+- 在侧栏“一致性”下打开，使用顶栏已连接的传感器。选择受力区域后依次采集六档，齿轮可修改后五档的总质量。
+- 每档等待 3 秒，再采集 2 秒。选区任一通道达到 ADC 255 时拒收该档。生成的 0–20 N Hill 曲线标明实测覆盖与外推区间。
+- 支持导入测试页逐通道 CSV 和一致性页逐行 ADC 列表，分别显示六档测点 R² 和共同实测范围内的曲线 R²。示范数据在界面与导出中带有标记。
+- 切换侧栏时保留本轮已完成的数据。也可导出曲线 CSV、对比明细及含采集帧的 JSON。
+
+**修改文件：** `client/src/features/weightCalibration/`、`client/src/pages/Home.tsx`、`client/src/pages/ConsistencyPage.tsx`、`client/src/components/Sidebar.tsx`、`client/src/components/SerialConnectPanel.tsx`、`client/src/lib/weightSensorFrames.ts`、`client/src/lib/sensorDataStreamV2.ts`、`client/src/version.ts`。
 
 ### v1.9.48（2026-11-17）
 

@@ -10,6 +10,8 @@
 
 export interface SensorDataSnapshot {
   timestamp: number;
+  sequence: number;
+  receivedAt: number;
   matrix: number[][] | null;
   adcValues: number[] | null;
   rawBytes: Uint8Array | null;
@@ -18,6 +20,8 @@ export interface SensorDataSnapshot {
 class SensorDataStreamV2 {
   private currentSnapshot: SensorDataSnapshot = {
     timestamp: Date.now(),
+    sequence: 0,
+    receivedAt: 0,
     matrix: null,
     adcValues: null,
     rawBytes: null,
@@ -32,6 +36,8 @@ class SensorDataStreamV2 {
   updateSensorData(matrix: number[][], adcValues: number[], rawBytes: Uint8Array) {
     this.currentSnapshot = {
       timestamp: Date.now(),
+      sequence: this.currentSnapshot.sequence + 1,
+      receivedAt: performance.now(),
       matrix,
       adcValues,
       rawBytes,

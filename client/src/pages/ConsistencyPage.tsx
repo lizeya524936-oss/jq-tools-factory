@@ -502,7 +502,7 @@ export default function ConsistencyPage() {
       return;
     }
     try {
-      exportToCSV(records, 'consistency-test');
+      exportToCSV(records, 'consistency-test.csv');
       toast.success('数据已导出');
     } catch (error) {
       toast.error('导出失败');
