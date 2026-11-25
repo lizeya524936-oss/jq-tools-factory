@@ -12,17 +12,10 @@
  */
 import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import PressureRangeBar from './PressureRangeBar';
-import {
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ZAxis,
-} from 'recharts';
+import { Scatter } from 'recharts';
+import { ForceScatterPlot } from './ForceScatterPlot';
+import { CurveLegendItems, FIT_CURVE_COLOR, MAX_DISPLAY_POINTS_PER_SERIES, SERIES_COLORS, seriesLine } from './forceChartStyle';
+export { SERIES_COLORS } from './forceChartStyle';
 import { DataRecord, toHex } from '@/lib/sensorData';
 import {
   fitHill,
@@ -90,37 +83,6 @@ interface ChartDataPoint {
   sensorCount: number;
 }
 
-// （X轴范围预设已移至 PressureRangeBar 组件）
-
-// 每个系列在图表中最多显示的散点数量
-const MAX_DISPLAY_POINTS_PER_SERIES = 200;
-
-// 20 种区分度高的颜色
-export const SERIES_COLORS = [
-  'var(--jk-accent)',  // 蓝
-  'var(--jk-ok)',  // 绿
-  'var(--jk-danger)',   // 橙红
-  'oklch(0.68 0.20 300)',  // 紫
-  'oklch(0.75 0.18 80)',   // 黄
-  'oklch(0.65 0.20 350)',  // 粉红
-  'var(--jk-accent-2)',  // 青
-  'oklch(0.60 0.22 50)',   // 深橙
-  'var(--jk-primary)',  // 淡蓝紫
-  'oklch(0.68 0.20 120)',  // 黄绿
-  'oklch(0.60 0.18 330)',  // 玫红
-  'var(--jk-ink)',  // 天蓝
-  'oklch(0.65 0.20 70)',   // 琥珀
-  'oklch(0.58 0.22 280)',  // 靛蓝
-  'oklch(0.72 0.18 160)',  // 翠绿
-  'oklch(0.62 0.20 10)',   // 红
-  'var(--jk-primary)',  // 钢蓝
-  'oklch(0.68 0.18 100)',  // 柠檬绿
-  'oklch(0.60 0.20 310)',  // 紫罗兰
-  'var(--jk-accent)',  // 浅青
-];
-
-// 拟合曲线颜色（使用标准 CSS 颜色确保 Legend 正确渲染）
-const FIT_CURVE_COLOR = 'var(--jk-fit)';
 
 /**
  * 对数据点数组进行降采样，保留曲线形状特征
@@ -221,36 +183,13 @@ const formatAdcTick = (value: number) => {
   return `${value}`;
 };
 
-/** 自定义 Legend 渲染器，为拟合曲线使用虚线样式 */
-const CustomLegend = ({ payload }: any) => {
-  if (!payload || payload.length === 0) return null;
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 py-1">
-      {payload.map((entry: any, index: number) => {
-        const isFit = entry.value === 'Hill 拟合';
-        return (
-          <div key={`legend-${index}`} className="flex items-center gap-1.5" style={{ fontSize: '10px', fontFamily: "'IBM Plex Mono', monospace" }}>
-            {isFit ? (
-              // 拟合曲线用虚线图标
-              <svg width="20" height="10">
-                <line x1="0" y1="5" x2="20" y2="5" stroke={FIT_CURVE_COLOR} strokeWidth="2" strokeDasharray="4 2" />
-              </svg>
-            ) : (
-              // 普通系列用圆点 + 实线
-              <svg width="20" height="10">
-                <line x1="0" y1="5" x2="20" y2="5" stroke={entry.color} strokeWidth="1.5" />
-                <circle cx="10" cy="5" r="3" fill={entry.color} />
-              </svg>
-            )}
-            <span style={{ color: entry.color || 'var(--jk-text-high)' }}>
-              {entry.value}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+function CustomLegend({ payload }: { payload?: { value?: string; color?: string }[] }) {
+  if (!payload?.length) return null;
+  return <CurveLegendItems items={payload.map((entry, index) => ({
+    key: String(index), label: entry.value ?? '', color: entry.color || 'var(--jk-text-high)',
+    shape: entry.value === 'Hill 拟合' ? 'dashed' : 'samples',
+  }))} />;
+}
 
 // ─── 导出工具函数 ────────────────────────────────────────────────────────────────
 
@@ -985,55 +924,16 @@ const DataChart = memo(function DataChart({
           )}
 
           <div className="flex-1" style={{ minHeight: '400px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--jk-line-1)"
-                  strokeOpacity={0.6}
-                />
-                {/* 横坐标：axisSwapped 时为 ADC Sum，否则为 压力 (N) */}
-                <XAxis
-                  dataKey={axisSwapped ? "adcSum" : "pressure"}
-                  type="number"
-                  name={axisSwapped ? "ADC Sum" : "压力"}
-                  tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                  axisLine={{ stroke: 'var(--jk-line-3)' }}
-                  tickLine={{ stroke: 'var(--jk-line-3)' }}
-                  tickFormatter={axisSwapped ? formatAdcTick : undefined}
-                  label={{
-                    value: axisSwapped ? 'ADC Sum' : '压力 (N)',
-                    position: 'insideBottom',
-                    offset: -5,
-                    fill: axisSwapped ? 'var(--jk-accent)' : 'var(--jk-ok)',
-                    fontSize: 10,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                  }}
-                  domain={axisSwapped ? ['auto', 'auto'] : [0, xMax]}
-                  allowDataOverflow={!axisSwapped}
-                />
-                {/* 纵坐标：axisSwapped 时为 压力 (N)，否则为 ADC Sum */}
-                <YAxis
-                  dataKey={axisSwapped ? "pressure" : "adcSum"}
-                  type="number"
-                  name={axisSwapped ? "压力" : "ADC Sum"}
-                  tick={{ fill: 'var(--jk-text-mid)', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
-                  axisLine={{ stroke: 'var(--jk-line-3)' }}
-                  tickLine={{ stroke: 'var(--jk-line-3)' }}
-                  tickFormatter={axisSwapped ? undefined : formatAdcTick}
-                  label={{
-                    value: axisSwapped ? '压力 (N)' : (showAvg ? 'ADC Avg' : 'ADC Sum'),
-                    angle: -90,
-                    position: 'insideLeft',
-                    fill: axisSwapped ? 'var(--jk-ok)' : 'var(--jk-accent)',
-                    fontSize: 10,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                  }}
-                  domain={['auto', 'auto']}
-                />
-                <ZAxis range={[15, 15]} />
-                <Tooltip content={(tooltipProps: any) => <MultiSeriesTooltipInner {...tooltipProps} axisSwapped={axisSwapped} />} />
-                <Legend content={<CustomLegend />} />
+            <ForceScatterPlot
+              x={{ dataKey: axisSwapped ? 'adcSum' : 'pressure', name: axisSwapped ? 'ADC Sum' : '压力',
+                label: axisSwapped ? 'ADC Sum' : '压力 (N)', color: axisSwapped ? 'var(--jk-accent)' : 'var(--jk-ok)',
+                domain: axisSwapped ? ['auto', 'auto'] : [0, xMax], allowDataOverflow: !axisSwapped, tickFormatter: axisSwapped ? formatAdcTick : undefined }}
+              y={{ dataKey: axisSwapped ? 'pressure' : 'adcSum', name: axisSwapped ? '压力' : 'ADC Sum',
+                label: axisSwapped ? '压力 (N)' : (showAvg ? 'ADC Avg' : 'ADC Sum'), color: axisSwapped ? 'var(--jk-ok)' : 'var(--jk-accent)',
+                domain: ['auto', 'auto'], tickFormatter: axisSwapped ? undefined : formatAdcTick }}
+              tooltip={(tooltipProps: any) => <MultiSeriesTooltipInner {...tooltipProps} axisSwapped={axisSwapped} />}
+              legend={<CustomLegend />}
+            >
                 {/* 拟合曲线 — 使用 Scatter + line */}
                 {showFit && fitCurveData.length > 0 && (
                   <Scatter
@@ -1048,7 +948,7 @@ const DataChart = memo(function DataChart({
                       adcSumHex: '',
                     }))}
                     fill={FIT_CURVE_COLOR}
-                    line={{ stroke: FIT_CURVE_COLOR, strokeWidth: 2, strokeDasharray: '6 3' }}
+                    line={seriesLine(FIT_CURVE_COLOR, true)}
                     lineType="joint"
                     shape={() => <></>}
                     legendType="line"
@@ -1062,14 +962,13 @@ const DataChart = memo(function DataChart({
                     name={s.name}
                     data={s.data}
                     fill={s.color}
-                    line={{ stroke: s.color, strokeWidth: 1.5 }}
+                    line={seriesLine(s.color)}
                     lineType="joint"
                     shape="circle"
                     isAnimationActive={false}
                   />
                 ))}
-              </ScatterChart>
-            </ResponsiveContainer>
+            </ForceScatterPlot>
           </div>
 
           {/* Hill 拟合参数面板 */}

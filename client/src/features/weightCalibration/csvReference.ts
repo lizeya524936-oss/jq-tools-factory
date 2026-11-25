@@ -248,6 +248,19 @@ export function calculateAgreement(observed: readonly number[], predicted: reado
   return { ...base, r2: 1 - sse / sst, rmse };
 }
 
+/** The CSV plot and reference fit use the same loading segment and saturation policy. */
+export function selectCsvLoadingSamples(dataset: CsvDataset, scope: CsvScope, excludeSaturated: boolean) {
+  const { samples } = dataset;
+  let lastPeak = 0;
+  for (let i = 1; i < samples.length; i++) {
+    if (samples[i].forceN >= samples[lastPeak].forceN) lastPeak = i;
+  }
+  const loading = samples.slice(0, lastPeak + 1);
+  const inScope = scope === 'loading-low' ? loading.filter(s => s.forceN <= 20) : loading;
+  const used = excludeSaturated ? inScope.filter(s => !s.saturated) : inScope;
+  return { loading, inScope, used };
+}
+
 export function buildCsvReference(datasets: CsvDataset[], scope: CsvScope = 'legacy-loading', excludeSaturated = false): CsvReference {
   if (!datasets.length || datasets.length > 10) throw new Error('请上传 1–10 个同一传感区域的 CSV。');
   const known = datasets.filter(d => d.channels1Based !== null).map(d => d.channels1Based!);
@@ -256,11 +269,7 @@ export function buildCsvReference(datasets: CsvDataset[], scope: CsvScope = 'leg
   const samples: CsvSample[] = [];
   const files: CsvFileSummary[] = [];
   for (const dataset of datasets) {
-    let lastPeak = 0;
-    for (let i = 1; i < dataset.samples.length; i++) if (dataset.samples[i].forceN >= dataset.samples[lastPeak].forceN) lastPeak = i;
-    const loading = dataset.samples.slice(0, lastPeak + 1);
-    const inScope = loading.filter(s => scope !== 'loading-low' || s.forceN <= 20);
-    const used = inScope.filter(s => !excludeSaturated || !s.saturated);
+    const { loading, inScope, used } = selectCsvLoadingSamples(dataset, scope, excludeSaturated);
     samples.push(...used);
     files.push({ fileName: dataset.fileName, totalRows: dataset.counts.total, validRows: dataset.samples.length,
       loadingRows: loading.length, usedRows: used.filter(s => s.forceN > 0).length,

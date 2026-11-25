@@ -72,6 +72,16 @@ pnpm deploy:prod
 
 ## 版本变动记录
 
+### v1.9.50（2026-11-25）
+
+**界面：砝码页压力与 ADC Avg 综合曲线**
+
+- 上传历史 CSV 后，每个文件以独立颜色的点线显示。图例可切换各文件、CSV 合并 Hill 曲线和本次六档标定曲线的可见性。
+- 滑杆、数值框和快捷按钮控制 0–20 N 内的显示范围，支持交换坐标轴。缩放、交换轴和图例开关仅改变显示。
+- CSV Hill 虚线使用下方 R² 对比所用的同一参考模型，六档曲线保留实测范围和外推标记。
+
+**修改文件：** `client/src/components/DataChart.tsx`、`client/src/components/PressureRangeBar.tsx`、共享绘图组件以及 `client/src/features/weightCalibration/` 下的图表、CSV 和样式文件。
+
 ### v1.9.49（2026-11-25）
 
 **功能：一致性（砝码）**

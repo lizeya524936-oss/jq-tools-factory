@@ -1,77 +1,102 @@
-import { useMemo, useState } from 'react';
-import { buildCurve, massToForce, predictADC, WEIGHT_STEPS, FORCE_TOLERANCE_N, weightLabel, type CalibrationPoint, type CalibrationResult } from './calibration';
-import { predictCsvReference } from './csvReference';
-import { CsvUpload, CsvComparison } from './CsvComparison';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { ArrowUpDown } from 'lucide-react';
+import PressureRangeBar from '@/components/PressureRangeBar';
+import { CALIBRATION_COLOR, FIT_CURVE_COLOR, fileSeriesColor } from '@/components/forceChartStyle';
+import { CURVE_MAX_N, type CalibrationPoint, type CalibrationResult } from './calibration';
+import { CsvUpload, CsvFitSettings, CsvComparison } from './CsvComparison';
+import WeightCurvePlot from './WeightCurvePlot';
 import type { CsvReferenceState } from './useCsvReference';
 
-const WIDTH = 880, HEIGHT = 350;
-const PAD = { left: 60, right: 24, top: 28, bottom: 50 };
-export default function CurveChart({ result, points, demo, csv, collecting }: { result: CalibrationResult | null; points: CalibrationPoint[]; demo: boolean; csv: CsvReferenceState; collecting: boolean }) {
-  const [maxN, setMaxN] = useState(20);
-  const [hover, setHover] = useState<number | null>(null);
-  const x = (force: number) => PAD.left + force / maxN * (WIDTH - PAD.left - PAD.right);
-  const y = (adc: number) => HEIGHT - PAD.bottom - adc / 255 * (HEIGHT - PAD.top - PAD.bottom);
-  const measuredMax = result?.measuredMaxN ?? Math.max(0, ...points.map(point => massToForce(point.massG)));
-  const hasExtrapolation = !!result && measuredMax < maxN - 1e-9;
-  const curve = useMemo(() => result ? buildCurve(result, maxN) : [], [result, maxN]);
-  const reference = csv.busy ? null : csv.reference;
-  const csvCurve = useMemo(() => {
-    if (!reference || reference.minN >= maxN) return [];
-    const min = Math.max(0, reference.minN), max = Math.min(maxN, reference.maxN);
-    return Array.from({ length: 401 }, (_, index) => {
-      const forceN = min + (max - min) * (index / 400) ** 2;
-      return { forceN, adc: predictCsvReference(reference, forceN) };
+const rangeConfig = { min: 0.5, max: CURVE_MAX_N, step: 0.5, presets: [5, 12.5, CURVE_MAX_N] };
+
+interface ChartProps {
+  result: CalibrationResult | null;
+  points: CalibrationPoint[];
+  demo: boolean;
+  csv: CsvReferenceState;
+  collecting: boolean;
+}
+
+interface SeriesToggleProps {
+  name: string;
+  color: string;
+  checked: boolean;
+  onChange: () => void;
+  count?: number;
+  dashed?: boolean;
+}
+
+function SeriesToggle({ name, color, checked, onChange, count, dashed }: SeriesToggleProps) {
+  return <label className="wc-series-toggle" data-checked={checked}
+    style={{ '--series-color': color } as CSSProperties}
+    title={count === undefined ? name : name + ' · ' + count + ' 个有效原始点'}>
+    <input type="checkbox" aria-label={name} checked={checked} onChange={onChange} />
+    <i aria-hidden="true" className={dashed ? 'wc-line-key' : 'wc-dot-key'} />
+    <span className="wc-series-name">{name}</span>
+    {count !== undefined && <small>({count})</small>}
+  </label>;
+}
+
+export default function CurveChart({ result, points, demo, csv, collecting }: ChartProps) {
+  const [maxN, setMaxN] = useState(CURVE_MAX_N);
+  const [swapped, setSwapped] = useState(false);
+  const [showReference, setShowReference] = useState(true);
+  const [showCalibration, setShowCalibration] = useState(true);
+  const [hiddenFiles, setHiddenFiles] = useState<ReadonlySet<number>>(() => new Set());
+  const { datasets, busy } = csv;
+  const reference = busy ? null : csv.reference;
+  useEffect(() => { setHiddenFiles(new Set()); }, [datasets]);
+  const visibleFiles = useMemo(() => datasets.map((_, index) => !hiddenFiles.has(index)), [datasets, hiddenFiles]);
+
+  function toggleFile(index: number) {
+    setHiddenFiles(current => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
     });
-  }, [reference, maxN]);
-  const csvSamples = useMemo(() => {
-    const samples = reference?.samples.filter(point => point.forceN <= maxN && !point.saturated && point.adc < 255) ?? [];
-    return samples.filter((_, index) => index % Math.max(1, Math.ceil(samples.length / 500)) === 0);
-  }, [reference, maxN]);
-  const visiblePoints = points.filter(point => massToForce(point.massG) <= maxN + FORCE_TOLERANCE_N);
-  const pathFor = (predicted: boolean) => {
-    let penDown = false;
-    return curve.filter(point => predicted ? point.forceN >= measuredMax - 1e-8 : point.forceN <= measuredMax + 1e-8)
-      .map(point => {
-        if (point.adc === null || point.adc >= 255 || point.adc < 0) { penDown = false; return ''; }
-        const command = penDown ? 'L' : 'M';
-        penDown = true;
-        return `${command}${x(point.forceN).toFixed(2)},${y(point.adc).toFixed(2)}`;
-      }).join(' ');
-  };
-  const ticks = maxN === 5 ? [0, 1, 2, 3, 4, 5] : maxN === 20 ? [0, 5, 10, 15, 20] : [0, 2.5, 5, 7.5, 10, 12.5];
-  const hoverADC = result && hover !== null ? predictADC(result, hover) : null;
-  const hoverReference = reference && hover !== null ? predictCsvReference(reference, hover) : null;
-  let csvPenDown = false;
-  const csvPath = csvCurve.map(point => {
-    if (point.adc === null) { csvPenDown = false; return ''; }
-    const command = csvPenDown ? 'L' : 'M'; csvPenDown = true;
-    return `${command}${x(point.forceN).toFixed(2)},${y(point.adc).toFixed(2)}`;
-  }).join(' ');
-  return <section className="panel chart-panel" aria-label="力与 ADC 曲线">
-    <div className="panel-heading">
-      <h2>力–ADC 曲线</h2>
-      <div className="segmented" aria-label="曲线显示范围">{[5, 12.5, 20].map(max => <button key={max} className={max === maxN ? 'active' : ''} onClick={() => { setMaxN(max); setHover(null); }}>0–{max} N</button>)}</div>
-    </div>
+  }
+
+  return <section aria-label="力与 ADC 曲线" className="chart-panel wc-chart-section">
     <CsvUpload csv={csv} collecting={collecting} />
-    <div className="chart-legend"><span><i className="legend-dot" />六档采集点</span><span><i className="legend-line" />标定范围内拟合</span>{hasExtrapolation && <span><i className="legend-line dashed" />范围外推估</span>}{reference && <><span><i className="legend-line csv-line" />CSV 参考拟合</span><span><i className="legend-dot csv-dot" />CSV 加载测点</span></>}{demo && <b className="demo-label">示范数据</b>}</div>
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`0 至 ${maxN} 牛顿标定曲线；当前显示 ${visiblePoints.length} 个采集点${hasExtrapolation ? `，${measuredMax.toFixed(3)} 牛顿以上为外推` : ''}`} className="curve-svg" onMouseMove={event => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const position = (event.clientX - rect.left) / rect.width * WIDTH;
-      setHover(Math.max(0, Math.min(maxN, (position - PAD.left) / (WIDTH - PAD.left - PAD.right) * maxN)));
-    }} onMouseLeave={() => setHover(null)}>
-      {hasExtrapolation && <rect x={x(measuredMax)} y={PAD.top} width={Math.max(0, x(maxN) - x(measuredMax))} height={HEIGHT - PAD.top - PAD.bottom} fill="var(--prediction-fill)" />}
-      {[0, 50, 100, 150, 200, 255].map(tick => <g key={tick}><line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} className="gridline" /><text x={PAD.left - 12} y={y(tick) + 4} textAnchor="end" className="axis-text">{tick}</text></g>)}
-      {ticks.map(tick => <g key={tick}><line x1={x(tick)} x2={x(tick)} y1={PAD.top} y2={HEIGHT - PAD.bottom} className="gridline vertical" /><text x={x(tick)} y={HEIGHT - PAD.bottom + 24} textAnchor="middle" className="axis-text">{tick}</text></g>)}
-      {hasExtrapolation && <><line x1={x(measuredMax)} x2={x(measuredMax)} y1={PAD.top} y2={HEIGHT - PAD.bottom} className="measured-boundary" /><text x={x(measuredMax) - 8} y={PAD.top + 16} textAnchor="end" className="prediction-text">{measuredMax.toFixed(3)} N 标定上限</text></>}
-      <text x={PAD.left} y={15} className="axis-text">ADC Avg</text><text x={WIDTH - PAD.right} y={HEIGHT - 5} textAnchor="end" className="axis-text">力（N）</text>
-      {csvSamples.map((point, index) => <circle key={index} cx={x(point.forceN)} cy={y(point.adc)} r={2} className="csv-sample" />)}
-      {reference && <path d={csvPath} className="curve-path csv-path" data-testid="csv-curve" />}
-      {result && <><path data-testid="measured-curve" d={pathFor(false)} className="curve-path" />{hasExtrapolation && <path data-testid="estimated-curve" d={pathFor(true)} className="curve-path prediction" />}</>}
-      {visiblePoints.map(point => <g key={point.massG}><circle cx={x(massToForce(point.massG))} cy={y(point.adc)} r={5.5} className="data-point"><title>{weightLabel(point.massG)} · {massToForce(point.massG).toFixed(4)} N · ADC {point.adc.toFixed(3)}</title></circle></g>)}
-      {!result && !reference && <text x={WIDTH / 2} y={HEIGHT / 2} textAnchor="middle" className="chart-empty">{points.length ? `已采集 ${points.length} / ${WEIGHT_STEPS.length} 档，完成后生成曲线` : '完成六档采集，或先上传历史 CSV'}</text>}
-      {hover !== null && (result || reference) && <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={HEIGHT - PAD.bottom} className="hover-line" />}
-    </svg>
-    <div className="chart-readout">{hover !== null && (result || reference) ? <><b>{hover.toFixed(3)} N</b>{hoverADC !== null && <><span>本次 ADC {Number.isFinite(hoverADC) && hoverADC < 255 ? hoverADC.toFixed(2) : '超出有效范围'}</span><span>{hover <= measuredMax ? '标定范围内' : '外推，未实测验证'}</span></>}{reference && <span className="csv-readout">CSV ADC {hoverReference === null ? '超出有效覆盖范围' : hoverReference.toFixed(2)}</span>}</> : <span>{result ? `标定范围 0–${measuredMax.toFixed(3)} N。${measuredMax < 20 - 1e-9 ? `${measuredMax.toFixed(3)}–20 N 为外推，尚未实测验证。` : "范围内精度仍需独立载荷验证。"}` : reference ? '已显示 CSV 参考曲线；完成六档采集后自动计算测点对比 R²。' : '六档完成后，默认显示目标 0–20 N 曲线。'}{points.length > visiblePoints.length && ` 当前显示 ${visiblePoints.length}/${points.length} 个采集点，切换 0–20 N 可查看全部。`}</span>}</div>
+    {(datasets.length > 0 || points.length > 0) && <div className="wc-series-strip" role="group"
+      aria-label="图中可见曲线" title="勾选只调整图中显示，CSV 参考拟合和 R² 使用全部已导入文件。">
+      {datasets.length > 0 && <SeriesToggle name="CSV Hill 拟合" color={FIT_CURVE_COLOR}
+        dashed checked={showReference} onChange={() => setShowReference(value => !value)} />}
+      {datasets.map((dataset, index) => <SeriesToggle key={index} name={dataset.fileName}
+        color={fileSeriesColor(index)} count={dataset.samples.length} checked={visibleFiles[index]} onChange={() => toggleFile(index)} />)}
+      {points.length > 0 && <SeriesToggle name={demo ? '六档标定（示范）' : '六档标定'}
+        color={CALIBRATION_COLOR} checked={showCalibration} onChange={() => setShowCalibration(value => !value)} />}
+    </div>}
+
+    <div className="wc-chart-frame">
+      <div className="wc-range">
+        <PressureRangeBar compact pressureMax={maxN} onPressureMaxChange={setMaxN}
+          dataMaxPressure={CURVE_MAX_N} rangeConfig={rangeConfig} />
+      </div>
+      <div className="wc-axis-tools">
+        <button type="button" aria-pressed={swapped} onClick={() => setSwapped(value => !value)}>
+          <ArrowUpDown size={12} aria-hidden="true" />横纵切换
+        </button>
+        <span className="wc-unit" title="选区通道的 ADC 平均值">ADC Avg</span>
+        {swapped && <span className="wc-axes-caption">横轴 ADC Avg · 纵轴 压力 (N)</span>}
+      </div>
+      <WeightCurvePlot datasets={datasets} reference={reference} scope={csv.scope} excludeSaturated={csv.excludeSaturated} points={points} result={result}
+        maxN={maxN} swapped={swapped} visibleFiles={visibleFiles} showReference={showReference}
+        showCalibration={showCalibration} demo={demo} />
+      {reference && <div className="wc-fit-summary" aria-label="CSV Hill 方程拟合">
+        <div className="wc-fit-header"><strong>CSV Hill 方程拟合</strong>
+          <span className="wc-fit-r2">R² = {reference.fitR2 === null ? '无法计算' : reference.fitR2.toFixed(6)}</span>
+          <span>RMSE = {reference.fitRmse === null ? '无法计算' : reference.fitRmse.toFixed(4) + ' ADC'}</span><span>Hill 3 参数</span>
+        </div>
+        <div className="wc-fit-equation"><span>拟合方程</span>
+          <code>ADC Avg = {reference.a.toFixed(4)} × P^{reference.n.toFixed(4)} / ({reference.b.toFixed(4)}^{reference.n.toFixed(4)} + P^{reference.n.toFixed(4)})</code>
+        </div>
+        <div className="wc-fit-coverage">拟合范围 {reference.fitMinN.toFixed(3)}–{reference.fitMaxN.toFixed(3)} N · {reference.sampleCount} 个拟合样本 · 未饱和覆盖 {reference.minN.toFixed(3)}–{reference.maxN.toFixed(3)} N</div>
+      </div>}
+    </div>
+
+    <CsvFitSettings csv={csv} collecting={collecting} />
     <CsvComparison csv={csv} demo={demo} hasCurve={!!result} />
   </section>;
 }

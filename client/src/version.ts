@@ -80,7 +80,8 @@
  * v1.9.47 - 测试页传感器数组同样去掉滚动：移除 v1.9.44 遗留的 overflow-auto 与 scale(1.15) 放大 hack，页面根节点改 min-h-full、矩阵卡片随内容撑开，与一致性页统一
  * v1.9.48 - 「已选点位」面板改为常驻占位（宽度固定、高度锁定为矩阵网格高度），清空/选中切换时矩阵不再左右上下跳动；无选中时面板显示提示文案
  * v1.9.49 - 新增一致性（砝码）页面，支持六档标定、Hill 曲线与历史 CSV 的测点和曲线 R² 对比
+ * v1.9.50 - 砝码页综合曲线复用一致性页绘图样式，支持逐文件点线、Hill 虚线和低力范围控制
  */
-export const APP_VERSION = 'v1.9.49';
+export const APP_VERSION = 'v1.9.50';
 export const APP_NAME = 'JQ Tools Factory';
 export const BUILD_DATE = '2026-11-25';

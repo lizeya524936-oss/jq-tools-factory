@@ -7,12 +7,13 @@
  * v1.9.8: 滑块防抖 — 拖动过程中只更新显示值，松手（mouseup/touchend）后才触发 onPressureMaxChange
  *         避免拖动时高频触发 Hill 拟合计算
  */
-import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, memo } from 'react';
 
 /** 快捷压力范围选项 (N) */
 const QUICK_PRESETS = [50, 100, 200, 500];
 
 interface PressureRangeBarProps {
+  rangeConfig?: { min: number; max: number; step: number; presets: readonly number[] };
   /** 当前最大压力值 */
   pressureMax: number;
   /** 压力值变更回调 */
@@ -31,6 +32,7 @@ function PressureRangeBarInner({
   dataMaxPressure = 100,
   showPointCount,
   compact = false,
+  rangeConfig,
 }: PressureRangeBarProps) {
   const [inputValue, setInputValue] = useState<string>(String(pressureMax));
   // 滑块拖动中的临时值（拖动时只更新此值，不触发拟合）
@@ -38,9 +40,10 @@ function PressureRangeBarInner({
   const isDraggingRef = useRef(false);
 
   // 滑块的上限
-  const sliderMax = useMemo(() => {
-    return Math.max(dataMaxPressure, 100);
-  }, [dataMaxPressure]);
+  const sliderMax = rangeConfig?.max ?? Math.max(dataMaxPressure, 100);
+  const sliderMin = rangeConfig?.min ?? 5;
+  const sliderStep = rangeConfig?.step ?? (sliderMax <= 100 ? 5 : sliderMax <= 500 ? 10 : 50);
+  const presets = rangeConfig?.presets ?? QUICK_PRESETS;
 
   // 同步外部变化到输入框
   useEffect(() => {
@@ -76,15 +79,15 @@ function PressureRangeBarInner({
 
   // 处理输入框确认（回车或失焦）
   const handleInputConfirm = useCallback(() => {
-    const val = parseFloat(inputValue);
-    if (!isNaN(val) && val > 0) {
-      const clamped = Math.min(Math.max(val, 5), sliderMax);
+    const val = Number(inputValue);
+    if (Number.isFinite(val) && val > 0) {
+      const clamped = Math.min(Math.max(val, sliderMin), sliderMax);
       onPressureMaxChange(clamped);
       setInputValue(String(clamped));
     } else {
       setInputValue(String(pressureMax));
     }
-  }, [inputValue, pressureMax, sliderMax, onPressureMaxChange]);
+  }, [inputValue, pressureMax, sliderMin, sliderMax, onPressureMaxChange]);
 
   // 快捷按钮
   const handlePreset = useCallback((val: number) => {
@@ -110,13 +113,16 @@ function PressureRangeBarInner({
         <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--jk-text-low)', fontSize: '10px' }}>0</span>
         <input
           type="range"
-          min={5}
+          aria-label="压力显示上限"
+          min={sliderMin}
           max={sliderMax}
-          step={sliderMax <= 100 ? 5 : sliderMax <= 500 ? 10 : 50}
+          step={sliderStep}
           value={sliderDisplayValue}
           onChange={handleSliderInput}
           onMouseUp={handleSliderCommit}
           onTouchEnd={handleSliderCommit}
+          onKeyUp={handleSliderCommit}
+          onBlur={handleSliderCommit}
           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
           style={{
             background: `linear-gradient(to right, var(--jk-accent) 0%, var(--jk-accent) ${(sliderDisplayValue / sliderMax) * 100}%, var(--jk-text-faint) ${(sliderDisplayValue / sliderMax) * 100}%, var(--jk-text-faint) 100%)`,
@@ -130,6 +136,8 @@ function PressureRangeBarInner({
       <div className="flex items-center gap-1 flex-shrink-0">
         <input
           type="text"
+          aria-label="压力显示上限数值（N）"
+          inputMode="decimal"
           value={inputValue}
           onChange={handleInputChange}
           onBlur={handleInputConfirm}
@@ -151,9 +159,10 @@ function PressureRangeBarInner({
 
       {/* 快捷按钮 */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {QUICK_PRESETS.filter(p => p <= sliderMax).map(preset => (
+        {presets.filter(p => p >= sliderMin && p <= sliderMax).map(preset => (
           <button
             key={preset}
+            aria-pressed={pressureMax === preset}
             onClick={() => handlePreset(preset)}
             className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
             style={{
@@ -168,7 +177,7 @@ function PressureRangeBarInner({
           </button>
         ))}
         {/* 数据最大值按钮 */}
-        {dataMaxPressure > 100 && !QUICK_PRESETS.includes(dataMaxPressure) && (
+        {!rangeConfig && dataMaxPressure > 100 && !presets.includes(dataMaxPressure) && (
           <button
             onClick={() => handlePreset(dataMaxPressure)}
             className="px-2 py-0.5 rounded text-xs font-mono transition-colors"
