@@ -1,5 +1,5 @@
 import {
-  ADC_LIMIT, FORCE_TOLERANCE_N, WEIGHT_STEPS, massToForce, predictADC, validateWeightPlan,
+  ADC_LIMIT, CURVE_MAX_N, FORCE_TOLERANCE_N, WEIGHT_STEPS, massToForce, predictADC, validateWeightPlan,
   type CalibrationPoint, type CalibrationResult,
 } from './calibration';
 import { fitHill, hillFunc } from '@/lib/hillFit';
@@ -256,7 +256,7 @@ export function selectCsvLoadingSamples(dataset: CsvDataset, scope: CsvScope, ex
     if (samples[i].forceN >= samples[lastPeak].forceN) lastPeak = i;
   }
   const loading = samples.slice(0, lastPeak + 1);
-  const inScope = scope === 'loading-low' ? loading.filter(s => s.forceN <= 20) : loading;
+  const inScope = scope === 'loading-low' ? loading.filter(s => s.forceN <= CURVE_MAX_N + FORCE_TOLERANCE_N) : loading;
   const used = excludeSaturated ? inScope.filter(s => !s.saturated) : inScope;
   return { loading, inScope, used };
 }
@@ -339,7 +339,7 @@ export function compareCsvReference(
   if (!blockedReason && result && resultMatchesPlan && pointComplete) {
     const validPoints = points.filter(p => Number.isFinite(p.adc) && p.adc >= 0 && p.adc < ADC_LIMIT && p.saturatedSamples === 0);
     const min = Math.max(reference.minN, Math.min(...validPoints.map(p => massToForce(p.massG))));
-    let max = Math.min(20, reference.maxN, result.measuredMaxN, Math.max(...validPoints.map(p => massToForce(p.massG))));
+    let max = Math.min(CURVE_MAX_N, reference.maxN, result.measuredMaxN, Math.max(...validPoints.map(p => massToForce(p.massG))));
     // Both Hill models are increasing. Trim the common range before either
     // model reaches ADC255 rather than silently dropping interior grid samples.
     const observable = (force: number) => predictCsvReference(reference, force) !== null && Number.isFinite(predictADC(result, force)) && predictADC(result, force) >= 0 && predictADC(result, force) < ADC_LIMIT;

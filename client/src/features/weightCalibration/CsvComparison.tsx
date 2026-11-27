@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Download, Loader2, Upload } from 'lucide-react';
 import type { CsvReferenceState } from './useCsvReference';
 import type { CsvScope } from './csvReference';
+import { CURVE_MAX_N } from './calibration';
 
 const number = (value: number | null | undefined, digits = 4) => value == null || !Number.isFinite(value) ? '无法计算' : value.toFixed(digits);
 
@@ -48,7 +49,7 @@ export function CsvFitSettings({ csv, collecting }: CsvControlsProps) {
         <label>CSV 拟合范围<select aria-label="CSV 拟合范围" value={csv.scope} disabled={csv.busy || collecting}
           onChange={event => csv.setScope(event.target.value as CsvScope)}>
           <option value="legacy-loading">旧网页兼容 · 全加载段</option>
-          <option value="loading-low">加载段 0–20 N 重新拟合</option>
+          <option value="loading-low">加载段 0–{CURVE_MAX_N} N 重新拟合</option>
         </select></label>
         <label className="csv-checkbox"><input type="checkbox" checked={csv.excludeSaturated}
           disabled={csv.busy || collecting} onChange={event => csv.setExcludeSaturated(event.target.checked)} />排除饱和帧</label>

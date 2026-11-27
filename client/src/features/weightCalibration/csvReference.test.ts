@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FORCE_TOLERANCE_N, WEIGHT_STEPS, fitCalibration, hillShape, massToForce, type CalibrationPoint } from './calibration';
+import { CURVE_MAX_N, FORCE_TOLERANCE_N, MAX_WEIGHT_G, WEIGHT_STEPS, fitCalibration, hillShape, massToForce, type CalibrationPoint } from './calibration';
 import {
   buildCsvReference, calculateAgreement, compareCsvReference, parseReferenceCSV, predictCsvReference,
   type CsvDataset, type CsvReference,
@@ -152,10 +152,10 @@ describe('CSV reference fitting and scope', () => {
     expect(predictCsvReference(kept, 20)).toBeNull();
   });
 
-  it('offers a separate low-force refit and rejects incompatible channel sets', () => {
-    const raw = dataset(40);
-    expect(buildCsvReference([raw]).fitMaxN).toBe(40);
-    expect(buildCsvReference([raw], 'loading-low').fitMaxN).toBe(20);
+  it('offers a separate force-range refit and rejects incompatible channel sets', () => {
+    const raw = dataset(100);
+    expect(buildCsvReference([raw]).fitMaxN).toBe(100);
+    expect(buildCsvReference([raw], 'loading-low').fitMaxN).toBe(CURVE_MAX_N);
     expect(() => buildCsvReference([raw, { ...raw, channels1Based: [1, 2] }])).toThrow(/通道集合不同/);
     expect(() => buildCsvReference(Array(11).fill(raw))).toThrow(/1–10/);
   });
@@ -176,6 +176,48 @@ describe('CSV reference fitting and scope', () => {
 });
 
 describe('agreement definitions and comparison coverage', () => {
+  const fullPlan80 = [0, 500, 1500, 3500, 6000, MAX_WEIGHT_G];
+
+  it('compares a full 80 N plan against 80 N CSV coverage without extrapolating', () => {
+    const points = measurements(0, fullPlan80);
+    const result = fitCalibration(points, undefined, 'measured', fullPlan80);
+    const ref = reference(CURVE_MAX_N);
+    const comparison = compareCsvReference(ref, points, result, [87, 88], fullPlan80);
+    expect(comparison.pointComplete).toBe(true);
+    expect(comparison.pointMetrics).toMatchObject({ count: 6, total: 6 });
+    expect(comparison.pointMetrics!.r2).toBeCloseTo(1, 10);
+    expect(comparison.rows[5].forceN).toBeCloseTo(CURVE_MAX_N, 8);
+    expect(comparison.rows[5].referenceADC).not.toBeNull();
+    expect(comparison.curveMetrics).toMatchObject({ count: 201, total: 201 });
+    expect(comparison.curveMetrics!.r2).toBeCloseTo(1, 10);
+    expect(comparison.curveRange).toEqual([0, CURVE_MAX_N]);
+  });
+
+  it('does not extrapolate a low-coverage CSV just because the plan reaches 80 N', () => {
+    const points = measurements(0, fullPlan80);
+    const result = fitCalibration(points, undefined, 'measured', fullPlan80);
+    const ref = reference(20);
+    const comparison = compareCsvReference(ref, points, result, [87, 88], fullPlan80);
+    expect(comparison.pointPartial).toBe(true);
+    expect(comparison.pointMetrics).toMatchObject({ count: 3, total: 6 });
+    expect(comparison.rows[5].referenceADC).toBeNull();
+    expect(comparison.pointMetrics!.reason).toBeUndefined();
+    expect(comparison.curveRange).toEqual([0, 20]);
+    expect(predictCsvReference(ref, 20 + 2 * FORCE_TOLERANCE_N)).toBeNull();
+  });
+
+  it('trims the curve comparison before ADC 255 with an 80 N plan', () => {
+    const points = measurements(0, fullPlan80);
+    const result = fitCalibration(points, undefined, 'measured', fullPlan80);
+    const ref = { ...reference(CURVE_MAX_N), a: 600 };
+    const comparison = compareCsvReference(ref, points, result, [87, 88], fullPlan80);
+    expect(comparison.curveRange![1]).toBeLessThan(CURVE_MAX_N);
+    expect(comparison.curveRange![1]).toBeGreaterThan(0);
+    expect(comparison.curveMetrics!.count).toBe(201);
+    expect(comparison.warnings.join(' ')).toContain('ADC 255');
+    expect(predictCsvReference(ref, CURVE_MAX_N)).toBeNull();
+  });
+
   it('retains the sixth point at the six-decimal 20 N mass using the shared force tolerance', () => {
     const plan = [0, 50, 200, 550, 850, 2039.432426];
     const points = measurements(0, plan);

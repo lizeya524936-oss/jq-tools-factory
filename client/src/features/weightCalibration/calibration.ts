@@ -2,11 +2,13 @@
 export const GRAVITY = 9.80665;
 export const WEIGHT_STEPS = [0, 50, 200, 550, 850, 1050] as const;
 export const ADC_LIMIT = 255;
-export const CURVE_MAX_N = 20;
+export const CURVE_MAX_N = 80;
 /** Shared physical-force boundary tolerance for decimal gram inputs. */
 export const FORCE_TOLERANCE_N = 1e-9;
 export const MAX_WEIGHT_G = CURVE_MAX_N / GRAVITY * 1000;
-export const CHART_MAX_N = 20;
+export const CHART_RANGE_MIN_N = 0.5;
+export const CHART_RANGE_STEP_N = 0.5;
+export const CHART_RANGE_PRESETS = [CURVE_MAX_N / 4, CURVE_MAX_N / 2, CURVE_MAX_N] as const;
 export const REFERENCE_HILL = { a: 340.4415, b: 23.4839, n: 0.4774 } as const;
 export type CalibrationMode = 'measured' | 'reference';
 export const HILL_FIT_BOUNDS = {
@@ -58,8 +60,8 @@ export interface CalibrationResult extends HillReference {
   /** R² across positive levels only; null for zero response variance. */
   r2: number | null;
   measuredMaxN: number;
-  /** Unclipped model prediction. May exceed ADC_LIMIT and then is unobservable. */
-  predictedADC20: number;
+  /** Unclipped model prediction at CURVE_MAX_N; may exceed ADC_LIMIT and then is unobservable. */
+  predictedADCMax: number;
   residuals: CalibrationResidual[];
   warnings: string[];
   source: string;
@@ -116,6 +118,12 @@ export function validateWeightPlan(levels: readonly number[]): number[] {
     throw new Error(`最高档力值不能超过 ${CURVE_MAX_N} N（约 ${MAX_WEIGHT_G.toFixed(3)} g）。`);
   }
   return plan;
+}
+
+export function rangeDescription(maxN: number): string {
+  requireFinite(maxN, '标定范围');
+  return `0–${maxN.toFixed(3)} N 为标定范围` +
+    (maxN < CURVE_MAX_N - FORCE_TOLERANCE_N ? `，${maxN.toFixed(3)}–${CURVE_MAX_N} N 为外推，尚未实测验证。` : '，范围内精度仍需独立载荷验证。');
 }
 
 export function weightLabel(massG: number): string {
@@ -385,11 +393,11 @@ export function fitCalibration(
   const mean = positive.reduce((sum, point) => sum + point.adc, 0) / positive.length;
   const sst = positive.reduce((sum, point) => sum + (point.adc - mean) ** 2, 0);
   const rmse = Math.sqrt(sse / positive.length);
-  const predictedADC20 = offset + a * hillShape(CURVE_MAX_N, b, n);
+  const predictedADCMax = offset + a * hillShape(CURVE_MAX_N, b, n);
   const measuredMaxN = massToForce(last.massG);
   if (rmse / netMax > 0.05) warnings.push('标定点残差超过信号幅度的 5%，请检查接触位置、零点漂移及模型适用性。');
-  if (offset + a * hillShape(CHART_MAX_N, b, n) >= ADC_LIMIT) warnings.push('模型在显示范围内预测达到 ADC 255；超出可观测范围的曲线不显示。');
-  if (measuredMaxN < CURVE_MAX_N) {
+  if (predictedADCMax >= ADC_LIMIT) warnings.push('模型在显示范围内预测达到 ADC 255；超出可观测范围的曲线不显示。');
+  if (measuredMaxN < CURVE_MAX_N - FORCE_TOLERANCE_N) {
     warnings.push(`${measuredMaxN.toFixed(7)}–${CURVE_MAX_N} N 超出实测标定范围，使用${mode === 'measured' ? '本次 Hill 拟合' : '固定历史 Hill 形状'}外推，尚未经过独立载荷验证。`);
   }
   return {
@@ -401,7 +409,7 @@ export function fitCalibration(
     rmse,
     r2: sst > Number.EPSILON ? 1 - sse / sst : null,
     measuredMaxN,
-    predictedADC20,
+    predictedADCMax,
     residuals,
     warnings,
     source: mode === 'measured' ? `${massLevelsG.length}-level-measured-data` : 'historical-hill-shape',
@@ -417,7 +425,7 @@ export function predictADC(result: CalibrationResult, forceN: number): number {
   return result.offset + result.a * hillShape(forceN, result.b, result.n);
 }
 
-/** Returns a valid estimate only within 0–20 N and the ADC observation range. */
+/** Returns a valid estimate only within the configured force range and the ADC observation range. */
 export function inverseADC(result: CalibrationResult, adc: number): number | null {
   if (!Number.isFinite(adc) || adc < 0 || adc >= ADC_LIMIT) return null;
   if (adc <= result.offset) return 0;
@@ -430,7 +438,7 @@ export function inverseADC(result: CalibrationResult, adc: number): number | nul
 
 export function buildCurve(result: CalibrationResult, maxN = CURVE_MAX_N): CurvePoint[] {
   requireFinite(maxN, '曲线范围');
-  if (maxN <= 0 || maxN > CHART_MAX_N) throw new Error('曲线上限必须大于 0 且不超过 20 N。');
+  if (maxN <= 0 || maxN > CURVE_MAX_N) throw new Error(`曲线上限必须大于 0 且不超过 ${CURVE_MAX_N} N。`);
   const values = new Set<number>();
   // Dense near zero, while retaining exact load points and the measured boundary.
   for (let i = 0; i <= 400; i++) values.add(maxN * (i / 400) ** 2);

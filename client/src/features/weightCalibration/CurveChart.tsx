@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEven
 import { ArrowUpDown } from 'lucide-react';
 import PressureRangeBar from '@/components/PressureRangeBar';
 import { CALIBRATION_COLOR, FIT_CURVE_COLOR, fileSeriesColor } from '@/components/forceChartStyle';
-import { CURVE_MAX_N, type CalibrationPoint, type CalibrationResult } from './calibration';
+import { CHART_RANGE_MIN_N, CHART_RANGE_PRESETS, CHART_RANGE_STEP_N, CURVE_MAX_N, type CalibrationPoint, type CalibrationResult } from './calibration';
 import { CsvUpload, CsvFitSettings, CsvComparison } from './CsvComparison';
 import WeightCurvePlot from './WeightCurvePlot';
 import type { CsvReferenceState } from './useCsvReference';
 
-const rangeConfig = { min: 0.5, max: CURVE_MAX_N, step: 0.5, presets: [5, 12.5, CURVE_MAX_N] };
+const rangeConfig = { min: CHART_RANGE_MIN_N, max: CURVE_MAX_N, step: CHART_RANGE_STEP_N, presets: CHART_RANGE_PRESETS };
 
 interface ChartProps {
   result: CalibrationResult | null;
