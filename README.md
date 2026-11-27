@@ -77,7 +77,7 @@ pnpm deploy:prod
 **功能：一致性（砝码）页力值上限提升至 80 N**
 
 - 以 `CURVE_MAX_N = 80` 作为单一上限来源，重量方案、Hill 拟合、曲线生成、反推输入、CSV 对比范围和界面文案全部复用该常量；最高档按 g=9.80665 换算，允许到约 8157.730 g，超过 80 N + 容差会明确报错并拒绝。
-- 曲线显示快捷范围改为 20/40/80 N，默认显示到 80 N；结果区、方案编辑、CSV 低力重拟合选项和帮助文案同步。
+- 曲线显示快捷范围改为 20/40/80 N，默认显示到 80 N；结果区、方案编辑和帮助文案同步；整体上限 80 N，低力重拟合仍固定 0–20 N。
 - CSV 对比上限从硬编码 20 N 改为 80 N，仍严格限制在 CSV 未饱和实测覆盖范围内，不随上限提高而外推；新增 80 N 边界、低覆盖 CSV、饱和裁剪与全域拟合/反推回归测试。
 
 **修改文件：** `client/src/features/weightCalibration/` 下的 `calibration.ts`、`csvReference.ts`、`WeightCalibration.tsx`、`WeightPlanEditor.tsx`、`CurveChart.tsx`、`CsvComparison.tsx` 及相关 `*.test.ts`，以及 `client/src/version.ts`、`README.md`。

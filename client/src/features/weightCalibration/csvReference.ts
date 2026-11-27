@@ -1,5 +1,5 @@
 import {
-  ADC_LIMIT, CURVE_MAX_N, FORCE_TOLERANCE_N, WEIGHT_STEPS, massToForce, predictADC, validateWeightPlan,
+  ADC_LIMIT, CURVE_MAX_N, FORCE_TOLERANCE_N, LOW_FORCE_REFIT_MAX_N, WEIGHT_STEPS, massToForce, predictADC, validateWeightPlan,
   type CalibrationPoint, type CalibrationResult,
 } from './calibration';
 import { fitHill, hillFunc } from '@/lib/hillFit';
@@ -256,7 +256,7 @@ export function selectCsvLoadingSamples(dataset: CsvDataset, scope: CsvScope, ex
     if (samples[i].forceN >= samples[lastPeak].forceN) lastPeak = i;
   }
   const loading = samples.slice(0, lastPeak + 1);
-  const inScope = scope === 'loading-low' ? loading.filter(s => s.forceN <= CURVE_MAX_N + FORCE_TOLERANCE_N) : loading;
+  const inScope = scope === 'loading-low' ? loading.filter(s => s.forceN <= LOW_FORCE_REFIT_MAX_N) : loading;
   const used = excludeSaturated ? inScope.filter(s => !s.saturated) : inScope;
   return { loading, inScope, used };
 }

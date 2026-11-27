@@ -3,6 +3,7 @@ export const GRAVITY = 9.80665;
 export const WEIGHT_STEPS = [0, 50, 200, 550, 850, 1050] as const;
 export const ADC_LIMIT = 255;
 export const CURVE_MAX_N = 80;
+export const LOW_FORCE_REFIT_MAX_N = 20;
 /** Shared physical-force boundary tolerance for decimal gram inputs. */
 export const FORCE_TOLERANCE_N = 1e-9;
 export const MAX_WEIGHT_G = CURVE_MAX_N / GRAVITY * 1000;

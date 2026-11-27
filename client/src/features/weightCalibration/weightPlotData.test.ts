@@ -18,7 +18,7 @@ describe('砝码曲线的显示数据', () => {
     const b = source('same.csv', ['0,1,1','2,255,9','4,15,16','5,20,22','22,30,32']);
     const sections = sortedLoadingSeries([a, b], 'loading-low', true);
     expect(sections[0].map(p => p.forceN)).toEqual([0, 2, 5, 10]);
-    expect(sections[1].map(p => p.forceN)).toEqual([0, 4, 5, 22]);
+    expect(sections[1].map(p => p.forceN)).toEqual([0, 4, 5]);
     expect(a.samples.map(p => p.forceN)).toEqual([0, 5, 2, 10, 1]);
     expect(sortedLoadingSeries([b], 'legacy-loading', false)[0].find(p => p.forceN === 2)?.saturated).toBe(true);
   });

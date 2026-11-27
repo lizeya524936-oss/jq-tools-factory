@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CURVE_MAX_N, FORCE_TOLERANCE_N, MAX_WEIGHT_G, WEIGHT_STEPS, fitCalibration, hillShape, massToForce, type CalibrationPoint } from './calibration';
+import { CURVE_MAX_N, FORCE_TOLERANCE_N, LOW_FORCE_REFIT_MAX_N, MAX_WEIGHT_G, WEIGHT_STEPS, fitCalibration, hillShape, massToForce, type CalibrationPoint } from './calibration';
 import {
   buildCsvReference, calculateAgreement, compareCsvReference, parseReferenceCSV, predictCsvReference,
   type CsvDataset, type CsvReference,
@@ -154,8 +154,9 @@ describe('CSV reference fitting and scope', () => {
 
   it('offers a separate force-range refit and rejects incompatible channel sets', () => {
     const raw = dataset(100);
+    expect(LOW_FORCE_REFIT_MAX_N).toBe(20);
     expect(buildCsvReference([raw]).fitMaxN).toBe(100);
-    expect(buildCsvReference([raw], 'loading-low').fitMaxN).toBe(CURVE_MAX_N);
+    expect(buildCsvReference([raw], 'loading-low').fitMaxN).toBe(LOW_FORCE_REFIT_MAX_N);
     expect(() => buildCsvReference([raw, { ...raw, channels1Based: [1, 2] }])).toThrow(/通道集合不同/);
     expect(() => buildCsvReference(Array(11).fill(raw))).toThrow(/1–10/);
   });
